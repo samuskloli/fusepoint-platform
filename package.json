@@ -1,0 +1,44 @@
+{
+  "name": "fusepoint-platform",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "predev": "./check-env.sh",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check-env": "./check-env.sh",
+    "backup-env": "cp .env .env.backup",
+    "restore-env": "cp .env.backup .env 2>/dev/null || echo 'Aucune sauvegarde trouvée'"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.0.0",
+    "@fortawesome/free-solid-svg-icons": "^7.0.0",
+    "@fortawesome/vue-fontawesome": "^3.1.1",
+    "@heroicons/vue": "^2.2.0",
+    "archiver": "^7.0.1",
+    "axios": "^1.11.0",
+    "bcrypt": "^6.0.0",
+    "chart.js": "^4.5.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.2.1",
+    "node-fetch": "^3.3.2",
+    "pinia": "^3.0.3",
+    "sqlite3": "^5.1.7",
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1",
+    "vue-toastification": "^2.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "vite": "^7.0.4"
+  }
+}
