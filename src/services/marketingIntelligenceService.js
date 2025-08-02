@@ -4,7 +4,7 @@
  * et des recommandations marketing personnalisées
  */
 
-import googleAnalyticsService from './googleAnalyticsService.js';
+// Google Analytics service removed
 
 class MarketingIntelligenceService {
   constructor() {
@@ -20,14 +20,12 @@ class MarketingIntelligenceService {
     try {
       const endDate = 'today';
       
-      // Récupération des données analytiques
-      const [mainMetrics, trafficSources, topPages, geoData, sessionsOverTime] = await Promise.all([
-        googleAnalyticsService.getMainMetrics(period, endDate),
-        googleAnalyticsService.getTrafficSources(period, endDate),
-        googleAnalyticsService.getTopPages(period, endDate),
-        googleAnalyticsService.getGeographicData(period, endDate),
-        googleAnalyticsService.getSessionsOverTime(period, endDate)
-      ]);
+      // Google Analytics integration removed - using mock data
+      const mainMetrics = this.getMockMainMetrics();
+      const trafficSources = this.getMockTrafficSources();
+      const topPages = this.getMockTopPages();
+      const geoData = this.getMockGeoData();
+      const sessionsOverTime = this.getMockSessionsOverTime();
 
       const insights = {
         audienceInsights: this.analyzeAudienceBehavior(mainMetrics, sessionsOverTime),
@@ -471,6 +469,53 @@ class MarketingIntelligenceService {
     };
     
     return efforts[impact] || 'Moyen (2-4 semaines)';
+  }
+
+  // Mock data methods to replace Google Analytics
+  getMockMainMetrics() {
+    return {
+      sessions: '5420',
+      users: '3890',
+      pageviews: '12340',
+      bounceRate: '45%',
+      averageSessionDuration: '3m 5s'
+    };
+  }
+
+  getMockTrafficSources() {
+    return [
+      { source: 'google', sessions: 2100, percentage: 38.7 },
+      { source: 'direct', sessions: 1200, percentage: 22.1 },
+      { source: 'facebook', sessions: 650, percentage: 12.0 },
+      { source: 'instagram', sessions: 470, percentage: 8.7 }
+    ];
+  }
+
+  getMockTopPages() {
+    return [
+      { title: 'Guide Marketing Digital', views: 1500, path: '/guide-marketing' },
+      { title: 'Stratégies ROI', views: 980, path: '/strategies-roi' },
+      { title: 'Automation Tools', views: 750, path: '/automation' }
+    ];
+  }
+
+  getMockGeoData() {
+    return [
+      { country: 'Switzerland', sessions: 2500, percentage: 46.2 },
+      { country: 'France', sessions: 1800, percentage: 33.2 },
+      { country: 'Germany', sessions: 620, percentage: 11.4 }
+    ];
+  }
+
+  getMockSessionsOverTime() {
+    const data = [];
+    for (let i = 0; i < 30; i++) {
+      data.push({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        sessions: Math.floor(Math.random() * 200) + 150
+      });
+    }
+    return data;
   }
 }
 

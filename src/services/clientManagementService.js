@@ -4,7 +4,7 @@
  * segmentation intelligente et prédictions de comportement
  */
 
-import googleAnalyticsService from './googleAnalyticsService.js';
+// import googleAnalyticsService from './googleAnalyticsService.js'; // Google Analytics integration removed
 import aiPersonalizationService from './aiPersonalizationService.js';
 import predictiveAnalyticsService from './predictiveAnalyticsService.js';
 

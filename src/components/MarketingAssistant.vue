@@ -198,7 +198,7 @@
 
 <script>
 import marketingIntelligenceService from '../services/marketingIntelligenceService.js';
-import googleAnalyticsService from '../services/googleAnalyticsService.js';
+// Google Analytics service removed
 
 export default {
   name: 'MarketingAssistant',
@@ -220,10 +220,7 @@ export default {
   },
   methods: {
     async loadInsights() {
-      if (!googleAnalyticsService.isConnected()) {
-        this.error = 'Google Analytics non connecté';
-        return;
-      }
+      // Google Analytics connection check removed
 
       this.loading = true;
       this.error = null;

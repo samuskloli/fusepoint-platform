@@ -1,4 +1,4 @@
-import googleAnalyticsService from './googleAnalyticsService.js';
+// Google Analytics service removed
 import marketingIntelligenceService from './marketingIntelligenceService.js';
 
 class AIPersonalizationService {
@@ -366,27 +366,7 @@ class AIPersonalizationService {
 
   // Get personalized analytics data
   async getPersonalizedAnalytics() {
-    try {
-      if (googleAnalyticsService.isConnected()) {
-        const [mainMetrics, trafficSources, topPages] = await Promise.all([
-          googleAnalyticsService.getMainMetrics(),
-          googleAnalyticsService.getTrafficSources(),
-          googleAnalyticsService.getTopPages()
-        ]);
-        
-        return {
-          keyMetrics: mainMetrics,
-          trafficSources,
-          topPages,
-          roiData: this.calculateROIData(mainMetrics),
-          conversionData: this.calculateConversionData(mainMetrics),
-          trends: this.calculateTrends(mainMetrics)
-        };
-      }
-    } catch (error) {
-      console.warn('Using mock analytics data:', error);
-    }
-    
+    // Google Analytics integration removed - using mock data
     return this.getMockAnalyticsData();
   }
 

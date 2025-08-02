@@ -253,7 +253,7 @@
 <script>
 import facebookService from '@/services/facebookService';
 import instagramService from '@/services/instagramService';
-import googleAnalyticsService from '@/services/googleAnalyticsService';
+// Google Analytics service removed
 
 export default {
   name: 'SocialMediaConnections',
@@ -270,11 +270,7 @@ export default {
         accountType: null,
         mediaCount: 0
       },
-      googleAnalyticsStatus: {
-        isConnected: false,
-        email: null,
-        propertyId: null
-      },
+      // googleAnalyticsStatus removed,
       facebookLoading: false,
       instagramLoading: false,
       disconnectAllLoading: false,
@@ -286,7 +282,7 @@ export default {
     hasAnyConnection() {
       return this.facebookStatus.isConnected || 
              this.instagramStatus.isConnected || 
-             (this.googleAnalyticsStatus && this.googleAnalyticsStatus.isConnected);
+             false; // Google Analytics removed
     }
   },
   mounted() {
@@ -320,15 +316,7 @@ export default {
           };
         }
         
-        // Vérifier Google Analytics
-        const gaConnected = googleAnalyticsService.isConnected();
-        if (gaConnected) {
-          this.googleAnalyticsStatus = {
-            isConnected: true,
-            email: googleAnalyticsService.currentUser.email || 'Connecté',
-            propertyId: googleAnalyticsService.currentUser.propertyId
-          };
-        }
+        // Google Analytics status check removed
         
       } catch (error) {
         console.error('Erreur lors de la vérification du statut:', error);
@@ -440,15 +428,7 @@ export default {
           };
         }
         
-        // Déconnecter Google Analytics si connecté
-         if (this.googleAnalyticsStatus && this.googleAnalyticsStatus.isConnected) {
-           await googleAnalyticsService.disconnect();
-           this.googleAnalyticsStatus = {
-             isConnected: false,
-             email: null,
-             propertyId: null
-           };
-         }
+        // Google Analytics disconnect removed
         
         this.showDisconnectAllModal = false;
         this.showMessage('Tous les services ont été déconnectés avec succès', 'success');

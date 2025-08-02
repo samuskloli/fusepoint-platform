@@ -6,7 +6,7 @@
         <div v-if="isProcessing" class="text-center">
           <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <h2 class="text-lg font-medium text-gray-900 mb-2">Finalisation de la connexion...</h2>
-          <p class="text-sm text-gray-600">Veuillez patienter pendant que nous configurons votre accès à Google Analytics.</p>
+          <p class="text-sm text-gray-600 mb-4">Traitement de la connexion en cours...</p>
         </div>
 
         <!-- Success State -->
@@ -65,7 +65,7 @@
 </template>
 
 <script>
-import googleAnalyticsService from '../services/googleAnalyticsService.js';
+// Google Analytics service removed
 
 export default {
   name: 'OAuthCallback',
@@ -114,8 +114,8 @@ export default {
           throw new Error('Paramètre state manquant dans la réponse OAuth');
         }
 
-        // Traiter la callback OAuth
-        const result = await googleAnalyticsService.handleOAuthCallback(code, state);
+        // Google Analytics functionality removed
+        throw new Error('Google Analytics integration has been removed');
         
         if (result.success) {
           this.status = 'success';
@@ -167,16 +167,15 @@ export default {
 
     redirectToApp() {
       // Rediriger vers la page principale de l'application
-      this.$router.push('/analytics').catch(() => {
+      this.$router.push('/dashboard').catch(() => {
         // Fallback si le router n'est pas disponible
         window.location.href = '/';
       });
     },
 
     retryConnection() {
-      // Nettoyer les données temporaires et rediriger vers la page de connexion
-      localStorage.removeItem('ga_oauth_temp');
-      this.$router.push('/analytics/setup').catch(() => {
+      // Rediriger vers la page de connexion
+      this.$router.push('/dashboard').catch(() => {
         // Fallback si le router n'est pas disponible
         window.location.href = '/';
       });

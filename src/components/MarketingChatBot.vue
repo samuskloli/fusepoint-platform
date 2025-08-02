@@ -639,7 +639,6 @@ export default {
       }
     });
   }
-  }
 };
 </script>
 

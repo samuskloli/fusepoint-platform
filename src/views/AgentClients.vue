@@ -64,288 +64,45 @@
       <!-- Contenu principal -->
       <div class="flex-1 overflow-y-auto">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Filtres et recherche -->
-      <SearchAndFilters
-        v-model:search="searchQuery"
-        v-model:filters="filters"
-        v-model:show-filters="showFilters"
-        :messages="messages.filters"
-        @reset="resetFilters"
-      />
+          <!-- Filtres et recherche -->
+          <SearchAndFilters
+            v-model:search="searchQuery"
+            v-model:filters="filters"
+            v-model:show-filters="showFilters"
+            :messages="messages.filters"
+            @reset="resetFilters"
+          />
 
-      <!-- Tableau des clients -->
-      <ClientsTable
-        :clients="paginatedClients"
-        :selected-clients="selectedClients"
-        :loading="loading"
-        :error="error"
-        :messages="messages.table"
-        @toggle-all="toggleAllClients"
-        @select-client="toggleClientSelection"
-        @edit-client="editClient"
-        @delete-client="openDeleteModal"
-        @assign-agent="openAssignAgentModal"
-        @send-email="openSendEmailModal"
-        @send-notification="openSendNotificationModal"
-        @send-message="openSendMessageModal"
-        @toggle-status="toggleClientStatus"
-        @retry="loadClients"
-      />
+          <!-- Tableau des clients -->
+          <ClientsTable
+            :clients="paginatedClients"
+            :selected-clients="selectedClients"
+            :loading="loading"
+            :error="error"
+            :messages="messages.table"
+            @toggle-all="toggleAllClients"
+            @select-client="toggleClientSelection"
+            @edit-client="editClient"
+            @delete-client="openDeleteModal"
+            @assign-agent="openAssignAgentModal"
+            @send-email="openSendEmailModal"
+            @send-notification="openSendNotificationModal"
+            @toggle-status="toggleClientStatus"
+            @retry="loadClients"
+          />
 
-      <!-- Pagination -->
-      <Pagination
-        v-if="!loading && !error && filteredClients.length > 0"
-        :current-page="currentPage"
-        :total-pages="totalPages"
-        :total-items="filteredClients.length"
-        :items-per-page="itemsPerPage"
-        :messages="messages.pagination"
-        @previous="previousPage"
-        @next="nextPage"
-        @go-to="goToPage"
-      />
-        </div>
-      </div>
-    </div>
-
-    <!-- Modales -->
-    <ClientModal
-      v-if="showCreateModal || showEditModal"
-      :show="showCreateModal || showEditModal"
-      :client="newClient"
-      :is-editing="showEditModal"
-      :validation-errors="validationErrors"
-      :is-saving="isSaving"
-      :messages="messages.modal"
-      @save="showEditModal ? updateClient() : createClient()"
-      @close="closeModal"
-    />
-
-    <DeleteModal
-      v-if="showDeleteModal"
-      :show="showDeleteModal"
-      :client="clientToDelete"
-      :is-deleting="isDeleting"
-      :messages="messages.deleteModal"
-      @confirm="confirmDelete"
-      @cancel="closeDeleteModal"
-    />
-
-    <BulkDeleteModal
-      v-if="showBulkDeleteModal"
-      :show="showBulkDeleteModal"
-      :selected-clients="selectedClients"
-      :is-deleting="isBulkDeleting"
-      :messages="messages.bulkDeleteModal"
-      @confirm="confirmBulkDelete"
-      @cancel="closeBulkDeleteModal"
-    />
-
-    <!-- Modal d'attribution d'agent -->
-    <div v-if="showAssignAgentModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Attribuer un agent</h3>
-            <button @click="closeAssignAgentModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-              </svg>
-            </button>
-          </div>
-          
-          <div v-if="selectedClientForAssignment" class="mb-4">
-            <p class="text-sm text-gray-600">Client: <strong>{{ selectedClientForAssignment.first_name }} {{ selectedClientForAssignment.last_name }}</strong></p>
-            <p class="text-sm text-gray-600">Email: {{ selectedClientForAssignment.email }}</p>
-          </div>
-          
-          <div class="space-y-3">
-            <h4 class="text-sm font-medium text-gray-700">Sélectionner un agent:</h4>
-            <div v-if="availableAgents.length === 0" class="text-sm text-gray-500">
-              Aucun agent disponible
-            </div>
-            <div v-else class="space-y-2 max-h-60 overflow-y-auto">
-              <div 
-                v-for="agent in availableAgents" 
-                :key="agent.id"
-                class="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                @click="assignAgent(agent.id)"
-              >
-                <div class="flex items-center space-x-3">
-                  <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                    {{ getInitials(agent.first_name, agent.last_name) }}
-                  </div>
-                  <div>
-                    <p class="text-sm font-medium text-gray-900">{{ agent.first_name }} {{ agent.last_name }}</p>
-                    <p class="text-xs text-gray-500">{{ agent.email }}</p>
-                    <p class="text-xs text-gray-400">{{ agent.active_conversations || 0 }} conversation(s) active(s)</p>
-                  </div>
-                </div>
-                <div class="text-green-600">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div class="flex justify-end space-x-3 pt-4 mt-4 border-t">
-            <button
-              type="button"
-              @click="closeAssignAgentModal"
-              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Annuler
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal d'envoi de notification -->
-    <div v-if="showNotificationModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">Envoyer une notification</h3>
-            <button @click="closeNotificationModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <form @submit.prevent="submitNotification">
-            <div class="space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Client</label>
-                <p class="text-sm text-gray-600">{{ notificationForm.recipient?.first_name }} {{ notificationForm.recipient?.last_name }}</p>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Type de notification</label>
-                <select
-                  v-model="notificationForm.type"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="info">Information</option>
-                  <option value="success">Succès</option>
-                  <option value="warning">Avertissement</option>
-                  <option value="update">Mise à jour</option>
-                  <option value="message">Message</option>
-                </select>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Titre</label>
-                <input
-                  v-model="notificationForm.title"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Titre de la notification"
-                />
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea
-                  v-model="notificationForm.message"
-                  rows="4"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contenu de la notification"
-                ></textarea>
-              </div>
-              
-              <div class="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  @click="closeNotificationModal"
-                  class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  :disabled="sendingNotification"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <span v-if="sendingNotification">Envoi...</span>
-                  <span v-else>Envoyer</span>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal d'envoi d'email -->
-    <div v-if="showEmailModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-        <div class="mt-3">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-medium text-gray-900">
-              {{ emailForm.recipient ? 'Envoyer Email' : 'Email Groupé' }}
-            </h3>
-            <button @click="closeEmailModal" class="text-gray-400 hover:text-gray-600">
-              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          <form @submit.prevent="submitEmail">
-            <div class="space-y-4">
-              <div v-if="!emailForm.recipient">
-                <label class="block text-sm font-medium text-gray-700 mb-2">Destinataires</label>
-                <p class="text-sm text-gray-600">{{ selectedClients.length }} client(s) sélectionné(s)</p>
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Sujet</label>
-                <input
-                  v-model="emailForm.subject"
-                  type="text"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Sujet de l'email"
-                />
-              </div>
-              
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea
-                  v-model="emailForm.content"
-                  rows="6"
-                  required
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contenu de l'email"
-                ></textarea>
-              </div>
-              
-              <div class="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  @click="closeEmailModal"
-                  class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  :disabled="sendingEmail"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <span v-if="sendingEmail">Envoi...</span>
-                  <span v-else>Envoyer</span>
-                </button>
-              </div>
-            </div>
-          </form>
+          <!-- Pagination -->
+          <Pagination
+            v-if="!loading && !error && filteredClients.length > 0"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :total-items="filteredClients.length"
+            :items-per-page="itemsPerPage"
+            :messages="messages.pagination"
+            @previous="previousPage"
+            @next="nextPage"
+            @go-to="goToPage"
+          />
         </div>
       </div>
     </div>
@@ -678,216 +435,18 @@ export default {
       }
     }
     
-    // Nouvelles actions
-    const loadAvailableAgents = async () => {
-      try {
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-        const response = await fetch('/api/agent/available', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        })
-        
-        if (response.ok) {
-          const data = await response.json()
-          availableAgents.value = data.data || []
-        } else {
-          throw new Error('Erreur lors du chargement des agents')
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des agents:', error)
-        showError('Erreur lors du chargement des agents')
-      }
-    }
-    
-    const openAssignAgentModal = async (client) => {
-      selectedClientForAssignment.value = client
-      showAssignAgentModal.value = true
-      await loadAvailableAgents()
-    }
-    
-    const closeAssignAgentModal = () => {
-      showAssignAgentModal.value = false
-      selectedClientForAssignment.value = null
-    }
-    
-    const assignAgent = async (agentId) => {
-      try {
-        assigningAgent.value = true
-        
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-        const response = await fetch('/api/agent/assign', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            clientId: selectedClientForAssignment.value.id,
-            agentId: agentId
-          })
-        })
-        
-        const result = await response.json()
-        
-        if (response.ok) {
-          // Mettre à jour le client localement
-          const clientIndex = clients.value.findIndex(c => c.id === selectedClientForAssignment.value.id)
-          if (clientIndex !== -1) {
-            const assignedAgent = availableAgents.value.find(a => a.id == agentId)
-            clients.value[clientIndex].assigned_agent = assignedAgent
-          }
-          
-          showSuccess(result.message)
-          closeAssignAgentModal()
-        } else {
-          showError(result.message || 'Erreur lors de l\'attribution de l\'agent')
-        }
-      } catch (error) {
-        console.error('Erreur lors de l\'attribution d\'agent:', error)
-        showError('Erreur lors de l\'attribution de l\'agent')
-      } finally {
-        assigningAgent.value = false
-      }
-    }
-    
-    const openSendEmailModal = (client = null) => {
-      emailForm.value = {
-        recipient: client,
-        subject: '',
-        content: ''
-      }
-      showEmailModal.value = true
-    }
-    
-    const closeEmailModal = () => {
-      showEmailModal.value = false
-      emailForm.value = {
-        recipient: null,
-        subject: '',
-        content: ''
-      }
-    }
-    
-    const openSendNotificationModal = (client) => {
-        notificationForm.value.recipient = client
-        showNotificationModal.value = true
-      }
-    
-    const closeNotificationModal = () => {
-      showNotificationModal.value = false
-      notificationForm.value = {
-        recipient: null,
-        type: 'info',
-        title: '',
-        message: ''
-      }
-    }
-    
-    const submitNotification = async () => {
-      try {
-        sendingNotification.value = true
-        
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-        
-        const response = await fetch('/api/accompagnement/notifications', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: notificationForm.value.recipient.id,
-            type: notificationForm.value.type,
-            title: notificationForm.value.title,
-            message: notificationForm.value.message
-          })
-        })
-        
-        if (response.ok) {
-          showSuccess('Notification envoyée avec succès')
-          closeNotificationModal()
-        } else {
-          const errorData = await response.json()
-          throw new Error(errorData.message || 'Erreur lors de l\'envoi de la notification')
-        }
-      } catch (error) {
-        console.error('Erreur lors de l\'envoi de la notification:', error)
-        showError(error.message || 'Erreur lors de l\'envoi de la notification')
-      } finally {
-        sendingNotification.value = false
-      }
-    }
-    
-    const submitEmail = async () => {
-      try {
-        sendingEmail.value = true
-        
-        const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
-        
-        if (emailForm.value.recipient) {
-          // Email individuel
-          const response = await fetch(`/api/agent/clients/${emailForm.value.recipient.id}/email`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              subject: emailForm.value.subject,
-              content: emailForm.value.content
-            })
-          })
-          
-          if (response.ok) {
-            showSuccess('Email envoyé avec succès')
-          } else {
-            const errorData = await response.json()
-            throw new Error(errorData.message || 'Erreur lors de l\'envoi')
-          }
-        } else {
-          // Email groupé
-          const response = await fetch('/api/agent/bulk-email', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              clientIds: selectedClients.value,
-              subject: emailForm.value.subject,
-              content: emailForm.value.content
-            })
-          })
-          
-          if (response.ok) {
-            showSuccess(`Email envoyé à ${selectedClients.value.length} client(s)`)
-          } else {
-            const errorData = await response.json()
-            throw new Error(errorData.message || 'Erreur lors de l\'envoi groupé')
-          }
-        }
-        
-        closeEmailModal()
-      } catch (error) {
-        console.error('Erreur lors de l\'envoi de l\'email:', error)
-        showError(error.message || 'Erreur lors de l\'envoi de l\'email')
-      } finally {
-        sendingEmail.value = false
-      }
+    const getInitials = (firstName, lastName) => {
+      const first = firstName && firstName.length > 0 ? firstName[0] : '?'
+      const last = lastName && lastName.length > 0 ? lastName[0] : '?'
+      return `${first}${last}`.toUpperCase()
     }
     
     const toggleClientStatus = async (client) => {
       try {
-        // Basculer is_active (true/false)
         const newIsActive = !client.is_active
-        
-        // Afficher immédiatement le message de succès
         const statusText = newIsActive ? 'activé' : 'désactivé'
         showSuccess(`Client ${client.first_name} ${client.last_name} ${statusText} avec succès`)
         
-        // Mise à jour optimiste de l'interface (feedback immédiat)
         const clientIndex = clients.value.findIndex(c => c.id === client.id)
         if (clientIndex !== -1) {
           clients.value[clientIndex] = { ...clients.value[clientIndex], is_active: newIsActive }
@@ -906,7 +465,6 @@ export default {
         })
         
         if (!response.ok) {
-          // En cas d'erreur, restaurer l'état précédent et afficher l'erreur
           if (clientIndex !== -1) {
             clients.value[clientIndex] = { ...clients.value[clientIndex], is_active: !newIsActive }
           }
@@ -915,33 +473,23 @@ export default {
           return
         }
         
-        // Recharger les clients en arrière-plan pour s'assurer de la cohérence
         loadClients().catch(console.error)
       } catch (error) {
         console.error('Erreur lors du changement de statut:', error)
-        showError(`Erreur lors du changement de statut du client`)
+        showError('Erreur lors du changement de statut du client')
       }
     }
-    
 
-    
-    const getInitials = (firstName, lastName) => {
-      const first = firstName && firstName.length > 0 ? firstName[0] : '?'
-      const last = lastName && lastName.length > 0 ? lastName[0] : '?'
-      return `${first}${last}`.toUpperCase()
-    }
-    
     // Watchers
     watch([searchQuery, filters], () => {
       currentPage.value = 1
     }, { deep: true })
-    
+
     // Lifecycle
     onMounted(() => {
       loadClients()
-      loadAvailableAgents()
     })
-    
+
     return {
       // Messages
       messages,
@@ -1004,21 +552,12 @@ export default {
       updateClient,
       confirmDelete,
       confirmBulkDelete,
-      openAssignAgentModal,
-      closeAssignAgentModal,
-      assignAgent,
-      openSendEmailModal,
-      closeEmailModal,
-      openSendNotificationModal,
-      closeNotificationModal,
-      submitEmail,
-      submitNotification,
-      toggleClientStatus,
-      loadClients,
       showNotificationModal,
       notificationForm,
       sendingNotification,
       getInitials,
+      toggleClientStatus,
+      loadClients,
       showSuccess,
       showError
     }

@@ -1,18 +1,14 @@
 /**
  * Service de Gestion des Données d'Entreprise
- * Intègre Google Analytics, Facebook, et autres sources de données
+ * Intègre Facebook et autres sources de données
  */
 
-const { google } = require('googleapis');
+// Google Analytics integration removed
 const databaseService = require('./databaseService');
 
 class CompanyDataService {
   constructor() {
-    this.analytics = google.analyticsdata('v1beta');
-    this.auth = new google.auth.GoogleAuth({
-      keyFile: process.env.GOOGLE_SERVICE_ACCOUNT_KEY_FILE || './config/service-account-key.json',
-      scopes: ['https://www.googleapis.com/auth/analytics.readonly']
-    });
+    // Google Analytics integration removed
     
     // Cache des données d'entreprise - vidé pour forcer le rechargement
     this.companyCache = new Map();
@@ -39,8 +35,8 @@ class CompanyDataService {
         throw new Error(`Entreprise ${companyId} non trouvée`);
       }
 
-      // Récupérer les données analytics
-      const analyticsData = await this.getGoogleAnalyticsDataFromDB(companyId);
+      // Google Analytics integration removed - using mock data
+      const analyticsData = this.getMockAnalyticsData();
       
       // Récupérer les données des réseaux sociaux
       const socialData = await this.getSocialMediaDataFromDB(companyId);
@@ -105,18 +101,19 @@ class CompanyDataService {
         // Récupérer les informations de base de l'entreprise
         const companyInfo = await this.getCompanyInfo(companyId);
         
-        // Récupérer les données en parallèle
-        const [analyticsData, facebookData, emailData, salesData] = await Promise.allSettled([
-          this.getGoogleAnalyticsData(companyInfo.googleAnalyticsPropertyId),
+        // Récupérer les données en parallèle (Google Analytics removed)
+        const [facebookData, emailData, salesData] = await Promise.allSettled([
           this.getFacebookData(companyInfo.facebookPageId),
           this.getEmailMarketingData(companyInfo.emailProvider),
           this.getSalesData(companyInfo.crmProvider)
         ]);
+        
+        const analyticsData = { status: 'fulfilled', value: this.getMockAnalyticsData() };
 
         companyData = {
           id: companyId,
           ...companyInfo,
-          analytics: analyticsData.status === 'fulfilled' ? analyticsData.value : null,
+          analytics: analyticsData.value,
           facebook: facebookData.status === 'fulfilled' ? facebookData.value : null,
           email: emailData.status === 'fulfilled' ? emailData.value : null,
           sales: salesData.status === 'fulfilled' ? salesData.value : null,
@@ -210,112 +207,7 @@ class CompanyDataService {
     }
   }
 
-  /**
-   * Récupère les données Google Analytics
-   */
-  async getGoogleAnalyticsData(propertyId) {
-    try {
-      console.log(`📊 Tentative récupération GA pour ${propertyId}`);
-      
-      if (!propertyId) {
-        return this.getMockAnalyticsData();
-      }
-
-      const authClient = await this.auth.getClient();
-      const endDate = new Date().toISOString().split('T')[0];
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-      // Requête pour les métriques principales
-      const mainMetrics = await this.analytics.properties.runReport({
-        auth: authClient,
-        property: `properties/${propertyId}`,
-        requestBody: {
-          dateRanges: [{ startDate, endDate }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'users' },
-            { name: 'pageviews' },
-            { name: 'bounceRate' },
-            { name: 'averageSessionDuration' },
-            { name: 'conversions' }
-          ]
-        }
-      });
-
-      // Requête pour les sources de trafic
-      const trafficSources = await this.analytics.properties.runReport({
-        auth: authClient,
-        property: `properties/${propertyId}`,
-        requestBody: {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'sessionDefaultChannelGrouping' }],
-          metrics: [{ name: 'sessions' }],
-          orderBys: [{ metric: { metricName: 'sessions' }, desc: true }]
-        }
-      });
-
-      const mainData = mainMetrics.data.rows?.[0]?.metricValues || [];
-      const sessions = parseInt(mainData[0]?.value || 0);
-      const users = parseInt(mainData[1]?.value || 0);
-      const pageviews = parseInt(mainData[2]?.value || 0);
-      const bounceRate = parseFloat(mainData[3]?.value || 0) * 100;
-      const avgSessionDuration = parseInt(mainData[4]?.value || 0);
-      const conversions = parseInt(mainData[5]?.value || 0);
-      
-      const conversionRate = sessions > 0 ? (conversions / sessions) * 100 : 0;
-
-      const topSources = trafficSources.data.rows?.slice(0, 5).map(row => ({
-        source: row.dimensionValues[0].value,
-        sessions: parseInt(row.metricValues[0].value)
-      })) || [];
-
-      console.log(`✅ Données GA récupérées avec succès`);
-      return {
-        sessions,
-        users,
-        pageviews,
-        bounceRate: Math.round(bounceRate * 100) / 100,
-        avgSessionDuration,
-        conversions,
-        conversionRate: Math.round(conversionRate * 100) / 100,
-        topSources,
-        period: `${startDate} à ${endDate}`
-      };
-      
-    } catch (error) {
-      console.error('❌ Erreur Google Analytics:', error.message);
-      console.log(`🔄 Utilisation des données mock pour ${propertyId}`);
-      
-      // Retourner des données mock en cas d'erreur
-      return this.getMockAnalyticsData();
-    }
-  }
-
-  /**
-   * Récupère les données Google Analytics depuis la base de données
-   */
-  async getGoogleAnalyticsDataFromDB(companyId) {
-    console.log('📊 Tentative de récupération des données Google Analytics pour l\'entreprise:', companyId);
-    
-    try {
-      // Récupérer la configuration Google Analytics depuis la base de données
-      const config = await databaseService.getApiConfiguration(companyId, 'google_analytics');
-      
-      if (!config || !config.config_data || !config.config_data.property_id) {
-        console.log('⚠️ Configuration Google Analytics non trouvée, utilisation des données de démonstration');
-        return this.getMockAnalyticsData();
-      }
-
-      const propertyId = config.config_data.property_id;
-      
-      return await this.getGoogleAnalyticsData(propertyId);
-      
-    } catch (error) {
-      console.error('❌ Erreur Google Analytics API:', error.message);
-      console.log('🔄 Utilisation des données de démonstration comme fallback');
-      return this.getMockAnalyticsData();
-    }
-  }
+  // Google Analytics methods removed - using mock data only
 
   /**
    * Récupère les données Facebook/Meta

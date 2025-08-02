@@ -1,4 +1,4 @@
-import googleAnalyticsService from './googleAnalyticsService.js';
+// Google Analytics service removed
 import marketingIntelligenceService from './marketingIntelligenceService.js';
 
 class MarketingAutomationService {
@@ -375,16 +375,11 @@ class MarketingAutomationService {
   // Get analytics data for optimization
   async getAnalyticsForOptimization() {
     try {
-      if (!googleAnalyticsService.isConnected()) {
-        return this.getMockAnalyticsData();
-      }
-      
-      const [mainMetrics, trafficSources, topPages, geoData] = await Promise.all([
-        googleAnalyticsService.getMainMetrics(),
-        googleAnalyticsService.getTrafficSources(),
-        googleAnalyticsService.getTopPages(),
-        googleAnalyticsService.getGeographicData()
-      ]);
+      // Google Analytics integration removed - using mock data
+      const mainMetrics = this.getMockMainMetrics();
+      const trafficSources = this.getMockTrafficSources();
+      const topPages = this.getMockTopPages();
+      const geoData = this.getMockGeoData();
       
       return {
         mainMetrics,
@@ -544,6 +539,42 @@ class MarketingAutomationService {
   // Get automation triggers
   getAutomationTriggers() {
     return this.triggers;
+  }
+
+  // Mock data methods to replace Google Analytics
+  getMockMainMetrics() {
+    return {
+      sessions: '5420',
+      users: '3890',
+      pageviews: '12340',
+      bounceRate: '45%',
+      averageSessionDuration: '3m 5s'
+    };
+  }
+
+  getMockTrafficSources() {
+    return [
+      { source: 'google', sessions: 2100, percentage: 38.7 },
+      { source: 'direct', sessions: 1200, percentage: 22.1 },
+      { source: 'facebook', sessions: 650, percentage: 12.0 },
+      { source: 'instagram', sessions: 470, percentage: 8.7 }
+    ];
+  }
+
+  getMockTopPages() {
+    return [
+      { title: 'Guide Marketing Digital', views: 1500, path: '/guide-marketing' },
+      { title: 'Stratégies ROI', views: 980, path: '/strategies-roi' },
+      { title: 'Automation Tools', views: 750, path: '/automation' }
+    ];
+  }
+
+  getMockGeoData() {
+    return [
+      { country: 'Switzerland', sessions: 2500, percentage: 46.2 },
+      { country: 'France', sessions: 1800, percentage: 33.2 },
+      { country: 'Germany', sessions: 620, percentage: 11.4 }
+    ];
   }
 }
 

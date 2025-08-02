@@ -1,4 +1,4 @@
-import googleAnalyticsService from './googleAnalyticsService.js';
+// Google Analytics service removed
 import aiPersonalizationService from './aiPersonalizationService.js';
 
 class PredictiveAnalyticsService {

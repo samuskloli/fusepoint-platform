@@ -15,12 +15,8 @@ import { requirePrestataire } from '../middleware/prestataireAuth.js'
 
 // Analytics
 import Analytics from '../views/Analytics/Analytics.vue'
-import GoogleAnalytics from '../views/Analytics/GoogleAnalytics.vue'
 // Pages Facebook et Instagram supprimées - utiliser MetaInsights à la place
 import MetaInsights from '../views/Analytics/MetaInsights.vue'
-
-// Google Analytics Setup
-import GoogleAnalyticsSetup from '../components/GoogleAnalyticsSetup.vue'
 
 // Marketing
 import Marketing from '../views/Marketing/Marketing.vue'
@@ -155,18 +151,7 @@ const routes = [
     component: Analytics,
     beforeEnter: requireAuth
   },
-  {
-    path: '/analytics/google',
-    name: 'GoogleAnalytics',
-    component: GoogleAnalytics,
-    beforeEnter: requireAuth
-  },
-  {
-    path: '/analytics/setup',
-    name: 'GoogleAnalyticsSetup',
-    component: GoogleAnalyticsSetup,
-    beforeEnter: requireAuth
-  },
+
   // Routes Facebook et Instagram supprimées - utiliser /analytics/meta à la place
   {
     path: '/analytics/meta',

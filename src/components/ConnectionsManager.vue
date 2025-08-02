@@ -101,25 +101,14 @@
             <div>
               <h3 class="font-medium text-gray-900">Google Analytics</h3>
               <p class="text-sm text-gray-500">
-                {{ googleAnalyticsStatus.isConnected ? 
-                  `Connecté - ${googleAnalyticsStatus.email}` : 
-                  'Non connecté' 
-                }}
+                Non connecté (Google Analytics supprimé)
               </p>
             </div>
           </div>
           <div class="flex items-center space-x-2">
-            <div :class="googleAnalyticsStatus.isConnected ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" 
-                 class="px-2 py-1 rounded-full text-xs font-medium">
-              {{ googleAnalyticsStatus.isConnected ? 'Connecté' : 'Déconnecté' }}
+            <div class="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-medium">
+              Supprimé
             </div>
-            <button
-              v-if="googleAnalyticsStatus.isConnected"
-              @click="disconnectService('googleAnalytics')"
-              class="text-red-600 hover:text-red-800 text-sm font-medium"
-            >
-              Déconnecter
-            </button>
           </div>
         </div>
       </div>
@@ -192,10 +181,7 @@
               <span class="w-2 h-2 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full mr-2"></span>
               Instagram (@{{ instagramStatus.username }})
             </li>
-            <li v-if="googleAnalyticsStatus.isConnected" class="flex items-center">
-              <span class="w-2 h-2 bg-red-600 rounded-full mr-2"></span>
-              Google Analytics ({{ googleAnalyticsStatus.email }})
-            </li>
+            <!-- Google Analytics connection removed -->
           </ul>
         </div>
         <p class="text-sm text-gray-500 mb-6">
@@ -225,7 +211,7 @@
 <script>
 import facebookService from '../services/facebookService.js';
 import instagramService from '../services/instagramService.js';
-import googleAnalyticsService from '../services/googleAnalyticsService.js';
+// Google Analytics service removed
 
 export default {
   name: 'ConnectionsManager',
@@ -242,11 +228,7 @@ export default {
         accountType: null,
         mediaCount: 0
       },
-      googleAnalyticsStatus: {
-        isConnected: false,
-        email: null,
-        propertyId: null
-      },
+      // googleAnalyticsStatus removed,
       disconnectAllLoading: false,
       showDisconnectAllModal: false,
       message: '',
@@ -258,7 +240,7 @@ export default {
       let count = 0;
       if (this.facebookStatus.isConnected) count++;
       if (this.instagramStatus.isConnected) count++;
-      if (this.googleAnalyticsStatus.isConnected) count++;
+      // Google Analytics connection check removed
       return count;
     },
     messageClass() {
@@ -300,15 +282,7 @@ export default {
           };
         }
         
-        // Vérifier Google Analytics
-        const gaConnected = googleAnalyticsService.isConnected();
-        if (gaConnected) {
-          this.googleAnalyticsStatus = {
-            isConnected: true,
-            email: googleAnalyticsService.currentUser.email || 'Connecté',
-            propertyId: googleAnalyticsService.currentUser.propertyId
-          };
-        }
+        // Google Analytics status check removed
         
       } catch (error) {
         console.error('Erreur lors de la vérification du statut:', error);
@@ -342,15 +316,7 @@ export default {
             this.showMessage('Déconnecté d\'Instagram avec succès', 'success');
             break;
             
-          case 'googleAnalytics':
-            await googleAnalyticsService.disconnect();
-            this.googleAnalyticsStatus = {
-              isConnected: false,
-              email: null,
-              propertyId: null
-            };
-            this.showMessage('Déconnecté de Google Analytics avec succès', 'success');
-            break;
+          // Google Analytics disconnect case removed
         }
         
         // Émettre un événement pour notifier le parent
@@ -401,18 +367,7 @@ export default {
           );
         }
         
-        // Déconnecter Google Analytics si connecté
-        if (this.googleAnalyticsStatus.isConnected) {
-          disconnectPromises.push(
-            googleAnalyticsService.disconnect().then(() => {
-              this.googleAnalyticsStatus = {
-                isConnected: false,
-                email: null,
-                propertyId: null
-              };
-            })
-          );
-        }
+        // Google Analytics disconnect removed
         
         // Attendre que toutes les déconnexions soient terminées
         await Promise.all(disconnectPromises);

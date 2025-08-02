@@ -53,8 +53,7 @@
           <div class="mb-8">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">Intégrations connectées</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <!-- Google Analytics -->
-              <GoogleAnalyticsSimpleSetup @connection-changed="onGoogleAnalyticsConnectionChanged" />
+              <!-- Google Analytics integration removed -->
 
               <!-- Facebook Ads -->
               <SocialMediaConnections platform="facebook" />
@@ -306,7 +305,7 @@
 import Layout from '../../components/Layout.vue'
 import SocialMediaConnections from '../../components/SocialMediaConnections.vue'
 import SocialMediaTest from '../../components/SocialMediaTest.vue'
-import GoogleAnalyticsSimpleSetup from '../../components/GoogleAnalyticsSimpleSetup.vue'
+// Google Analytics component removed
 
 export default {
   name: 'Integrations',
@@ -314,32 +313,18 @@ export default {
     Layout,
     SocialMediaConnections,
     SocialMediaTest,
-    GoogleAnalyticsSimpleSetup
+    // GoogleAnalyticsSimpleSetup removed
   },
   data() {
     return {
       integrationStats: {
         activeIntegrations: 12,
-        googleAnalyticsConnected: false
+        // googleAnalyticsConnected removed
       }
     }
   },
   methods: {
-    onGoogleAnalyticsConnectionChanged(event) {
-      this.integrationStats.googleAnalyticsConnected = event.connected;
-      
-      // Mettre à jour le compteur d'intégrations actives
-      if (event.connected) {
-        console.log(`Google Analytics connecté via ${event.method}`);
-      } else {
-        console.log('Google Analytics déconnecté');
-      }
-      
-      // Vous pouvez ajouter ici d'autres actions comme :
-      // - Mettre à jour une base de données
-      // - Envoyer des analytics
-      // - Rafraîchir d'autres composants
-    }
+    // Méthodes pour gérer les intégrations
   }
 }
 </script>
