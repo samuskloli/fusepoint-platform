@@ -241,6 +241,51 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Route temporaire pour /login (en attendant le build du frontend)
+app.get('/login', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Fusepoint - Connexion</title>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; color: #555; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .info { text-align: center; margin-top: 20px; color: #666; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>🚀 Fusepoint</h1>
+        <form action="/api/auth/login" method="post">
+          <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Mot de passe:</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+          <button type="submit">Se connecter</button>
+        </form>
+        <div class="info">
+          <p>Interface temporaire - Le frontend sera disponible après compilation</p>
+          <p><a href="/api">Documentation API</a> | <a href="/health">Statut du serveur</a></p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Documentation API
 app.get('/api', (req, res) => {
   res.json({
