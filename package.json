@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "check-env": "./check-env.sh",
     "backup-env": "cp .env .env.backup",
-    "restore-env": "cp .env.backup .env 2>/dev/null || echo 'Aucune sauvegarde trouvée'"
+    "restore-env": "cp .env.backup .env 2>/dev/null || echo 'Aucune sauvegarde trouvée'",
+    "start:frontend": "node infomaniak-server.js",
+    "deploy:infomaniak": "chmod +x deploy-infomaniak-nodejs.sh && ./deploy-infomaniak-nodejs.sh",
+    "start:infomaniak": "chmod +x start-infomaniak.sh && ./start-infomaniak.sh"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
@@ -19,6 +22,11 @@
     "@heroicons/vue": "^2.2.0",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "http-proxy-middleware": "^2.0.6",
     "pinia": "^3.0.3",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1",
