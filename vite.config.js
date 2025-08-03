@@ -12,6 +12,26 @@ export default defineConfig({
       'vue': 'vue/dist/vue.esm-bundler.js'
     }
   },
+  define: {
+    global: 'globalThis',
+  },
+  build: {
+    rollupOptions: {
+      external: [
+        'crypto',
+        'fs',
+        'path',
+        'bcrypt',
+        'sqlite3',
+        'jsonwebtoken',
+        'node-cron',
+        'archiver',
+        'cors',
+        'express',
+        'http-proxy-middleware'
+      ]
+    }
+  },
   server: {
     host: '0.0.0.0', // Permet l'accès depuis le réseau local
     port: 5173,
