@@ -10,6 +10,9 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const { GoogleAuth } = require('google-auth-library');
 const { BetaAnalyticsDataClient } = require('@google-analytics/data');
+const nodemailer = require('nodemailer');
+const multer = require('multer');
+const sharp = require('sharp');
 
 // Services
 const aiChatService = require('./services/aiChatService');
@@ -42,16 +45,21 @@ app.use(helmet({
   contentSecurityPolicy: false
 }));
 
-// Configuration CORS optimisée pour beta.fusepoint.ch
+// Configuration CORS optimisée pour production et développement
 const corsOptions = {
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     
     const allowedOrigins = [
       'https://beta.fusepoint.ch',
+      'https://fusepoint.ch',
+      'https://www.fusepoint.ch',
       'http://localhost:5173',
+      'http://localhost:8080',
       'http://localhost:8082',
-      'http://172.20.10.2:5173'
+      'http://172.20.10.2:5173',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:8080'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
@@ -62,6 +70,8 @@ const corsOptions = {
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   optionsSuccessStatus: 200
 };
 
@@ -70,13 +80,34 @@ app.use(compression());
 app.use(express.json());
 app.use(morgan('combined'));
 
-// Rate limiting
+// Rate limiting avec configuration avancée
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: 'Trop de requêtes depuis cette IP, réessayez plus tard.'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limite de 100 requêtes par fenêtre
+  message: {
+    error: 'Trop de requêtes depuis cette IP',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => {
+    // Exclure les routes de santé du rate limiting
+    return req.path === '/health' || req.path === '/api/health';
+  }
 });
+
+// Rate limiting spécifique pour l'authentification
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5, // 5 tentatives de connexion par 15 minutes
+  message: {
+    error: 'Trop de tentatives de connexion',
+    retryAfter: '15 minutes'
+  }
+});
+
 app.use('/api/', limiter);
+app.use('/api/auth/login', authLimiter);
 
 // Configuration Google Analytics
 const analytics = google.analyticsdata('v1beta');
@@ -86,8 +117,83 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/analytics.readonly']
 });
 
+// Configuration SMTP pour les emails
+let emailTransporter = null;
+if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  emailTransporter = nodemailer.createTransporter({
+    host: process.env.SMTP_HOST,
+    port: process.env.SMTP_PORT || 587,
+    secure: process.env.SMTP_SECURE === 'true',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    }
+  });
+  console.log('✅ Configuration SMTP initialisée');
+} else {
+  console.log('⚠️ Aucune configuration SMTP trouvée');
+}
+
+// Configuration Multer pour l'upload de fichiers
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Type de fichier non autorisé'));
+    }
+  }
+});
+
 // Middleware d'authentification
 const authMiddleware = require('./middleware/auth');
+
+// Middleware de logging avancé
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (duration > 1000) { // Log des requêtes lentes
+      console.log(`🐌 Requête lente: ${req.method} ${req.path} - ${duration}ms`);
+    }
+  });
+  next();
+});
+
+// Middleware de sécurité supplémentaire
+app.use((req, res, next) => {
+  // Headers de sécurité supplémentaires
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
 
 // Initialiser la base de données
 async function initializeDatabase() {
@@ -115,6 +221,93 @@ app.use('/api/prestataire', prestataireRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/super-admin', platformSettingsBlocksRoutes);
 app.use('/api/chat', chatRoutes);
+
+// Route d'upload de fichiers
+app.post('/api/upload', authMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Aucun fichier fourni' });
+    }
+
+    // Optimiser les images si nécessaire
+    if (req.file.mimetype.startsWith('image/')) {
+      const optimizedPath = req.file.path.replace(path.extname(req.file.path), '_optimized' + path.extname(req.file.path));
+      
+      await sharp(req.file.path)
+        .resize(1920, 1080, { fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toFile(optimizedPath);
+      
+      // Remplacer le fichier original par la version optimisée
+      fs.unlinkSync(req.file.path);
+      fs.renameSync(optimizedPath, req.file.path);
+    }
+
+    res.json({
+      success: true,
+      file: {
+        filename: req.file.filename,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: `/uploads/${req.file.filename}`
+      }
+    });
+  } catch (error) {
+    console.error('❌ Erreur upload:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'upload du fichier' });
+  }
+});
+
+// Route d'envoi d'email
+app.post('/api/email/send', authMiddleware, async (req, res) => {
+  try {
+    if (!emailTransporter) {
+      return res.status(503).json({ error: 'Service email non configuré' });
+    }
+
+    const { to, subject, text, html, attachments } = req.body;
+
+    if (!to || !subject || (!text && !html)) {
+      return res.status(400).json({ error: 'Paramètres email manquants' });
+    }
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to,
+      subject,
+      text,
+      html,
+      attachments
+    };
+
+    const info = await emailTransporter.sendMail(mailOptions);
+    
+    res.json({
+      success: true,
+      messageId: info.messageId,
+      message: 'Email envoyé avec succès'
+    });
+  } catch (error) {
+    console.error('❌ Erreur envoi email:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'envoi de l\'email' });
+  }
+});
+
+// Route de test email
+app.post('/api/email/test', authMiddleware, async (req, res) => {
+  try {
+    if (!emailTransporter) {
+      return res.status(503).json({ error: 'Service email non configuré' });
+    }
+
+    await emailTransporter.verify();
+    res.json({ success: true, message: 'Configuration email valide' });
+  } catch (error) {
+    console.error('❌ Erreur test email:', error);
+    res.status(500).json({ error: 'Configuration email invalide', details: error.message });
+  }
+});
 
 // Route chat IA principale
 app.post('/api/chat/message', async (req, res) => {
@@ -286,19 +479,121 @@ app.get('/login', (req, res) => {
   `);
 });
 
-// Documentation API
+// Route de servir les fichiers uploadés
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Route de monitoring système
+app.get('/api/system/status', authMiddleware, async (req, res) => {
+  try {
+    const dbStatus = await databaseService.checkConnection();
+    const memoryUsage = process.memoryUsage();
+    const uptime = process.uptime();
+    
+    res.json({
+      status: 'operational',
+      timestamp: new Date().toISOString(),
+      uptime: Math.floor(uptime),
+      memory: {
+        used: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+        total: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+        external: Math.round(memoryUsage.external / 1024 / 1024)
+      },
+      database: dbStatus,
+      email: !!emailTransporter,
+      environment: process.env.NODE_ENV || 'development',
+      version: '2.0.0'
+    });
+  } catch (error) {
+    console.error('❌ Erreur statut système:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du statut' });
+  }
+});
+
+// Route de nettoyage des fichiers temporaires
+app.post('/api/system/cleanup', authMiddleware, async (req, res) => {
+  try {
+    const uploadsDir = path.join(__dirname, '../uploads');
+    const files = fs.readdirSync(uploadsDir);
+    const now = Date.now();
+    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours
+    
+    let deletedCount = 0;
+    
+    for (const file of files) {
+      const filePath = path.join(uploadsDir, file);
+      const stats = fs.statSync(filePath);
+      
+      if (now - stats.mtime.getTime() > maxAge) {
+        fs.unlinkSync(filePath);
+        deletedCount++;
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `${deletedCount} fichiers supprimés`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error('❌ Erreur nettoyage:', error);
+    res.status(500).json({ error: 'Erreur lors du nettoyage' });
+  }
+});
+
+// Documentation API améliorée
 app.get('/api', (req, res) => {
   res.json({
     message: 'Fusepoint Platform API',
-    version: '1.0.0',
+    version: '2.0.0',
+    description: 'API complète pour la plateforme marketing Fusepoint',
     endpoints: {
-      auth: '/api/auth',
-      companies: '/api/companies',
-      chat: '/api/chat',
-      analytics: '/api/analytics',
-      health: '/health'
+      authentication: {
+        login: 'POST /api/auth/login',
+        register: 'POST /api/auth/register',
+        refresh: 'POST /api/auth/refresh',
+        logout: 'POST /api/auth/logout'
+      },
+      companies: {
+        list: 'GET /api/companies',
+        create: 'POST /api/companies',
+        update: 'PUT /api/companies/:id',
+        delete: 'DELETE /api/companies/:id'
+      },
+      chat: {
+        message: 'POST /api/chat/message',
+        history: 'GET /api/chat/history'
+      },
+      files: {
+        upload: 'POST /api/upload',
+        serve: 'GET /uploads/:filename'
+      },
+      email: {
+        send: 'POST /api/email/send',
+        test: 'POST /api/email/test'
+      },
+      system: {
+        status: 'GET /api/system/status',
+        cleanup: 'POST /api/system/cleanup',
+        health: 'GET /health'
+      },
+      analytics: 'GET /api/analytics/*',
+      social: {
+        facebook: '/api/facebook/*',
+        instagram: '/api/instagram/*'
+      }
     },
-    documentation: 'https://beta.fusepoint.ch/api'
+    features: [
+      'Authentification JWT',
+      'Upload de fichiers avec optimisation',
+      'Envoi d\'emails SMTP',
+      'Chat IA contextuel',
+      'Intégrations sociales',
+      'Analytics Google',
+      'Rate limiting',
+      'Monitoring système'
+    ],
+    documentation: 'https://beta.fusepoint.ch/api',
+    support: 'support@fusepoint.ch'
   });
 });
 
@@ -313,24 +608,153 @@ if (fs.existsSync(frontendPath)) {
   });
 }
 
-// Gestion globale des erreurs
+// Middleware de gestion des erreurs 404
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/')) {
+    res.status(404).json({
+      error: 'Endpoint non trouvé',
+      path: req.path,
+      method: req.method,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    next();
+  }
+});
+
+// Gestion globale des erreurs améliorée
 app.use((error, req, res, next) => {
-  console.error('❌ Erreur serveur:', error);
-  res.status(500).json({
+  console.error('❌ Erreur serveur:', {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    timestamp: new Date().toISOString()
+  });
+
+  // Erreurs spécifiques
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({
+      error: 'Erreur de validation',
+      details: error.message
+    });
+  }
+
+  if (error.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      error: 'Non autorisé',
+      message: 'Token invalide ou expiré'
+    });
+  }
+
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({
+      error: 'Fichier trop volumineux',
+      message: 'La taille du fichier dépasse la limite autorisée'
+    });
+  }
+
+  if (error.code === 'SQLITE_BUSY') {
+    return res.status(503).json({
+      error: 'Base de données occupée',
+      message: 'Veuillez réessayer dans quelques instants'
+    });
+  }
+
+  // Erreur générique
+  res.status(error.status || 500).json({
     error: 'Erreur interne du serveur',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Une erreur est survenue'
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Une erreur est survenue',
+    timestamp: new Date().toISOString(),
+    requestId: req.headers['x-request-id'] || 'unknown'
   });
 });
 
-// Démarrage du serveur
-initializeDatabase().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Serveur Fusepoint démarré sur le port ${PORT}`);
-    console.log(`🌐 Accessible sur https://beta.fusepoint.ch`);
-    console.log(`📊 API Google Analytics proxy disponible`);
-    console.log(`✅ Prêt à recevoir les connexions`);
-  });
-}).catch(error => {
-  console.error('❌ Erreur fatale:', error);
-  process.exit(1);
-});
+// Fonction de démarrage du serveur
+async function startServer() {
+  try {
+    // Initialisation de la base de données
+    await initializeDatabase();
+    
+    // Démarrage du serveur HTTP
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log('\n🚀 ===== FUSEPOINT PLATFORM API =====');
+      console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
+      console.log(`🌐 Port: ${PORT}`);
+      console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`💾 Base de données: SQLite (initialisée)`);
+      console.log(`🤖 Service de chat: ${chatService ? 'Actif' : 'Inactif'}`);
+      console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
+      console.log(`🔐 Authentification: JWT`);
+      console.log(`📊 Analytics: Google Analytics proxy`);
+      console.log(`🛡️ Sécurité: Helmet, CORS, Rate limiting`);
+      console.log(`📁 Upload: Multer avec optimisation d'images`);
+      console.log(`\n🌍 URLs disponibles:`);
+      console.log(`   • API: http://localhost:${PORT}/api`);
+      console.log(`   • Documentation: http://localhost:${PORT}/api`);
+      console.log(`   • Santé: http://localhost:${PORT}/health`);
+      console.log(`   • Production: https://beta.fusepoint.ch`);
+      console.log(`\n✅ Serveur prêt à recevoir les connexions`);
+      console.log('=====================================\n');
+    });
+
+    // Gestion propre de l'arrêt du serveur
+    const gracefulShutdown = (signal) => {
+      console.log(`\n🛑 Signal ${signal} reçu, arrêt en cours...`);
+      
+      server.close(async () => {
+        console.log('🔌 Serveur HTTP fermé');
+        
+        try {
+          // Fermer les connexions de base de données
+          if (databaseService && databaseService.close) {
+            await databaseService.close();
+            console.log('💾 Base de données fermée');
+          }
+          
+          // Fermer le transporteur email
+          if (emailTransporter && emailTransporter.close) {
+            emailTransporter.close();
+            console.log('📧 Service email fermé');
+          }
+          
+          console.log('✅ Arrêt propre terminé');
+          process.exit(0);
+        } catch (error) {
+          console.error('❌ Erreur lors de l\'arrêt:', error);
+          process.exit(1);
+        }
+      });
+      
+      // Forcer l'arrêt après 30 secondes
+      setTimeout(() => {
+        console.error('⏰ Timeout: arrêt forcé');
+        process.exit(1);
+      }, 30000);
+    };
+
+    // Écouter les signaux d'arrêt
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    
+    // Gestion des erreurs non capturées
+    process.on('uncaughtException', (error) => {
+      console.error('❌ Exception non capturée:', error);
+      gracefulShutdown('uncaughtException');
+    });
+    
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('❌ Promesse rejetée non gérée:', reason);
+      gracefulShutdown('unhandledRejection');
+    });
+    
+  } catch (error) {
+    console.error('❌ Erreur fatale lors du démarrage:', error);
+    process.exit(1);
+  }
+}
+
+// Démarrer le serveur
+startServer();
