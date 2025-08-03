@@ -698,37 +698,39 @@ app.get('/api', (req, res) => {
   });
 });
 
+// Servir les fichiers statiques du frontend (après toutes les routes API)
+app.use(express.static(path.join(__dirname, '../dist'), {
+  maxAge: '1d', // Cache pour les assets
+  setHeaders: (res, filePath) => {
+    // Pas de cache pour index.html
+    if (filePath.endsWith('index.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }
+}));
+
 // Gestion des erreurs globales
 app.use((error, req, res, next) => {
   console.error('Erreur serveur:', error);
   res.status(500).json({ error: 'Erreur interne du serveur' });
 });
 
-// Route 404 avec suggestions
+// Route catch-all pour SPA - rediriger vers index.html
 app.use('*', (req, res) => {
-  const suggestions = [];
-  
-  if (req.path.startsWith('/api/')) {
-    suggestions.push('Consultez GET /api pour voir les endpoints disponibles');
-    suggestions.push('Vérifiez que vous utilisez la bonne méthode HTTP (POST pour les endpoints analytics)');
-    suggestions.push('Assurez-vous d\'inclure le token d\'authentification Bearer');
-  } else {
-    suggestions.push('Consultez GET / pour voir la documentation de l\'API');
-    suggestions.push('Les endpoints analytics sont sous /api/analytics/');
+  // Ne pas rediriger les requêtes API
+  if (req.originalUrl.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
   
-  res.status(404).json({ 
-    error: 'Route non trouvée',
-    path: req.path,
-    method: req.method,
-    suggestions: suggestions,
-    availableRoutes: {
-      documentation: 'GET /',
-      health: 'GET /health',
-      apiInfo: 'GET /api',
-      analytics: 'POST /api/analytics/*'
-    }
-  });
+  // Servir index.html pour toutes les autres routes (SPA)
+  const indexPath = path.join(__dirname, '../dist/index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).json({ error: 'Frontend not built. Run npm run build first.' });
+  }
 });
 
 // Le serveur est maintenant démarré après l'initialisation de la base de données
