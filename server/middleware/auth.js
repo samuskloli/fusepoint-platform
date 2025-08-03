@@ -6,6 +6,11 @@ const jwt = require('jsonwebtoken');
  */
 const authMiddleware = (req, res, next) => {
   try {
+    // Ignorer les requêtes OPTIONS (preflight CORS)
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+    
     // Récupérer le token depuis l'en-tête Authorization
     const authHeader = req.headers.authorization;
     

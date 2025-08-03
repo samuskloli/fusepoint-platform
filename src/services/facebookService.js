@@ -213,7 +213,7 @@ class FacebookService {
    * Échange le code d'autorisation contre un access token via le backend
    */
   async exchangeCodeForToken(code) {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     
     const response = await fetch(`${backendUrl}/api/facebook/oauth/exchange`, {
       method: 'POST',

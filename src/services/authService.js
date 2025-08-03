@@ -6,7 +6,7 @@ import axios from 'axios';
  */
 class AuthService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     console.log('🔍 Base URL utilisée:', this.baseURL);
     this.api = axios.create({
       baseURL: this.baseURL,

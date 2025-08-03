@@ -41,7 +41,7 @@ const platformSettingsBlocksRoutes = require('./routes/platformSettingsBlocks');
 const clientRoutes = require('./routes/client');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3000;
 
 // Middleware de sécurité
 app.use(helmet());
@@ -61,7 +61,7 @@ const corsOptions = {
     } else {
       console.log('❌ CORS blocked origin:', origin);
       console.log('✅ Allowed origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
+      callback(null, false); // Ne pas lever d'erreur, juste refuser
     }
   },
   credentials: true,

@@ -1,6 +1,6 @@
 class AIChatService {
   constructor() {
-    this.baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+    this.baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     this.authToken = this.getAuthToken();
   }
 

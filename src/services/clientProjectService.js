@@ -2,7 +2,7 @@ import axios from 'axios';
 
 class ClientProjectService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 10000,

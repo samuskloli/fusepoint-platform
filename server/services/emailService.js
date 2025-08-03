@@ -167,10 +167,15 @@ class EmailService {
         throw new Error('Aucune configuration SMTP trouvée');
       }
       
-      // Vérifier la connexion
+      // Vérifier la connexion (non bloquant)
       console.log('🔍 Vérification de la connexion SMTP...');
-      await this.transporter.verify();
-      console.log('✅ Connexion SMTP vérifiée avec succès');
+      try {
+        await this.transporter.verify();
+        console.log('✅ Connexion SMTP vérifiée avec succès');
+      } catch (verifyError) {
+        console.warn('⚠️ Impossible de vérifier la connexion SMTP:', verifyError.message);
+        console.warn('⚠️ Le service email continuera sans vérification');
+      }
       
     } catch (error) {
       console.error('❌ Erreur initialisation service email:', error);

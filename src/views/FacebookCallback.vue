@@ -217,7 +217,7 @@ export default {
       }
       
       // Test direct de l'échange de token
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3002';
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
       
       const response = await fetch(`${backendUrl}/api/facebook/oauth/exchange`, {
         method: 'POST',

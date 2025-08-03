@@ -4,6 +4,11 @@ const authService = require('../services/authService');
 const databaseService = require('../services/databaseService');
 const router = express.Router();
 
+// Gestionnaire spécifique pour les requêtes OPTIONS (preflight CORS)
+router.options('*', (req, res) => {
+  res.status(200).end();
+});
+
 /**
  * Routes d'authentification sécurisées
  */

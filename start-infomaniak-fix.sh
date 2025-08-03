@@ -65,48 +65,8 @@ fi
 echo "🛑 Arrêt des processus existants..."
 ./node_modules/.bin/pm2 kill 2>/dev/null || true
 
-# Créer le fichier ecosystem.config.js s'il n'existe pas
-if [ ! -f "ecosystem.config.js" ]; then
-    echo "📝 Création du fichier ecosystem.config.js..."
-    cat > ecosystem.config.js << 'EOF'
-module.exports = {
-  apps: [
-    {
-      name: 'fusepoint-api',
-      script: 'server/server.js',
-      cwd: './',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '1G',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 3000
-      },
-      error_file: './logs/api-error.log',
-      out_file: './logs/api-out.log',
-      log_file: './logs/api.log'
-    },
-    {
-      name: 'fusepoint-frontend',
-      script: 'infomaniak-server.js',
-      cwd: './',
-      instances: 1,
-      autorestart: true,
-      watch: false,
-      max_memory_restart: '512M',
-      env: {
-        NODE_ENV: 'production',
-        PORT: 8080
-      },
-      error_file: './logs/frontend-error.log',
-      out_file: './logs/frontend-out.log',
-      log_file: './logs/frontend.log'
-    }
-  ]
-};
-EOF
-fi
+# Le fichier ecosystem.config.js existe déjà avec la syntaxe ES modules
+echo "📝 Utilisation du fichier ecosystem.config.js existant..."
 
 # Créer le dossier logs s'il n'existe pas
 mkdir -p logs

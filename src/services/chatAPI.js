@@ -3,7 +3,7 @@
  * Gère toutes les interactions avec l'API backend du chat
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 /**
  * Fonction utilitaire pour effectuer des requêtes API
