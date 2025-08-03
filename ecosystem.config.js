@@ -1,9 +1,9 @@
-export default {
+module.exports = {
   apps: [
     {
       name: 'fusepoint-api',
       script: 'server/server.js',
-      cwd: '/srv/customer/fusepoint-platform',
+      cwd: '/Users/oliveirasamuel/Plateforme Marketing Fusepoint/fusepoint-platform',
       instances: 1,
       exec_mode: 'fork',
       env: {
@@ -21,7 +21,7 @@ export default {
     {
       name: 'fusepoint-frontend',
       script: 'infomaniak-server.js',
-      cwd: '/srv/customer/fusepoint-platform',
+      cwd: '/Users/oliveirasamuel/Plateforme Marketing Fusepoint/fusepoint-platform',
       instances: 1,
       exec_mode: 'fork',
       env: {

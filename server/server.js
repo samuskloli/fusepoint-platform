@@ -38,7 +38,7 @@ const clientRoutes = require('./routes/client');
 const chatRoutes = require('./routes/chat');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware de sécurité - CSP désactivée pour éviter les blocages
 app.use(helmet({
@@ -120,7 +120,7 @@ const auth = new google.auth.GoogleAuth({
 // Configuration SMTP pour les emails
 let emailTransporter = null;
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-  emailTransporter = nodemailer.createTransporter({
+  emailTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT || 587,
     secure: process.env.SMTP_SECURE === 'true',
