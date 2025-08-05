@@ -11,6 +11,9 @@ import 'vue-toastification/dist/index.css'
 // Currency plugin
 import CurrencyPlugin from './plugins/currency'
 
+// Translation plugin
+import TranslationPlugin from './plugins/translation'
+
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -71,4 +74,5 @@ app.use(pinia)
 app.use(router)
 app.use(Toast, toastOptions)
 app.use(CurrencyPlugin)
+app.use(TranslationPlugin)
 app.mount('#app')

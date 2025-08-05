@@ -31,6 +31,43 @@ module.exports = {
     projectNotFound: 'Projet non trouvé'
   },
 
+  // Messages d'authentification
+  auth: {
+    loginSuccess: 'Connexion réussie',
+    loginFailed: 'Échec de la connexion',
+    logoutSuccess: 'Déconnexion réussie',
+    registrationSuccess: 'Inscription réussie',
+    registrationFailed: 'Échec de l\'inscription',
+    tokenExpired: 'Session expirée',
+    invalidCredentials: 'Identifiants invalides',
+    accountLocked: 'Compte verrouillé',
+    accountNotVerified: 'Compte non vérifié',
+    passwordResetSent: 'Email de réinitialisation envoyé',
+    passwordResetSuccess: 'Mot de passe réinitialisé avec succès',
+    // Messages d'erreur spécifiques
+    emailRequired: 'L\'adresse email est requise',
+    passwordRequired: 'Le mot de passe est requis',
+    emailPasswordRequired: 'Email et mot de passe requis',
+    invalidEmailFormat: 'Format d\'email invalide',
+    passwordTooShort: 'Le mot de passe doit contenir au moins 8 caractères',
+    passwordWeak: 'Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial',
+    passwordsNotMatch: 'Les mots de passe ne correspondent pas',
+    emailIncorrect: 'Adresse email incorrecte',
+    passwordIncorrect: 'Mot de passe incorrect',
+    emailOrPasswordIncorrect: 'Email ou mot de passe incorrect',
+    accountNotFound: 'Compte inexistant',
+    connectionError: 'Erreur de connexion au serveur',
+    registrationError: 'Erreur lors de l\'inscription',
+    loginError: 'Erreur lors de la connexion',
+    logoutError: 'Erreur lors de la déconnexion',
+    tokenInvalid: 'Token invalide ou expiré',
+    tokenRefreshInvalid: 'Token de rafraîchissement invalide',
+    tokenRequired: 'Token d\'authentification requis',
+    userNotFound: 'Utilisateur non trouvé',
+    allFieldsRequired: 'Tous les champs sont requis',
+    emailAlreadyExists: 'Cette adresse email est déjà utilisée'
+  },
+
   // Messages de succès
   success: {
     created: 'Créé avec succès',

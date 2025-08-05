@@ -18,7 +18,8 @@ const sharp = require('sharp');
 const aiChatService = require('./services/aiChatService');
 const contextualAIService = require('./services/contextualAIService');
 const companyDataService = require('./services/companyDataService');
-const databaseService = require('./services/databaseService');
+const MariaDBService = require('./services/mariadbService');
+const databaseService = new MariaDBService();
 const accompagnementService = require('./services/accompagnementService');
 const authService = require('./services/authService');
 const platformSettingsService = require('./services/platformSettingsService');
@@ -210,11 +211,11 @@ app.use((req, res, next) => {
 async function initializeDatabase() {
   try {
     await databaseService.initialize();
-    console.log('✅ Base de données initialisée');
+    console.log('✅ Base de données MariaDB initialisée');
     
 
   } catch (error) {
-    console.error('❌ Erreur initialisation:', error);
+    console.error('❌ Erreur initialisation MariaDB:', error);
     process.exit(1);
   }
 }
@@ -360,7 +361,7 @@ app.post('/api/analytics/test-connection', authMiddleware, async (req, res) => {
 // Route statut IA
 app.get('/api/ai/status', async (req, res) => {
   try {
-    const dbStatus = await databaseService.checkConnection();
+    const dbStatus = await databaseService.pool ? 'connected' : 'disconnected';
     
     res.json({
       status: 'active',
@@ -641,7 +642,7 @@ async function startServer() {
       console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
       console.log(`🌐 Port: ${PORT}`);
       console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`💾 Base de données: SQLite (initialisée)`);
+      console.log(`💾 Base de données: MariaDB (initialisée)`);
 
       console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
       console.log(`🔐 Authentification: JWT`);

@@ -3,6 +3,8 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import ConfirmAccount from '../views/ConfirmAccount.vue'
 import SetPassword from '../views/SetPassword.vue'
+import ForgotPassword from '../views/ForgotPassword.vue'
+import ResetPassword from '../views/ResetPassword.vue'
 import ClientDashboard from '../views/ClientDashboard.vue'
 
 
@@ -111,6 +113,18 @@ const routes = [
     path: '/set-password',
     name: 'SetPassword',
     component: SetPassword,
+    beforeEnter: requireGuest
+  },
+  {
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
+    beforeEnter: requireGuest
+  },
+  {
+    path: '/reset-password',
+    name: 'ResetPassword',
+    component: ResetPassword,
     beforeEnter: requireGuest
   },
   {

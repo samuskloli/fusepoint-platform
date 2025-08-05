@@ -489,9 +489,9 @@ class NotificationManagementService {
        // Créer la table si elle n'existe pas
        await databaseService.run(`
          CREATE TABLE IF NOT EXISTS communication_history (
-           id INTEGER PRIMARY KEY AUTOINCREMENT,
-           client_id INTEGER NOT NULL,
-           agent_id INTEGER NOT NULL,
+           id INT AUTO_INCREMENT PRIMARY KEY,
+           client_id INT NOT NULL,
+           agent_id INT NOT NULL,
            type VARCHAR(50) NOT NULL,
            content TEXT NOT NULL,
            metadata TEXT,

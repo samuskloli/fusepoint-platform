@@ -2,28 +2,14 @@ const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
-const databaseService = require('./databaseService');
+const MariaDBService = require('./mariadbService');
 const emailService = require('./emailService');
 const bcrypt = require('bcryptjs');
 
 class PrestataireInvitationService {
     constructor() {
-        this.db = null;
-        this.initializeDatabase();
-    }
-
-    async initializeDatabase() {
-        try {
-            // Attendre que le service de base de données soit initialisé
-            if (!databaseService.db) {
-                await databaseService.initialize();
-            }
-            this.db = databaseService.db;
-            console.log('✅ PrestataireInvitationService: Base de données initialisée');
-        } catch (error) {
-            console.error('❌ Erreur initialisation base de données:', error);
-            throw error;
-        }
+        this.mariadbService = new MariaDBService();
+        console.log('✅ PrestataireInvitationService: Base de données initialisée');
     }
 
     /**
@@ -46,20 +32,22 @@ class PrestataireInvitationService {
             const { email, agentId, prestataireInfo = {}, expirationDays = 7 } = invitationData;
 
             // Vérifier si l'email existe déjà
-            const existingUser = await this.db.get(
+            const existingUserRows = await this.mariadbService.query(
                 'SELECT id FROM users WHERE email = ?',
                 [email]
             );
+            const existingUser = existingUserRows[0];
 
             if (existingUser) {
                 throw new Error('Un utilisateur avec cet email existe déjà');
             }
 
             // Vérifier si une invitation active existe déjà
-            const existingInvitation = await this.db.get(
-                'SELECT id FROM prestataire_invitations WHERE email = ? AND status = "pending" AND expires_at > datetime("now")',
+            const existingInvitationRows = await this.mariadbService.query(
+                'SELECT id FROM prestataire_invitations WHERE email = ? AND status = "pending" AND expires_at > NOW()',
                 [email]
             );
+            const existingInvitation = existingInvitationRows[0];
 
             if (existingInvitation) {
                 throw new Error('Une invitation active existe déjà pour cet email');
@@ -71,7 +59,7 @@ class PrestataireInvitationService {
             expiresAt.setDate(expiresAt.getDate() + expirationDays);
 
             // Créer l'invitation
-            const result = await this.db.run(
+            const result = await this.mariadbService.query(
                 `INSERT INTO prestataire_invitations 
                  (email, token, agent_id, expires_at, invitation_data) 
                  VALUES (?, ?, ?, ?, ?)`,
@@ -84,13 +72,14 @@ class PrestataireInvitationService {
                 ]
             );
 
-            const invitationId = result.lastID;
+            const invitationId = result.insertId;
 
             // Récupérer les informations de l'agent
-            const agent = await this.db.get(
+            const agentRows = await this.mariadbService.query(
                 'SELECT first_name, last_name, email FROM users WHERE id = ?',
                 [agentId]
             );
+            const agent = agentRows[0];
 
             // Envoyer l'email d'invitation avec template HTML
             await this.sendInvitationEmail({
@@ -267,13 +256,14 @@ L'équipe Fusepoint
      */
     async verifyInvitationToken(token) {
         try {
-            const invitation = await this.db.get(
+            const invitationRows = await this.mariadbService.query(
                 `SELECT i.*, u.first_name as agent_first_name, u.last_name as agent_last_name 
                  FROM prestataire_invitations i 
                  JOIN users u ON i.agent_id = u.id 
                  WHERE i.token = ?`,
                 [token]
             );
+            const invitation = invitationRows[0];
 
             if (!invitation) {
                 return { valid: false, error: 'Token d\'invitation invalide' };
@@ -322,10 +312,10 @@ L'équipe Fusepoint
             const hashedPassword = await bcrypt.hash(password, 12);
 
             // Créer l'utilisateur prestataire
-            const userResult = await this.db.run(
+            const userResult = await this.mariadbService.query(
                 `INSERT INTO users 
                  (email, password, first_name, last_name, phone, role, status, created_at) 
-                 VALUES (?, ?, ?, ?, ?, 'prestataire', 'active', datetime('now'))`,
+                 VALUES (?, ?, ?, ?, ?, 'prestataire', 'active', NOW())`,
                 [
                     invitation.email,
                     hashedPassword,
@@ -335,16 +325,17 @@ L'équipe Fusepoint
                 ]
             );
 
-            const prestataireId = userResult.lastID;
+            const prestataireId = userResult.insertId;
 
             // Récupérer l'invitation complète
-            const fullInvitation = await this.db.get(
+            const fullInvitationRows = await this.mariadbService.query(
                 'SELECT * FROM prestataire_invitations WHERE token = ?',
                 [token]
             );
+            const fullInvitation = fullInvitationRows[0];
 
             // Créer la relation agent-prestataire
-            await this.db.run(
+            await this.mariadbService.query(
                 `INSERT INTO agent_prestataires 
                  (agent_id, prestataire_id, relationship_type, status) 
                  VALUES (?, ?, 'collaborator', 'active')`,
@@ -352,9 +343,9 @@ L'équipe Fusepoint
             );
 
             // Marquer l'invitation comme acceptée
-            await this.db.run(
+            await this.mariadbService.query(
                 `UPDATE prestataire_invitations 
-                 SET status = 'accepted', accepted_at = datetime('now'), created_user_id = ? 
+                 SET status = 'accepted', accepted_at = NOW(), created_user_id = ? 
                  WHERE token = ?`,
                 [prestataireId, token]
             );
@@ -394,7 +385,7 @@ L'équipe Fusepoint
 
             query += ' ORDER BY i.invited_at DESC';
 
-            const invitations = await this.db.all(query, params);
+            const invitations = await this.mariadbService.query(query, params);
 
             return invitations.map(inv => ({
                 id: inv.id,
@@ -422,7 +413,7 @@ L'équipe Fusepoint
      */
     async getAgentPrestataires(agentId) {
         try {
-            const prestataires = await this.db.all(
+            const prestataires = await this.mariadbService.query(
                 `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.created_at,
                         ap.relationship_type, ap.status as relationship_status, ap.created_at as relationship_created
                  FROM agent_prestataires ap
@@ -457,14 +448,14 @@ L'équipe Fusepoint
      */
     async cancelInvitation(invitationId, agentId) {
         try {
-            const result = await this.db.run(
+            const result = await this.mariadbService.query(
                 `UPDATE prestataire_invitations 
                  SET status = 'cancelled' 
                  WHERE id = ? AND agent_id = ? AND status = 'pending'`,
                 [invitationId, agentId]
             );
 
-            if (result.changes === 0) {
+            if (result.affectedRows === 0) {
                 throw new Error('Invitation non trouvée ou déjà traitée');
             }
 
@@ -482,14 +473,14 @@ L'équipe Fusepoint
      */
     async cleanupExpiredInvitations() {
         try {
-            const result = await this.db.run(
+            const result = await this.mariadbService.query(
                 `UPDATE prestataire_invitations 
                  SET status = 'expired' 
-                 WHERE status = 'pending' AND expires_at < datetime('now')`
+                 WHERE status = 'pending' AND expires_at < NOW()`
             );
 
-            console.log(`✅ ${result.changes} invitations expirées nettoyées`);
-            return result.changes;
+            console.log(`✅ ${result.affectedRows} invitations expirées nettoyées`);
+            return result.affectedRows;
 
         } catch (error) {
             console.error('❌ Erreur nettoyage invitations expirées:', error);

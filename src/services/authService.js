@@ -1,4 +1,5 @@
 import axios from 'axios';
+import translationService from '@/services/translationService';
 
 /**
  * Service d'authentification côté client
@@ -68,15 +69,15 @@ class AuthService {
     try {
       // Validation côté client
       if (!email || !password) {
-        throw new Error('Email et mot de passe requis');
+        throw new Error(translationService.t('auth.emailPasswordRequired'));
       }
 
       if (!this.isValidEmail(email)) {
-        throw new Error('Format d\'email invalide');
+        throw new Error(translationService.t('auth.invalidEmailFormat'));
       }
 
       if (password.length < 8) {
-        throw new Error('Le mot de passe doit contenir au moins 8 caractères');
+        throw new Error(translationService.t('auth.passwordTooShort'));
       }
 
       const response = await this.api.post('/api/auth/login', {
@@ -90,7 +91,7 @@ class AuthService {
       const { user, companies, tokens, expiresAt } = response.data;
 
       if (!tokens || !user) {
-        throw new Error('Réponse de connexion invalide');
+        throw new Error(translationService.t('auth.loginError'));
       }
 
       // Stocker les tokens de manière sécurisée
@@ -116,7 +117,7 @@ class AuthService {
       throw new Error(
         error.response?.data?.error || 
         error.message || 
-        'Erreur lors de la connexion'
+        translationService.t('auth.loginError')
       );
     }
   }
@@ -130,23 +131,23 @@ class AuthService {
 
       // Validation côté client
       if (!email || !password || !firstName || !lastName) {
-        throw new Error('Tous les champs sont requis');
+        throw new Error(translationService.t('auth.allFieldsRequired'));
       }
 
       if (!this.isValidEmail(email)) {
-        throw new Error('Format d\'email invalide');
+        throw new Error(translationService.t('auth.invalidEmailFormat'));
       }
 
       if (password.length < 8) {
-        throw new Error('Le mot de passe doit contenir au moins 8 caractères');
+        throw new Error(translationService.t('auth.passwordTooShort'));
       }
 
       if (!this.isStrongPassword(password)) {
-        throw new Error('Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial');
+        throw new Error(translationService.t('auth.passwordWeak'));
       }
 
       if (password !== confirmPassword) {
-        throw new Error('Les mots de passe ne correspondent pas');
+        throw new Error(translationService.t('auth.passwordsNotMatch'));
       }
 
       const response = await this.api.post('/api/auth/register', {
@@ -162,7 +163,7 @@ class AuthService {
       throw new Error(
         error.response?.data?.error || 
         error.message || 
-        'Erreur lors de l\'inscription'
+        translationService.t('auth.registrationError')
       );
     }
   }
@@ -192,7 +193,7 @@ class AuthService {
     try {
       const refreshToken = this.getRefreshToken();
       if (!refreshToken) {
-        throw new Error('Token de rafraîchissement non disponible');
+        throw new Error(translationService.t('auth.tokenRefreshInvalid'));
       }
 
       const response = await axios.post(`${this.baseURL}/api/auth/refresh`, {
@@ -224,7 +225,7 @@ class AuthService {
       return response.data;
     } catch (error) {
       console.error('❌ Erreur completion onboarding:', error);
-      throw new Error(error.response?.data?.error || 'Erreur lors de la completion de l\'onboarding');
+      throw new Error(error.response?.data?.error || translationService.t('auth.registrationError'));
     }
   }
 
@@ -349,6 +350,63 @@ class AuthService {
 
   clearCompanies() {
     localStorage.removeItem('companies');
+  }
+
+  /**
+   * Demander une réinitialisation de mot de passe
+   */
+  async forgotPassword(email) {
+    try {
+      if (!email) {
+        throw new Error(translationService.t('auth.emailRequired'));
+      }
+
+      if (!this.isValidEmail(email)) {
+        throw new Error(translationService.t('auth.invalidEmailFormat'));
+      }
+
+      const response = await this.api.post('/api/auth/forgot-password', {
+        email
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur mot de passe oublié:', error);
+      throw new Error(
+        error.response?.data?.error || 
+        error.message || 
+        translationService.t('auth.forgotPasswordError')
+      );
+    }
+  }
+
+  /**
+   * Réinitialiser le mot de passe avec un token
+   */
+  async resetPassword(token, newPassword) {
+    try {
+      if (!token || !newPassword) {
+        throw new Error(translationService.t('auth.tokenPasswordRequired'));
+      }
+
+      if (newPassword.length < 8) {
+        throw new Error(translationService.t('auth.passwordTooShort'));
+      }
+
+      const response = await this.api.post('/api/auth/reset-password', {
+        token,
+        newPassword
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur réinitialisation mot de passe:', error);
+      throw new Error(
+        error.response?.data?.error || 
+        error.message || 
+        translationService.t('auth.resetPasswordError')
+      );
+    }
   }
 
   /**

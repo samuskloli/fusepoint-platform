@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const databaseService = require('./databaseService');
+const MariaDBService = require('./mariadbService');
+const translationService = require('./translationService');
 
 /**
  * Service d'authentification sécurisé
@@ -11,6 +12,21 @@ class AuthService {
     this.jwtSecret = process.env.JWT_SECRET || this.generateJwtSecret();
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
     this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+    this.mariadbService = new MariaDBService();
+    // Initialiser le service MariaDB de manière synchrone
+    this.initializeMariaDB();
+  }
+
+  /**
+   * Initialiser MariaDB
+   */
+  async initializeMariaDB() {
+    try {
+      await this.mariadbService.initialize();
+      console.log('✅ AuthService: MariaDB initialisé');
+    } catch (error) {
+      console.error('❌ AuthService: Erreur initialisation MariaDB:', error);
+    }
   }
 
   /**
@@ -36,7 +52,7 @@ class AuthService {
     try {
       return jwt.verify(token, this.jwtSecret);
     } catch (error) {
-      throw new Error('Token invalide ou expiré');
+      throw new Error(translationService.t('auth.tokenInvalid'));
     }
   }
 
@@ -53,13 +69,28 @@ class AuthService {
   async login(email, password, ipAddress, userAgent) {
     try {
       // Authentifier l'utilisateur
-      const user = await databaseService.authenticateUser(email, password);
-      if (!user) {
-        throw new Error('Email ou mot de passe incorrect');
+      const userRows = await this.mariadbService.query(
+        'SELECT * FROM users WHERE email = ? AND is_active = 1',
+        [email]
+      );
+      
+      if (userRows.length === 0) {
+        throw new Error(translationService.t('auth.emailOrPasswordIncorrect'));
+      }
+      
+      const user = userRows[0];
+      const isValidPassword = await this.mariadbService.verifyPassword(password, user.password_hash);
+      
+      if (!isValidPassword) {
+        throw new Error(translationService.t('auth.emailOrPasswordIncorrect'));
       }
 
       // Récupérer la première entreprise de l'utilisateur pour le token
-      const userCompanies = await databaseService.getUserCompanies(user.id);
+      const userCompaniesRows = await this.mariadbService.query(
+        'SELECT c.* FROM companies c JOIN user_companies uc ON c.id = uc.company_id WHERE uc.user_id = ?',
+        [user.id]
+      );
+      const userCompanies = userCompaniesRows;
       const primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
 
       // Générer les tokens
@@ -94,17 +125,26 @@ class AuthService {
       const sessionExpiresAt = new Date();
       sessionExpiresAt.setDate(sessionExpiresAt.getDate() + 7); // 7 jours
 
+      // Mettre à jour la dernière connexion de l'utilisateur
+      await this.mariadbService.query(
+        'UPDATE users SET last_login = NOW() WHERE id = ?',
+        [user.id]
+      );
+
       // Créer la session en base
-      await databaseService.createSession(
-        user.id,
-        sessionToken,
-        sessionExpiresAt.toISOString(),
-        ipAddress,
-        userAgent
+      // Convertir la date au format MySQL/MariaDB (YYYY-MM-DD HH:MM:SS)
+      const mysqlExpiresAt = sessionExpiresAt.toISOString().slice(0, 19).replace('T', ' ');
+      await this.mariadbService.query(
+        'INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [user.id, sessionToken, mysqlExpiresAt, ipAddress, userAgent]
       );
 
       // Récupérer les entreprises de l'utilisateur
-      const companies = await databaseService.getUserCompanies(user.id);
+      const companiesRows = await this.mariadbService.query(
+        'SELECT c.* FROM companies c JOIN user_companies uc ON c.id = uc.company_id WHERE uc.user_id = ?',
+        [user.id]
+      );
+      const companies = companiesRows;
 
       return {
         user: {
@@ -138,29 +178,33 @@ class AuthService {
 
       // Validation des données
       if (!email || !password || !firstName || !lastName) {
-        throw new Error('Tous les champs sont requis');
+        throw new Error(translationService.t('auth.allFieldsRequired'));
       }
 
       if (password.length < 8) {
-        throw new Error('Le mot de passe doit contenir au moins 8 caractères');
+        throw new Error(translationService.t('auth.passwordTooShort'));
       }
 
       // Créer l'utilisateur
-      const user = await databaseService.createUser({
+      const hashedPassword = await this.mariadbService.hashPassword(password);
+      const result = await this.mariadbService.query(
+        'INSERT INTO users (email, password_hash, first_name, last_name, role, is_active, created_at) VALUES (?, ?, ?, ?, "user", 1, NOW())',
+        [email, hashedPassword, firstName, lastName]
+      );
+      
+      const user = {
+        id: result.insertId,
         email,
-        password,
         firstName,
-        lastName
-      });
+        lastName,
+        role: 'user',
+        is_active: 1
+      };
 
       // Log d'audit
-      await databaseService.logAudit(
-        user.id,
-        null,
-        'USER_REGISTERED',
-        'users',
-        { email },
-        ipAddress
+      await this.mariadbService.query(
+        'INSERT INTO audit_logs (user_id, action, description, details, ip_address, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+        [user.id, 'user_registration', 'Inscription utilisateur', JSON.stringify({ email, ipAddress }), ipAddress]
       );
 
       // Notifier les agents qu'un nouvel utilisateur s'est inscrit sans agent attribué
@@ -184,7 +228,7 @@ class AuthService {
   async notifyAgentsNewUserWithoutAgent(user) {
     try {
       // Récupérer tous les agents actifs
-      const agents = await databaseService.query(
+      const agents = await this.mariadbService.query(
         'SELECT id, email, first_name, last_name FROM users WHERE role IN ("agent", "admin") AND is_active = 1'
       );
 
@@ -253,21 +297,27 @@ class AuthService {
       const decoded = this.verifyToken(refreshToken);
       
       if (decoded.type !== 'refresh') {
-        throw new Error('Token de rafraîchissement invalide');
+        throw new Error(translationService.t('auth.tokenRefreshInvalid'));
       }
 
       // Récupérer l'utilisateur
-      const user = await databaseService.db.get(
+      const userRows = await this.mariadbService.query(
         'SELECT * FROM users WHERE id = ? AND is_active = 1',
         [decoded.userId]
       );
 
-      if (!user) {
-        throw new Error('Utilisateur non trouvé');
+      if (userRows.length === 0) {
+        throw new Error(translationService.t('auth.userNotFound'));
       }
+      
+      const user = userRows[0];
 
-      // Récupérer la première entreprise de l'utilisateur pour le token
-      const userCompanies = await databaseService.getUserCompanies(user.id);
+      // Récupérer les entreprises de l'utilisateur
+      const userCompaniesRows = await this.mariadbService.query(
+        'SELECT c.* FROM companies c JOIN user_companies uc ON c.id = uc.company_id WHERE uc.user_id = ?',
+        [user.id]
+      );
+      const userCompanies = userCompaniesRows;
       const primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
 
       // Générer un nouveau token d'accès
@@ -314,7 +364,10 @@ class AuthService {
   async logout(sessionToken) {
     try {
       if (sessionToken) {
-        await databaseService.deleteSession(sessionToken);
+        await this.mariadbService.query(
+          'DELETE FROM user_sessions WHERE session_token = ?',
+          [sessionToken]
+        );
       }
       return true;
     } catch (error) {
@@ -331,21 +384,23 @@ class AuthService {
       const authHeader = req.headers.authorization;
       
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return res.status(401).json({ error: 'Token d\'authentification requis' });
+        return res.status(401).json({ error: translationService.t('auth.tokenRequired') });
       }
 
       const token = authHeader.substring(7);
       const decoded = this.verifyToken(token);
 
       // Récupérer l'utilisateur complet
-      const user = await databaseService.db.get(
+      const userRows = await this.mariadbService.query(
         'SELECT * FROM users WHERE id = ? AND is_active = 1',
         [decoded.userId]
       );
 
-      if (!user) {
-        return res.status(401).json({ error: 'Utilisateur non trouvé' });
+      if (userRows.length === 0) {
+        return res.status(401).json({ error: translationService.t('auth.userNotFound') });
       }
+      
+      const user = userRows[0];
 
       // Ajouter les informations utilisateur à la requête
       req.user = {
@@ -383,15 +438,16 @@ class AuthService {
 
         // Si une entreprise est spécifiée, vérifier les permissions
         if (companyId) {
-          const userCompany = await databaseService.db.get(
+          const userCompanyRows = await this.mariadbService.query(
             'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ?',
             [user.id, companyId]
           );
 
-          if (!userCompany) {
+          if (userCompanyRows.length === 0) {
             return res.status(403).json({ error: 'Accès refusé à cette entreprise' });
           }
 
+          const userCompany = userCompanyRows[0];
           const permissions = JSON.parse(userCompany.permissions || '{}');
           
           // Vérifier les permissions requises
@@ -421,8 +477,11 @@ class AuthService {
    */
   async validateSession(sessionToken) {
     try {
-      const session = await databaseService.validateSession(sessionToken);
-      return session;
+      const sessionRows = await this.mariadbService.query(
+        'SELECT * FROM user_sessions WHERE session_token = ? AND expires_at > NOW()',
+        [sessionToken]
+      );
+      return sessionRows.length > 0 ? sessionRows[0] : null;
     } catch (error) {
       console.error('❌ Erreur validation session:', error);
       throw error;
@@ -434,8 +493,8 @@ class AuthService {
    */
   async cleanupExpiredSessions() {
     try {
-      await databaseService.db.run(
-        'DELETE FROM user_sessions WHERE expires_at < CURRENT_TIMESTAMP'
+      await this.mariadbService.query(
+        'DELETE FROM user_sessions WHERE expires_at < NOW()'
       );
       console.log('🧹 Sessions expirées nettoyées');
     } catch (error) {

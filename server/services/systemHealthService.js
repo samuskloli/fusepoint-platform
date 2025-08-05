@@ -1,11 +1,11 @@
 const os = require('os');
 const fs = require('fs').promises;
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
+const MariaDBService = require('./mariadbService');
 
 class SystemHealthService {
   constructor() {
-    this.dbPath = path.join(__dirname, '../database/fusepoint.db');
+    this.mariadbService = MariaDBService;
   }
 
   // Obtenir les métriques système
@@ -290,16 +290,12 @@ class SystemHealthService {
 
   // Vérifier le statut de la base de données
   async checkDatabaseStatus() {
-    return new Promise((resolve) => {
-      const db = new sqlite3.Database(this.dbPath, (err) => {
-        if (err) {
-          resolve({ status: 'error', message: err.message });
-        } else {
-          db.close();
-          resolve({ status: 'healthy', message: 'Database connection successful' });
-        }
-      });
-    });
+    try {
+      await this.mariadbService.query('SELECT 1');
+      return { status: 'healthy', message: 'Database connection successful' };
+    } catch (error) {
+      return { status: 'error', message: error.message };
+    }
   }
 
   // Vérifier le statut du système de fichiers

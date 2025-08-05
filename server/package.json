@@ -15,7 +15,7 @@
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.2.1",
@@ -23,13 +23,13 @@
     "googleapis": "^128.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "mariadb": "^3.4.5",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
+    "mysql2": "^3.14.3",
     "nodemailer": "^7.0.5",
     "openai": "^5.10.2",
-    "sharp": "^0.34.3",
-    "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sharp": "^0.34.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

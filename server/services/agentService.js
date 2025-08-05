@@ -40,11 +40,11 @@ class AgentService {
       );
 
       return {
-        totalClients: totalClients.count,
-        activeClients: activeClients.count,
-        inactiveClients: inactiveClients.count,
-        assignedClients: assignedClients.count,
-        unassignedClients: unassignedClients.count
+        totalClients: totalClients?.count || 0,
+        activeClients: activeClients?.count || 0,
+        inactiveClients: inactiveClients?.count || 0,
+        assignedClients: assignedClients?.count || 0,
+        unassignedClients: unassignedClients?.count || 0
       };
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des statistiques agent:', error);
@@ -225,7 +225,7 @@ class AgentService {
         }
       });
       
-      updateFields.push('updated_at = datetime("now")');
+      updateFields.push('updated_at = NOW()');
       updateParams.push(clientId);
 
       const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
@@ -276,7 +276,7 @@ class AgentService {
 
       // Mettre à jour le statut du client
       await databaseService.run(
-        'UPDATE users SET is_active = ?, updated_at = datetime("now") WHERE id = ?',
+        'UPDATE users SET is_active = ?, updated_at = NOW() WHERE id = ?',
         [isActive, clientId]
       );
 
@@ -367,7 +367,7 @@ class AgentService {
       try {
         await databaseService.run(
           `INSERT INTO system_logs (level, message, category, user_id, metadata, created_at)
-           VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+           VALUES (?, ?, ?, ?, ?, NOW())`,
           [
             'info',
             translationService.t('logs.clientDeletion', {
@@ -453,15 +453,17 @@ class AgentService {
 
       // Attribuer l'agent au client
       await databaseService.run(
-        'UPDATE users SET agent_id = ?, updated_at = datetime("now") WHERE id = ?',
+        'UPDATE users SET agent_id = ?, updated_at = NOW() WHERE id = ?',
         [availableAgent.id, clientId]
       );
 
       // Créer une entrée dans agent_prestataires pour la compatibilité
       await databaseService.run(`
-        INSERT OR REPLACE INTO agent_prestataires 
+        INSERT INTO agent_prestataires 
         (agent_id, prestataire_id, status, assigned_at, created_at, updated_at)
-        VALUES (?, ?, 'active', datetime('now'), datetime('now'), datetime('now'))
+        VALUES (?, ?, 'active', NOW(), NOW(), NOW())
+        ON DUPLICATE KEY UPDATE 
+        status = VALUES(status), assigned_at = VALUES(assigned_at), updated_at = VALUES(updated_at)
       `, [availableAgent.id, clientId]);
 
       return {
@@ -512,7 +514,7 @@ class AgentService {
       // Créer l'utilisateur
       const result = await databaseService.run(
         `INSERT INTO users (first_name, last_name, email, phone, role, is_active, created_at) 
-         VALUES (?, ?, ?, ?, 'client', ?, datetime('now'))`,
+         VALUES (?, ?, ?, ?, 'client', ?, NOW())`,
         [firstName, lastName, email, phone || null, isActive ? 1 : 0]
       );
       
@@ -521,13 +523,13 @@ class AgentService {
       // Créer la compagnie si fournie
       if (companyName) {
         const companyResult = await databaseService.run(
-          'INSERT INTO companies (name, created_at) VALUES (?, datetime(\'now\'))',
+          'INSERT INTO companies (name, created_at) VALUES (?, NOW())',
           [companyName]
         );
         
         // Lier l'utilisateur à la compagnie
         await databaseService.run(
-          'INSERT INTO user_companies (user_id, company_id, role, created_at) VALUES (?, ?, \'owner\', datetime(\'now\'))',
+          'INSERT INTO user_companies (user_id, company_id, role, created_at) VALUES (?, ?, \'owner\', NOW())',
           [userId, companyResult.lastID]
         );
       }
@@ -575,7 +577,7 @@ class AgentService {
       
       // Mettre à jour la colonne agent_id du client
       await databaseService.run(
-        'UPDATE users SET agent_id = ?, updated_at = datetime(\'now\') WHERE id = ?',
+        'UPDATE users SET agent_id = ?, updated_at = NOW() WHERE id = ?',
         [agentId, clientId]
       );
 
@@ -617,8 +619,8 @@ class AgentService {
         return false;
       }
       
-      // Les super_admin ont accès à tous les clients
-      if (agent.role === 'super_admin') {
+      // Les super_admin et admin ont accès à tous les clients
+      if (agent.role === 'super_admin' || agent.role === 'admin') {
         return true;
       }
       

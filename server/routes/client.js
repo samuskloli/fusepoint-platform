@@ -273,7 +273,7 @@ router.get('/:id/assigned-agent', async (req, res) => {
     
     // Vérifier l'attribution dans agent_prestataires
     // Note: prestataire_id est utilisé pour stocker l'ID du client
-    const assignment = await databaseService.db.get(
+    const assignment = await databaseService.get(
       `SELECT ap.*, u.first_name, u.last_name, u.email 
        FROM agent_prestataires ap 
        JOIN users u ON ap.agent_id = u.id 
@@ -339,7 +339,7 @@ router.get('/:id/stats', async (req, res) => {
     );
     
     const [upcomingDeadlines] = await databaseService.query(
-      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > datetime("now")',
+      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > NOW()',
       [clientId]
     );
 
@@ -380,13 +380,13 @@ router.post('/tasks/:id/validate', async (req, res) => {
     // Mettre à jour le statut de la tâche
     const newStatus = approved ? 'approved' : 'rejected';
     await databaseService.run(
-      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = datetime("now") WHERE id = ?',
+      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = NOW() WHERE id = ?',
       [newStatus, comments || null, taskId]
     );
 
     // Enregistrer l'historique
     await databaseService.run(
-      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, datetime("now"))',
+      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, NOW())',
       [taskId, `Task ${newStatus}`, comments || null, userId]
     );
 

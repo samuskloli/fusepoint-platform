@@ -1,14 +1,14 @@
 const fs = require('fs').promises;
 const path = require('path');
-const sqlite3 = require('sqlite3').verbose();
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
+const MariaDBService = require('./mariadbService');
 const ComprehensiveBackupSystem = require('../../scripts/backup-system.cjs');
 
 class BackupService {
   constructor() {
-    this.dbPath = path.join(__dirname, '../database/fusepoint.db');
+    this.mariadbService = MariaDBService;
     this.backupDir = path.join(__dirname, '../backups');
     this.ensureBackupDirectory();
     
@@ -31,10 +31,13 @@ class BackupService {
     try {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupName = `backup_${type}_${timestamp}`;
-      const backupPath = path.join(this.backupDir, `${backupName}.db`);
+      const backupPath = path.join(this.backupDir, `${backupName}.sql`);
       
-      // Copier la base de données
-      await fs.copyFile(this.dbPath, backupPath);
+      // Créer une sauvegarde MariaDB avec mysqldump
+      const config = this.mariadbService.getConfig();
+      const dumpCommand = `mysqldump -h ${config.host} -P ${config.port} -u ${config.user} -p${config.password} ${config.database} > "${backupPath}"`;
+      
+      await execAsync(dumpCommand);
       
       // Obtenir les statistiques du fichier
       const stats = await fs.stat(backupPath);
@@ -56,14 +59,14 @@ class BackupService {
       return {
         success: true,
         backup: backupInfo,
-        message: 'Sauvegarde créée avec succès'
+        message: 'Sauvegarde MariaDB créée avec succès'
       };
     } catch (error) {
-      console.error('Erreur lors de la création de la sauvegarde:', error);
+      console.error('Erreur lors de la création de la sauvegarde MariaDB:', error);
       return {
         success: false,
         error: error.message,
-        message: 'Erreur lors de la création de la sauvegarde'
+        message: 'Erreur lors de la création de la sauvegarde MariaDB'
       };
     }
   }
@@ -197,19 +200,22 @@ class BackupService {
       // Créer une sauvegarde de la base actuelle avant restauration
       await this.createBackup('pre_restore', `Sauvegarde automatique avant restauration de ${backup.name}`);
       
-      // Restaurer la sauvegarde
-      await fs.copyFile(backup.path, this.dbPath);
+      // Restaurer la sauvegarde MariaDB
+      const config = this.mariadbService.getConfig();
+      const restoreCommand = `mysql -h ${config.host} -P ${config.port} -u ${config.user} -p${config.password} ${config.database} < "${backup.path}"`;
+      
+      await execAsync(restoreCommand);
       
       return {
         success: true,
-        message: 'Sauvegarde restaurée avec succès'
+        message: 'Sauvegarde MariaDB restaurée avec succès'
       };
     } catch (error) {
-      console.error('Erreur lors de la restauration:', error);
+      console.error('Erreur lors de la restauration MariaDB:', error);
       return {
         success: false,
         error: error.message,
-        message: 'Erreur lors de la restauration de la sauvegarde'
+        message: 'Erreur lors de la restauration de la sauvegarde MariaDB'
       };
     }
   }
@@ -355,24 +361,33 @@ class BackupService {
         };
       }
       
-      // Tester l'ouverture de la base de données
-      return new Promise((resolve) => {
-        const testDb = new sqlite3.Database(backup.path, sqlite3.OPEN_READONLY, (err) => {
-          if (err) {
-            resolve({
-              success: false,
-              message: 'Fichier de sauvegarde corrompu',
-              error: err.message
-            });
-          } else {
-            testDb.close();
-            resolve({
-              success: true,
-              message: 'Sauvegarde valide'
-            });
-          }
-        });
-      });
+      // Vérifier l'intégrité du fichier de sauvegarde MariaDB
+      try {
+        const fs = require('fs');
+        const fileContent = await fs.promises.readFile(backup.path, 'utf8');
+        
+        // Vérifications basiques pour un dump SQL MariaDB
+        const hasValidHeader = fileContent.includes('-- MySQL dump') || fileContent.includes('-- MariaDB dump') || fileContent.includes('CREATE TABLE');
+        const hasValidFooter = fileContent.includes('-- Dump completed') || fileContent.trim().endsWith(';');
+        
+        if (hasValidHeader && fileContent.length > 0) {
+          return {
+            success: true,
+            message: 'Sauvegarde valide'
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Fichier de sauvegarde invalide ou corrompu'
+          };
+        }
+      } catch (readError) {
+        return {
+          success: false,
+          message: 'Impossible de lire le fichier de sauvegarde',
+          error: readError.message
+        };
+      }
     } catch (error) {
       console.error('Erreur lors de la vérification:', error);
       return {

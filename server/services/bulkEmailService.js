@@ -138,15 +138,17 @@ class BulkEmailService {
       
       // Attribuer l'agent au client
       await databaseService.run(
-        'UPDATE users SET agent_id = ?, updated_at = datetime("now") WHERE id = ?',
+        'UPDATE users SET agent_id = ?, updated_at = NOW() WHERE id = ?',
         [availableAgent.id, clientId]
       );
       
       // Créer une entrée dans agent_prestataires pour la compatibilité
       await databaseService.run(`
-        INSERT OR REPLACE INTO agent_prestataires 
+        INSERT INTO agent_prestataires 
         (agent_id, prestataire_id, status, assigned_at, created_at, updated_at)
-        VALUES (?, ?, 'active', datetime('now'), datetime('now'), datetime('now'))
+        VALUES (?, ?, 'active', NOW(), NOW(), NOW())
+        ON DUPLICATE KEY UPDATE 
+        status = VALUES(status), assigned_at = VALUES(assigned_at), updated_at = VALUES(updated_at)
       `, [availableAgent.id, clientId]);
       
       return {

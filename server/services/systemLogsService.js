@@ -1,48 +1,83 @@
-const sqlite3 = require('sqlite3').verbose();
+const MariaDBService = require('./mariadbService');
 const path = require('path');
 const fs = require('fs').promises;
 
 class SystemLogsService {
   constructor() {
-    this.dbPath = path.join(__dirname, '../database/fusepoint.db');
-    this.db = new sqlite3.Database(this.dbPath);
-    this.initializeLogsTable();
+    this.mariadbService = new MariaDBService();
+    this.initialized = false;
+    this.initPromise = this.initializeLogsTable();
+  }
+
+  async ensureInitialized() {
+    if (!this.initialized) {
+      try {
+        await this.initPromise;
+        this.initialized = true;
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'initialisation de SystemLogsService:', error.message);
+        // Réessayer l'initialisation
+        try {
+          this.initPromise = this.initializeLogsTable();
+          await this.initPromise;
+          this.initialized = true;
+        } catch (retryError) {
+          console.error('❌ Échec de la réinitialisation de SystemLogsService:', retryError.message);
+          throw retryError;
+        }
+      }
+    }
   }
 
   // Initialiser la table des logs
-  initializeLogsTable() {
-    const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS system_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        level TEXT NOT NULL,
-        message TEXT NOT NULL,
-        category TEXT DEFAULT 'general',
-        user_id INTEGER,
-        ip_address TEXT,
-        user_agent TEXT,
-        metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
+  async initializeLogsTable() {
+    try {
+      // Attendre que MariaDB soit prêt
+      let retries = 0;
+      const maxRetries = 5;
+      while (retries < maxRetries) {
+        try {
+          const createTableQuery = `
+            CREATE TABLE IF NOT EXISTS system_logs (
+              id INT AUTO_INCREMENT PRIMARY KEY,
+              level VARCHAR(50) NOT NULL,
+              message TEXT NOT NULL,
+              category VARCHAR(100) DEFAULT 'general',
+              user_id INT,
+              ip_address VARCHAR(45),
+              user_agent TEXT,
+              metadata TEXT,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+          `;
 
-    this.db.run(createTableQuery, (err) => {
-      if (err) {
-        console.error('Erreur lors de la création de la table system_logs:', err);
-      } else {
-        console.log('Table system_logs initialisée avec succès');
-        this.insertSampleLogs();
+          await this.mariadbService.query(createTableQuery);
+          console.log('✅ Table system_logs initialisée avec succès');
+          await this.insertSampleLogs();
+          return;
+        } catch (error) {
+          retries++;
+          if (retries >= maxRetries) {
+            throw error;
+          }
+          console.log(`⏳ Attente de MariaDB (tentative ${retries}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-    });
+    } catch (error) {
+      console.error('❌ Erreur lors de la création de la table system_logs:', error.message);
+      throw error;
+    }
   }
 
   // Insérer des logs d'exemple
-  insertSampleLogs() {
+  async insertSampleLogs() {
     const sampleLogs = [
       {
         level: 'info',
         message: 'Application démarrée avec succès',
         category: 'system',
-        metadata: JSON.stringify({ version: '1.0.0' })
+        metadata: { version: '1.0.0' }
       },
       {
         level: 'info',
@@ -50,46 +85,45 @@ class SystemLogsService {
         category: 'auth',
         user_id: 1,
         ip_address: '127.0.0.1',
-        metadata: JSON.stringify({ loginMethod: 'email' })
+        metadata: { loginMethod: 'email' }
       },
       {
         level: 'warning',
         message: 'Tentative de connexion avec mot de passe incorrect',
         category: 'security',
         ip_address: '192.168.1.100',
-        metadata: JSON.stringify({ attempts: 3 })
+        metadata: { attempts: 3 }
       },
       {
         level: 'error',
         message: 'Erreur de connexion à la base de données',
         category: 'database',
-        metadata: JSON.stringify({ error: 'Connection timeout' })
+        metadata: { error: 'Connection timeout' }
       },
       {
         level: 'info',
         message: 'Sauvegarde automatique effectuée',
         category: 'backup',
-        metadata: JSON.stringify({ size: '2.5MB', duration: '15s' })
+        metadata: { size: '2.5MB', duration: '15s' }
       }
     ];
 
-    sampleLogs.forEach(log => {
-      this.db.run(
-        `INSERT OR IGNORE INTO system_logs (level, message, category, user_id, ip_address, metadata) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [log.level, log.message, log.category, log.user_id || null, log.ip_address || null, log.metadata],
-        (err) => {
-          if (err) {
-            console.error(`Erreur lors de l'insertion du log:`, err);
-          }
-        }
-      );
-    });
+    for (const log of sampleLogs) {
+      try {
+        await this.mariadbService.query(
+          `INSERT IGNORE INTO system_logs (level, message, category, user_id, ip_address, metadata) 
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [log.level, log.message, log.category, log.user_id || null, log.ip_address || null, JSON.stringify(log.metadata)]
+        );
+      } catch (error) {
+        console.error(`Erreur lors de l'insertion du log:`, error);
+      }
+    }
   }
 
   // Récupérer tous les logs avec filtres
   async getLogs(filters = {}) {
-    return new Promise((resolve, reject) => {
+    try {
       let query = 'SELECT * FROM system_logs WHERE 1=1';
       const params = [];
 
@@ -130,23 +164,20 @@ class SystemLogsService {
       query += ' LIMIT ? OFFSET ?';
       params.push(limit, offset);
 
-      this.db.all(query, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          const logs = rows.map(log => ({
-            ...log,
-            metadata: log.metadata ? JSON.parse(log.metadata) : null
-          }));
-          resolve(logs);
-        }
-      });
-    });
+      const rows = await this.mariadbService.query(query, params);
+      const logs = rows.map(log => ({
+        ...log,
+        metadata: log.metadata ? JSON.parse(log.metadata) : null
+      }));
+      return logs;
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Compter le nombre total de logs
   async getLogsCount(filters = {}) {
-    return new Promise((resolve, reject) => {
+    try {
       let query = 'SELECT COUNT(*) as total FROM system_logs WHERE 1=1';
       const params = [];
 
@@ -176,89 +207,77 @@ class SystemLogsService {
         params.push(filters.endDate);
       }
 
-      this.db.get(query, params, (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row.total);
-        }
-      });
-    });
+      const result = await this.mariadbService.query(query, params);
+      return result[0].total;
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Obtenir les statistiques des logs
   async getLogsStats() {
-    return new Promise((resolve, reject) => {
+    try {
       const queries = [
         'SELECT COUNT(*) as total FROM system_logs',
         'SELECT COUNT(*) as errors FROM system_logs WHERE level = "error"',
         'SELECT COUNT(*) as warnings FROM system_logs WHERE level = "warning"',
         'SELECT COUNT(*) as info FROM system_logs WHERE level = "info"',
-        'SELECT COUNT(*) as today FROM system_logs WHERE DATE(created_at) = DATE("now")',
+        'SELECT COUNT(*) as today FROM system_logs WHERE DATE(created_at) = CURDATE()',
         'SELECT level, COUNT(*) as count FROM system_logs GROUP BY level',
         'SELECT category, COUNT(*) as count FROM system_logs GROUP BY category ORDER BY count DESC LIMIT 5'
       ];
 
-      Promise.all(queries.map(query => {
-        return new Promise((resolve, reject) => {
-          this.db.all(query, [], (err, rows) => {
-            if (err) reject(err);
-            else resolve(rows);
-          });
-        });
-      })).then(results => {
-        const stats = {
-          total: results[0][0].total,
-          errors: results[1][0].errors,
-          warnings: results[2][0].warnings,
-          info: results[3][0].info,
-          today: results[4][0].today,
-          byLevel: results[5],
-          byCategory: results[6]
-        };
-        resolve(stats);
-      }).catch(reject);
-    });
+      const results = await Promise.all(queries.map(query => 
+        this.mariadbService.query(query)
+      ));
+
+      const stats = {
+        total: results[0][0].total,
+        errors: results[1][0].errors,
+        warnings: results[2][0].warnings,
+        info: results[3][0].info,
+        today: results[4][0].today,
+        byLevel: results[5],
+        byCategory: results[6]
+      };
+      return stats;
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Ajouter un nouveau log
   async addLog(level, message, category = 'general', userId = null, ipAddress = null, userAgent = null, metadata = null) {
-    return new Promise((resolve, reject) => {
+    try {
       const metadataStr = metadata ? JSON.stringify(metadata) : null;
       
-      this.db.run(
+      const result = await this.mariadbService.query(
         `INSERT INTO system_logs (level, message, category, user_id, ip_address, user_agent, metadata) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [level, message, category, userId, ipAddress, userAgent, metadataStr],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ id: this.lastID });
-          }
-        }
+        [level, message, category, userId, ipAddress, userAgent, metadataStr]
       );
-    });
+      
+      return { id: result.insertId };
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Supprimer les anciens logs
   async cleanOldLogs(daysToKeep = 30) {
-    return new Promise((resolve, reject) => {
+    try {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
       
-      this.db.run(
+      const result = await this.mariadbService.query(
         'DELETE FROM system_logs WHERE created_at < ?',
-        [cutoffDate.toISOString()],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ deletedCount: this.changes });
-          }
-        }
+        [cutoffDate.toISOString()]
       );
-    });
+      
+      return { deletedCount: result.affectedRows };
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Exporter les logs
@@ -300,19 +319,14 @@ class SystemLogsService {
 
   // Obtenir les catégories disponibles
   async getCategories() {
-    return new Promise((resolve, reject) => {
-      this.db.all(
-        'SELECT DISTINCT category FROM system_logs ORDER BY category',
-        [],
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows.map(row => row.category));
-          }
-        }
+    try {
+      const rows = await this.mariadbService.query(
+        'SELECT DISTINCT category FROM system_logs ORDER BY category'
       );
-    });
+      return rows.map(row => row.category);
+    } catch (error) {
+      throw error;
+    }
   }
 
   // Obtenir les niveaux disponibles
@@ -322,31 +336,45 @@ class SystemLogsService {
 
   // Méthodes de logging pratiques
   async info(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('info', message, category, userId, ipAddress, null, metadata);
+    try {
+      await this.ensureInitialized();
+      return this.addLog('info', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.error('SystemLogsService.info error:', error);
+      return null;
+    }
   }
 
   async warning(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('warning', message, category, userId, ipAddress, null, metadata);
+    try {
+      await this.ensureInitialized();
+      return this.addLog('warning', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.error('SystemLogsService.warning error:', error);
+      return null;
+    }
   }
 
   async error(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('error', message, category, userId, ipAddress, null, metadata);
+    try {
+      await this.ensureInitialized();
+      return this.addLog('error', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.error('SystemLogsService.error error:', error);
+      return null;
+    }
   }
 
   async debug(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('debug', message, category, userId, ipAddress, null, metadata);
+    try {
+      await this.ensureInitialized();
+      return this.addLog('debug', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.error('SystemLogsService.debug error:', error);
+      return null;
+    }
   }
 
-  // Fermer la connexion
-  close() {
-    this.db.close((err) => {
-      if (err) {
-        console.error('Erreur lors de la fermeture de la base de données:', err);
-      } else {
-        console.log('Connexion à la base de données fermée.');
-      }
-    });
-  }
 }
 
 module.exports = new SystemLogsService();

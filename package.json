@@ -13,7 +13,10 @@
     "restore-env": "cp .env.backup .env 2>/dev/null || echo 'Aucune sauvegarde trouvée'",
     "start:frontend": "node infomaniak-server.js",
     "deploy:infomaniak": "chmod +x deploy-infomaniak-nodejs.sh && ./deploy-infomaniak-nodejs.sh",
-    "start:infomaniak": "chmod +x start-infomaniak.sh && ./start-infomaniak.sh"
+    "start:infomaniak": "chmod +x start-infomaniak.sh && ./start-infomaniak.sh",
+    "translations:validate": "node scripts/validate-translations.cjs",
+    "translations:report": "node scripts/validate-translations.cjs --report",
+    "translations:check": "npm run translations:validate"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.0.0",

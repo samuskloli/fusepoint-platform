@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 const databaseService = require('../services/databaseService');
+const translationService = require('../services/translationService');
 const router = express.Router();
 
 // Gestionnaire spécifique pour les requêtes OPTIONS (preflight CORS)
@@ -25,7 +26,7 @@ router.post('/register', async (req, res) => {
     // Validation des données
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ 
-        error: 'Tous les champs sont requis',
+        error: translationService.t('auth.allFieldsRequired'),
         fields: ['email', 'password', 'firstName', 'lastName']
       });
     }
@@ -33,13 +34,13 @@ router.post('/register', async (req, res) => {
     // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: 'Format d\'email invalide' });
+      return res.status(400).json({ error: translationService.t('auth.invalidEmailFormat') });
     }
 
     // Validation mot de passe
     if (password.length < 8) {
       return res.status(400).json({ 
-        error: 'Le mot de passe doit contenir au moins 8 caractères' 
+        error: translationService.t('auth.passwordTooShort') 
       });
     }
 
@@ -87,7 +88,7 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Email et mot de passe requis' 
+        message: translationService.t('auth.allFieldsRequired') 
       });
     }
 
@@ -104,9 +105,9 @@ router.post('/login', async (req, res) => {
     console.error('❌ Erreur connexion:', error);
     
     if (error.message === 'Compte inexistant') {
-      return res.status(401).json({ error: 'Compte inexistant' });
+      return res.status(401).json({ error: translationService.t('auth.accountNotFound') });
     } else if (error.message === 'Mot de passe incorrect') {
-      return res.status(401).json({ error: 'Mot de passe incorrect' });
+      return res.status(401).json({ error: translationService.t('auth.passwordIncorrect') });
     }
     
     res.status(500).json({ error: 'Erreur lors de la connexion' });
@@ -122,7 +123,7 @@ router.post('/refresh', async (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({ error: 'Token de rafraîchissement requis' });
+      return res.status(400).json({ error: translationService.t('auth.tokenRefreshInvalid') });
     }
 
     const result = await authService.refreshToken(refreshToken);
@@ -134,7 +135,7 @@ router.post('/refresh', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur rafraîchissement:', error);
-    res.status(401).json({ error: 'Token de rafraîchissement invalide' });
+    res.status(401).json({ error: translationService.t('auth.tokenRefreshInvalid') });
   }
 });
 
@@ -298,7 +299,7 @@ router.post('/resend-confirmation', async (req, res) => {
     // Mettre à jour le token
     await databaseService.db.run(
       'UPDATE users SET confirmation_token = ?, token_expiry = ? WHERE id = ?',
-      [confirmationToken, tokenExpiry.toISOString(), user.id]
+      [confirmationToken, tokenExpiry.toISOString().slice(0, 19).replace('T', ' '), user.id]
     );
 
     // Envoyer l'email
@@ -564,7 +565,7 @@ router.post('/set-password', async (req, res) => {
     const userQuery = `
       SELECT id, email, first_name, last_name, first_login_token_expires
       FROM users 
-      WHERE first_login_token = ? AND first_login_token_expires > datetime('now')
+      WHERE first_login_token = ? AND first_login_token_expires > NOW()
     `;
     
     const user = await databaseService.get(userQuery, [token]);

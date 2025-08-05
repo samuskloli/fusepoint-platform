@@ -142,7 +142,7 @@ class ClientService {
       }
       
       // Ajouter updated_at
-      updateFields.push('updated_at = datetime("now")');
+      updateFields.push('updated_at = NOW()');
       updateValues.push(clientId);
       
       const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ? AND role IN ("user", "client")`;
@@ -190,7 +190,11 @@ class ClientService {
    */
   async updateClientStatus(clientId, status, agentId = null) {
     try {
-      systemLogsService.info('Mise à jour du statut du client', 'clients', null, null, { clientId, status, agentId });
+      try {
+        await systemLogsService.info('Mise à jour du statut du client', 'clients', null, null, { clientId, status, agentId });
+      } catch (logError) {
+        console.error('❌ Erreur lors du log initial:', logError.message);
+      }
       
       // Validation du statut
       if (!['active', 'inactive'].includes(status)) {
@@ -216,12 +220,17 @@ class ClientService {
       
       // Mettre à jour le statut du client
       await databaseService.run(
-        'UPDATE users SET is_active = ?, updated_at = datetime("now") WHERE id = ?',
+        'UPDATE users SET is_active = ?, updated_at = NOW() WHERE id = ?',
         [isActive, clientId]
       );
       
       // Envoyer un email de notification au client
       try {
+        // Attendre que le service email soit prêt
+        if (!emailService.transporter) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+        
         // Récupérer les informations de l'agent si fourni
         let agentData = {
           agentName: 'Équipe Fusepoint',
@@ -251,20 +260,41 @@ class ClientService {
         
         if (status === 'active') {
           await emailService.sendClientActivationEmail(clientData);
-          systemLogsService.info('Email d\'activation envoyé', 'emails', null, null, { email: client.email });
+          try {
+            await systemLogsService.info('Email d\'activation envoyé', 'emails', null, null, { email: client.email });
+          } catch (logError) {
+            console.error('❌ Erreur lors du log d\'activation:', logError.message);
+          }
         } else {
           await emailService.sendClientDeactivationEmail(clientData);
-          systemLogsService.info('Email de désactivation envoyé', 'emails', null, null, { email: client.email });
+          try {
+            await systemLogsService.info('Email de désactivation envoyé', 'emails', null, null, { email: client.email });
+          } catch (logError) {
+            console.error('❌ Erreur lors du log de désactivation:', logError.message);
+          }
         }
       } catch (emailError) {
-        systemLogsService.error('Erreur lors de l\'envoi de l\'email', 'emails', null, null, {
+        console.error('❌ Erreur lors de l\'envoi de l\'email de notification:', {
           email: client.email,
-          error: emailError.message
+          error: emailError.message,
+          stack: emailError.stack
         });
+        try {
+          await systemLogsService.error('Erreur lors de l\'envoi de l\'email', 'emails', null, null, {
+            email: client.email,
+            error: emailError.message
+          });
+        } catch (logError) {
+          console.error('❌ Erreur lors du log d\'erreur email:', logError.message);
+        }
         // Ne pas faire échouer la requête si l'email échoue
       }
       
-      systemLogsService.info('Statut du client mis à jour avec succès', 'clients', null, null, { clientId, status });
+      try {
+        await systemLogsService.info('Statut du client mis à jour avec succès', 'clients', null, null, { clientId, status });
+      } catch (logError) {
+        console.error('❌ Erreur lors du log de succès:', logError.message);
+      }
       
       return {
         clientId: clientId,
@@ -272,7 +302,7 @@ class ClientService {
         isActive: isActive
       };
     } catch (error) {
-      translationService.log('error', 'clients.errorUpdatingClientStatus', { 
+      console.error('❌ Erreur lors de la mise à jour du statut du client:', { 
         clientId, 
         status, 
         error: error.message 
@@ -291,7 +321,7 @@ class ClientService {
    */
   async deleteClient(clientId, agentId, password, reason) {
     try {
-      systemLogsService.info('Suppression du client', 'clients', null, null, { clientId, agentId });
+      await systemLogsService.info('Suppression du client', 'clients', null, null, { clientId, agentId });
       
       // Vérifier le mot de passe de l'agent
       const agent = await databaseService.get(
@@ -348,7 +378,7 @@ class ClientService {
       try {
         await databaseService.run(
           `INSERT INTO system_logs (level, message, category, user_id, metadata, created_at)
-           VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+           VALUES (?, ?, ?, ?, ?, NOW())`,
           [
             'info',
             `Suppression du client ${client.first_name} ${client.last_name} (${client.email}) par l'agent ${agent.first_name} ${agent.last_name}`,
@@ -364,17 +394,17 @@ class ClientService {
           ]
         );
       } catch (logError) {
-        systemLogsService.error('Erreur lors de la création du log', 'logs', null, null, { error: logError.message });
+        await systemLogsService.error('Erreur lors de la création du log', 'logs', null, null, { error: logError.message });
       }
       
-      systemLogsService.info('Client supprimé avec succès', 'clients', null, null, { clientId });
+      await systemLogsService.info('Client supprimé avec succès', 'clients', null, null, { clientId });
       
       return {
         clientId,
         status: 'deleted'
       };
     } catch (error) {
-      translationService.log('error', 'clients.errorDeletingClient', { 
+      console.error('❌ Erreur lors de la suppression du client:', { 
         clientId, 
         agentId, 
         error: error.message 
@@ -390,7 +420,7 @@ class ClientService {
    */
   async getClientStats(clientId) {
     try {
-      systemLogsService.info('Récupération des statistiques du client', 'clients', null, null, { clientId });
+      await systemLogsService.info('Récupération des statistiques du client', 'clients', null, null, { clientId });
       
       // Vérifier que le client existe
       const client = await databaseService.get(
@@ -513,7 +543,7 @@ class ClientService {
       query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
       params.push(limit, offset);
       
-      const notifications = await databaseService.db.all(query, params);
+      const notifications = await databaseService.all(query, params);
       
       systemLogsService.info('Notifications du client récupérées', 'clients', null, null, { 
         clientId, 
@@ -547,9 +577,9 @@ class ClientService {
       }
       
       const placeholders = notificationIds.map(() => '?').join(',');
-      const query = `UPDATE notifications SET is_read = 1, read_at = datetime('now') WHERE id IN (${placeholders})`;
+      const query = `UPDATE notifications SET is_read = 1, read_at = NOW() WHERE id IN (${placeholders})`;
       
-      const result = await databaseService.db.run(query, notificationIds);
+      const result = await databaseService.run(query, notificationIds);
       
       systemLogsService.info('Notifications marquées comme lues', 'clients', null, null, { 
         agentId, 

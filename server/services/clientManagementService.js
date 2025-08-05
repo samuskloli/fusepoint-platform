@@ -120,32 +120,42 @@ class ClientManagementService {
    * @returns {Object} - Client mis à jour
    */
   static async updateClientStatus(clientId, status, agentId) {
-    // Vérifier que l'agent a accès au client
-    const hasAccess = await agentService.checkAgentClientAccess(agentId, clientId);
-    if (!hasAccess) {
-      const error = new Error('Access denied');
-      error.code = 'ACCESS_DENIED';
+    try {
+      // Vérifier que l'agent a accès au client
+      const hasAccess = await agentService.checkAgentClientAccess(agentId, clientId);
+      if (!hasAccess) {
+        const error = new Error('Access denied');
+        error.code = 'ACCESS_DENIED';
+        throw error;
+      }
+
+      // Valider le statut
+      const validStatuses = ['active', 'inactive', 'suspended', 'pending'];
+      if (!validStatuses.includes(status)) {
+        const error = new Error('Invalid status');
+        error.code = 'INVALID_STATUS';
+        throw error;
+      }
+
+      const updatedClient = await clientService.updateClientStatus(clientId, status, agentId);
+      
+      // Log de l'opération
+      await systemLogsService.info('Statut du client mis à jour', 'clients', null, null, {
+        clientId,
+        agentId,
+        newStatus: status
+      });
+
+      return updatedClient;
+    } catch (error) {
+      console.error('❌ Erreur dans ClientManagementService.updateClientStatus:', {
+        clientId,
+        status,
+        agentId,
+        error: error.message
+      });
       throw error;
     }
-
-    // Valider le statut
-    const validStatuses = ['active', 'inactive', 'suspended', 'pending'];
-    if (!validStatuses.includes(status)) {
-      const error = new Error('Invalid status');
-      error.code = 'INVALID_STATUS';
-      throw error;
-    }
-
-    const updatedClient = await clientService.updateClientStatus(clientId, status, agentId);
-    
-    // Log de l'opération
-    systemLogsService.info('Statut du client mis à jour', 'clients', null, null, {
-      clientId,
-      agentId,
-      newStatus: status
-    });
-
-    return updatedClient;
   }
 
   /**
@@ -167,7 +177,7 @@ class ClientManagementService {
     const updatedClient = await clientService.updateClient(clientId, updateData);
     
     // Log de l'opération
-    systemLogsService.info('Client mis à jour', 'clients', null, null, {
+    await systemLogsService.info('Client mis à jour', 'clients', null, null, {
       clientId,
       agentId
     });
@@ -211,7 +221,7 @@ class ClientManagementService {
     const result = await clientService.deleteClient(clientId, agentId, password, reason);
     
     // Log de l'opération
-    systemLogsService.info('Client supprimé', 'clients', null, null, {
+    await systemLogsService.info('Client supprimé', 'clients', null, null, {
       clientId,
       agentId
     });
@@ -248,11 +258,11 @@ class ClientManagementService {
 
     if (emailSent) {
       // Log de l'opération
-    systemLogsService.info('Email de bienvenue envoyé', 'clients', null, null, {
-      clientId,
-      agentId,
-      email: client.email
-    });
+      await systemLogsService.info('Email de bienvenue envoyé', 'clients', null, null, {
+        clientId,
+        agentId,
+        email: client.email
+      });
     }
 
     return emailSent;
@@ -286,7 +296,7 @@ class ClientManagementService {
     const result = await agentService.assignAgentToClient(clientId, agentId);
     
     // Log de l'opération
-    systemLogsService.info('Agent assigné au client', 'clients', null, null, {
+    await systemLogsService.info('Agent assigné au client', 'clients', null, null, {
       clientId,
       agentId,
       assignedBy: currentAgentId

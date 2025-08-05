@@ -1,21 +1,16 @@
 const path = require('path');
 const fs = require('fs');
-const databaseService = require('./databaseService');
+const MariaDBService = require('./mariadbService');
 
 class AccompagnementService {
     constructor() {
-        this.db = null;
+        this.mariadbService = new MariaDBService();
         this.initialized = false;
         this.initDatabase();
     }
 
     async initDatabase() {
         try {
-            // Attendre que le service de base de données principal soit initialisé
-            if (!databaseService.db) {
-                await databaseService.initialize();
-            }
-            this.db = databaseService.db;
             console.log('Base de données accompagnement connectée');
             await this.createTables();
             this.initialized = true;
@@ -32,7 +27,13 @@ class AccompagnementService {
             const schemaPath = path.join(__dirname, '../database/schema_accompagnement_complet.sql');
             const schema = fs.readFileSync(schemaPath, 'utf8');
             
-            await this.db.exec(schema);
+            // Diviser le schéma en requêtes individuelles pour MariaDB
+            const queries = schema.split(';').filter(query => query.trim().length > 0);
+            for (const query of queries) {
+                if (query.trim()) {
+                    await this.mariadbService.query(query.trim());
+                }
+            }
             console.log('Tables accompagnement créées avec succès');
         } catch (err) {
             console.error('Erreur création tables accompagnement:', err);
@@ -46,7 +47,7 @@ class AccompagnementService {
 
     async getServices() {
         try {
-            const rows = await this.db.all('SELECT * FROM agency_services WHERE is_active = 1 ORDER BY display_order');
+            const rows = await this.mariadbService.query('SELECT * FROM agency_services WHERE is_active = 1 ORDER BY display_order');
             const services = rows.map(service => ({
                 ...service,
                 deliverables: JSON.parse(service.deliverables || '[]'),
@@ -59,28 +60,27 @@ class AccompagnementService {
     }
 
     async getAgencyServices(activeOnly = true) {
-        const query = activeOnly 
-            ? 'SELECT * FROM agency_services WHERE is_active = 1 ORDER BY display_order, name'
-            : 'SELECT * FROM agency_services ORDER BY display_order, name';
-        
-        return new Promise((resolve, reject) => {
-            this.db.all(query, [], (err, rows) => {
-                if (err) reject(err);
-                else {
-                    const services = rows.map(row => ({
-                        ...row,
-                        deliverables: JSON.parse(row.deliverables || '[]'),
-                        requirements: JSON.parse(row.requirements || '[]')
-                    }));
-                    resolve(services);
-                }
-            });
-        });
+        try {
+            const query = activeOnly 
+                ? 'SELECT * FROM agency_services WHERE is_active = 1 ORDER BY display_order, name'
+                : 'SELECT * FROM agency_services ORDER BY display_order, name';
+            
+            const rows = await this.mariadbService.query(query);
+            const services = rows.map(row => ({
+                ...row,
+                deliverables: JSON.parse(row.deliverables || '[]'),
+                requirements: JSON.parse(row.requirements || '[]')
+            }));
+            return services;
+        } catch (err) {
+            throw err;
+        }
     }
 
     async getServiceById(serviceId) {
         try {
-            const row = await this.db.get('SELECT * FROM agency_services WHERE id = ?', [serviceId]);
+            const rows = await this.mariadbService.query('SELECT * FROM agency_services WHERE id = ?', [serviceId]);
+            const row = rows[0];
             if (row) {
                 return {
                     ...row,
@@ -117,12 +117,12 @@ class AccompagnementService {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             
-            const result = await this.db.run(query, [
+            const result = await this.mariadbService.query(query, [
                 company_id, user_id, service_id, title, description, 
                 JSON.stringify(brief_data), budget_range, deadline, priority
             ]);
             
-            return { id: result.lastID, ...requestData };
+            return { id: result.insertId, ...requestData };
         } catch (err) {
             throw err;
         }
@@ -148,7 +148,7 @@ class AccompagnementService {
             
             query += ' ORDER BY sr.created_at DESC';
             
-            const rows = await this.db.all(query, params);
+            const rows = await this.mariadbService.query(query, params);
             const requests = rows.map(row => ({
                 ...row,
                 brief_data: JSON.parse(row.brief_data || '{}')
@@ -162,17 +162,17 @@ class AccompagnementService {
     async updateRequestStatus(requestId, newStatus, changedBy, comment = null) {
         try {
             // D'abord récupérer l'ancien statut
-            const row = await this.db.get('SELECT status FROM service_requests WHERE id = ?', [requestId]);
-            const oldStatus = row ? row.status : null;
+            const rows = await this.mariadbService.query('SELECT status FROM service_requests WHERE id = ?', [requestId]);
+            const oldStatus = rows[0] ? rows[0].status : null;
             
             // Mettre à jour le statut
-            await this.db.run(
+            await this.mariadbService.query(
                 'UPDATE service_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                 [newStatus, requestId]
             );
             
             // Ajouter l'historique
-            await this.db.run(
+            await this.mariadbService.query(
                 'INSERT INTO request_status_history (request_id, old_status, new_status, changed_by, comment) VALUES (?, ?, ?, ?, ?)',
                 [requestId, oldStatus, newStatus, changedBy, comment]
             );
@@ -191,7 +191,7 @@ class AccompagnementService {
                 ORDER BY rsh.created_at DESC
             `;
             
-            const rows = await this.db.all(query, [requestId]);
+            const rows = await this.mariadbService.query(query, [requestId]);
             return rows;
         } catch (err) {
             throw err;
@@ -225,12 +225,12 @@ class AccompagnementService {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `;
             
-            const result = await this.db.run(query, [
+            const result = await this.mariadbService.query(query, [
                 company_id, type, title, description, priority, category,
                 action_required, expected_impact, estimated_effort, data_source, expires_at
             ]);
             
-            return result.lastID;
+            return result.insertId;
         } catch (err) {
             throw err;
         }
@@ -257,7 +257,7 @@ class AccompagnementService {
                 params.push(limit);
             }
 
-            const rows = await this.db.all(query, params);
+            const rows = await this.mariadbService.query(query, params);
             return rows;
         } catch (err) {
             throw err;
@@ -272,8 +272,8 @@ class AccompagnementService {
                 WHERE id = ?
             `;
             
-            const result = await this.db.run(query, [status, clientResponse, recommendationId]);
-            return result.changes;
+            const result = await this.mariadbService.query(query, [status, clientResponse, recommendationId]);
+            return result.affectedRows;
         } catch (err) {
             throw err;
         }
@@ -299,12 +299,12 @@ class AccompagnementService {
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
             
-            const result = await this.db.run(query, [
+            const result = await this.mariadbService.query(query, [
                 user_id, company_id, type, title, message,
                 JSON.stringify(data || {}), action_url
             ]);
             
-            return result.lastID;
+            return result.insertId;
         } catch (err) {
             throw err;
         }
@@ -331,7 +331,7 @@ class AccompagnementService {
             query += ' ORDER BY created_at DESC LIMIT ?';
             params.push(limit);
 
-            const rows = await this.db.all(query, params);
+            const rows = await this.mariadbService.query(query, params);
             
             // Parse JSON data field
             const notifications = rows.map(row => ({
@@ -348,8 +348,8 @@ class AccompagnementService {
     async getNotificationsCount(userId) {
         try {
             const query = 'SELECT COUNT(*) as count FROM notifications WHERE user_id = ?';
-            const row = await this.db.get(query, [userId]);
-            return row.count;
+            const rows = await this.mariadbService.query(query, [userId]);
+            return rows[0].count;
         } catch (err) {
             console.error('Erreur lors du comptage des notifications:', err);
             throw err;
@@ -359,8 +359,8 @@ class AccompagnementService {
     async markAllNotificationsAsRead(userId) {
         try {
             const query = 'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0';
-            const result = await this.db.run(query, [userId]);
-            return { changes: result.changes };
+            const result = await this.mariadbService.query(query, [userId]);
+            return { changes: result.affectedRows };
         } catch (err) {
             console.error('Erreur lors du marquage des notifications:', err);
             throw err;
@@ -369,7 +369,7 @@ class AccompagnementService {
 
     async markNotificationAsRead(notificationId, userId) {
         try {
-            await this.db.run(
+            await this.mariadbService.query(
                 'UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE id = ?',
                 [notificationId]
             );
@@ -391,8 +391,8 @@ class AccompagnementService {
             const results = {};
             
             for (const [key, query] of Object.entries(queries)) {
-                const row = await this.db.get(query, [companyId]);
-                results[key] = row.count;
+                const rows = await this.mariadbService.query(query, [companyId]);
+                results[key] = rows[0].count;
             }
             
             return results;
@@ -430,7 +430,7 @@ class AccompagnementService {
                 LIMIT ?
             `;
             
-            const rows = await this.db.all(query, [companyId, companyId, limit]);
+            const rows = await this.mariadbService.query(query, [companyId, companyId, limit]);
             return rows;
         } catch (err) {
             throw err;
@@ -440,15 +440,8 @@ class AccompagnementService {
     // ==================== UTILITAIRES ====================
 
     async close() {
-        if (this.db) {
-            return new Promise((resolve) => {
-                this.db.close((err) => {
-                    if (err) console.error('Erreur fermeture base de données:', err);
-                    else console.log('Base de données accompagnement fermée');
-                    resolve();
-                });
-            });
-        }
+        // MariaDBService gère automatiquement les connexions
+        console.log('Service accompagnement fermé');
     }
 }
 
