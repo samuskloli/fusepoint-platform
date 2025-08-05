@@ -1,0 +1,1 @@
+scripts/scripts-management/fusepoint-manager.sh

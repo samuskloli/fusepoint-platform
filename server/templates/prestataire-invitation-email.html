@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invitation Prestataire - Fusepoint</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 300;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .greeting {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #2d3748;
+        }
+        .message {
+            margin-bottom: 30px;
+            line-height: 1.8;
+            color: #4a5568;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .info-box {
+            background-color: #edf2f7;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 0 6px 6px 0;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #2d3748;
+            font-size: 16px;
+        }
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info-box li {
+            margin: 8px 0;
+            color: #4a5568;
+        }
+        .footer {
+            background-color: #f7fafc;
+            padding: 25px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            margin: 5px 0;
+            color: #718096;
+            font-size: 14px;
+        }
+        .security-note {
+            background-color: #fef5e7;
+            border: 1px solid #f6e05e;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #744210;
+        }
+        .expiry-info {
+            background-color: #fed7d7;
+            border: 1px solid #fc8181;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #742a2a;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .content {
+                padding: 25px 20px;
+            }
+            .header {
+                padding: 25px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Fusepoint</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Plateforme Marketing Collaborative</p>
+        </div>
+        
+        <div class="content">
+            <div class="greeting">
+                Bonjour ! 👋
+            </div>
+            
+            <div class="message">
+                <p><strong>{{agentName}}</strong> vous invite à rejoindre l'équipe Fusepoint en tant que <strong>prestataire externe</strong>.</p>
+                
+                <p>Cette invitation vous permettra de collaborer sur des projets marketing passionnants et d'accéder à une plateforme moderne dédiée à la gestion de vos missions.</p>
+            </div>
+
+            {{#if customMessage}}
+            <div class="info-box">
+                <h3>💬 Message personnel de {{agentName}} :</h3>
+                <p style="font-style: italic; margin: 0;">"{{customMessage}}"</p>
+            </div>
+            {{/if}}
+            
+            <div class="info-box">
+                <h3>🎯 Ce que vous obtiendrez :</h3>
+                <ul>
+                    <li><strong>Tableau de bord dédié</strong> - Interface simple et intuitive</li>
+                    <li><strong>Gestion des tâches</strong> - Suivi en temps réel de vos missions</li>
+                    <li><strong>Communication directe</strong> - Échanges facilités avec votre agent</li>
+                    <li><strong>Sécurité renforcée</strong> - Accès limité aux données qui vous concernent</li>
+                    <li><strong>Notifications intelligentes</strong> - Restez informé des nouveautés</li>
+                </ul>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{registrationLink}}" class="cta-button">
+                    ✨ Créer mon compte Prestataire
+                </a>
+            </div>
+            
+            <div class="security-note">
+                <strong>🔒 Sécurité :</strong> Ce lien d'invitation est personnel et sécurisé. Il ne peut être utilisé qu'une seule fois pour créer votre compte.
+            </div>
+            
+            <div class="expiry-info">
+                <strong>⏰ Important :</strong> Cette invitation expire le <strong>{{expiryDate}}</strong>. Pensez à créer votre compte avant cette date.
+            </div>
+            
+            <div class="message">
+                <p>Si vous avez des questions, n'hésitez pas à contacter directement <strong>{{agentName}}</strong> à l'adresse : <a href="mailto:{{agentEmail}}">{{agentEmail}}</a></p>
+                
+                <p>Nous avons hâte de vous accueillir dans l'équipe ! 🎉</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>Fusepoint</strong> - Plateforme Marketing SaaS</p>
+            <p>Cette invitation a été envoyée par {{agentName}} ({{agentEmail}})</p>
+            <p style="margin-top: 15px; font-size: 12px; color: #a0aec0;">
+                Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet email en toute sécurité.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
