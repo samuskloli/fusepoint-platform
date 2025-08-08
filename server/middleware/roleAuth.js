@@ -21,6 +21,12 @@ const roleAuth = (allowedRoles = []) => {
 
       console.log('🔍 Debug roleAuth - user role:', req.user.role);
       
+      // Les super_admin ont accès à tout
+      if (req.user.role === 'super_admin') {
+        console.log('✅ Super Admin - Accès autorisé à toutes les routes');
+        return next();
+      }
+      
       // Vérifier si le rôle de l'utilisateur est autorisé
       if (!allowedRoles.includes(req.user.role)) {
         console.log('❌ Rôle non autorisé:', req.user.role, 'allowedRoles:', allowedRoles);

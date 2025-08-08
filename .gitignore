@@ -23,8 +23,6 @@ scripts/switch-env.sh
 
 # Database files
 *.db
-*.sqlite
-*.sqlite3
 server/database/*.db
 
 # Backup files

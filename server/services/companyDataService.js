@@ -26,10 +26,10 @@ class CompanyDataService {
       console.log('🏢 Récupération données entreprise depuis la base de données:', companyId);
       
       // Récupérer les informations de base de l'entreprise
-      const company = await databaseService.db.get(
-        'SELECT * FROM companies WHERE id = ?',
-        [companyId]
-      );
+      const company = await databaseService.get(
+      'SELECT * FROM companies WHERE id = ?',
+      [companyId]
+    );
 
       if (!company) {
         throw new Error(`Entreprise ${companyId} non trouvée`);
@@ -83,10 +83,10 @@ class CompanyDataService {
       }
 
       // Vérifier si l'entreprise existe dans la base de données
-      const company = await databaseService.db.get(
-        'SELECT * FROM companies WHERE id = ?',
-        [companyId]
-      );
+      const company = await databaseService.get(
+      'SELECT * FROM companies WHERE id = ?',
+      [companyId]
+    );
 
       let companyData;
 
@@ -140,10 +140,10 @@ class CompanyDataService {
       console.log('🏢 Récupération informations entreprise depuis la base de données:', companyId);
       
       // Récupérer les informations de base de l'entreprise depuis la base de données
-      const company = await databaseService.db.get(
-        'SELECT * FROM companies WHERE id = ?',
-        [companyId]
-      );
+      const company = await databaseService.get(
+      'SELECT * FROM companies WHERE id = ?',
+      [companyId]
+    );
 
       if (!company) {
         console.log('⚠️ Entreprise non trouvée, utilisation des données de démonstration');

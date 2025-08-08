@@ -131,10 +131,14 @@ class ValidationService {
    */
   validateClientData(clientData) {
     const errors = [];
-    const { first_name, last_name, email, phone, role } = clientData;
+    const { first_name, last_name, firstName, lastName, email, phone, role } = clientData;
+
+    // Accepter les deux formats : firstName/lastName ou first_name/last_name
+    const finalFirstName = firstName || first_name;
+    const finalLastName = lastName || last_name;
 
     // Validation du prénom
-    if (!first_name || first_name.trim().length === 0) {
+    if (!finalFirstName || finalFirstName.trim().length === 0) {
       errors.push({
         field: 'first_name',
         message: translationService.t('validation.required')
@@ -142,7 +146,7 @@ class ValidationService {
     }
 
     // Validation du nom
-    if (!last_name || last_name.trim().length === 0) {
+    if (!finalLastName || finalLastName.trim().length === 0) {
       errors.push({
         field: 'last_name',
         message: translationService.t('validation.required')

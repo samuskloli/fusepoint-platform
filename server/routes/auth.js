@@ -2,7 +2,6 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 const databaseService = require('../services/databaseService');
-const translationService = require('../services/translationService');
 const router = express.Router();
 
 // Gestionnaire spécifique pour les requêtes OPTIONS (preflight CORS)
@@ -26,7 +25,7 @@ router.post('/register', async (req, res) => {
     // Validation des données
     if (!email || !password || !firstName || !lastName) {
       return res.status(400).json({ 
-        error: translationService.t('auth.allFieldsRequired'),
+        error: 'Tous les champs sont requis',
         fields: ['email', 'password', 'firstName', 'lastName']
       });
     }
@@ -34,13 +33,13 @@ router.post('/register', async (req, res) => {
     // Validation email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return res.status(400).json({ error: translationService.t('auth.invalidEmailFormat') });
+      return res.status(400).json({ error: 'Format d\'email invalide' });
     }
 
     // Validation mot de passe
     if (password.length < 8) {
       return res.status(400).json({ 
-        error: translationService.t('auth.passwordTooShort') 
+        error: 'Le mot de passe doit contenir au moins 8 caractères' 
       });
     }
 
@@ -88,7 +87,7 @@ router.post('/login', async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ 
         success: false, 
-        message: translationService.t('auth.allFieldsRequired') 
+        message: 'Email et mot de passe requis' 
       });
     }
 
@@ -105,9 +104,9 @@ router.post('/login', async (req, res) => {
     console.error('❌ Erreur connexion:', error);
     
     if (error.message === 'Compte inexistant') {
-      return res.status(401).json({ error: translationService.t('auth.accountNotFound') });
+      return res.status(401).json({ error: 'Compte inexistant' });
     } else if (error.message === 'Mot de passe incorrect') {
-      return res.status(401).json({ error: translationService.t('auth.passwordIncorrect') });
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
     
     res.status(500).json({ error: 'Erreur lors de la connexion' });
@@ -123,7 +122,7 @@ router.post('/refresh', async (req, res) => {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-      return res.status(400).json({ error: translationService.t('auth.tokenRefreshInvalid') });
+      return res.status(400).json({ error: 'Token de rafraîchissement requis' });
     }
 
     const result = await authService.refreshToken(refreshToken);
@@ -135,7 +134,7 @@ router.post('/refresh', async (req, res) => {
 
   } catch (error) {
     console.error('❌ Erreur rafraîchissement:', error);
-    res.status(401).json({ error: translationService.t('auth.tokenRefreshInvalid') });
+    res.status(401).json({ error: 'Token de rafraîchissement invalide' });
   }
 });
 
@@ -297,9 +296,9 @@ router.post('/resend-confirmation', async (req, res) => {
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 heures
 
     // Mettre à jour le token
-    await databaseService.db.run(
+    await databaseService.run(
       'UPDATE users SET confirmation_token = ?, token_expiry = ? WHERE id = ?',
-      [confirmationToken, tokenExpiry.toISOString().slice(0, 19).replace('T', ' '), user.id]
+      [confirmationToken, tokenExpiry.toISOString(), user.id]
     );
 
     // Envoyer l'email
@@ -340,7 +339,7 @@ router.post('/complete-onboarding', authService.authenticateMiddleware.bind(auth
     const company = await databaseService.createCompany(companyData, user.id);
 
     // Marquer l'onboarding comme complété
-    await databaseService.db.run(
+    await databaseService.run(
       'UPDATE users SET onboarding_completed = 1 WHERE id = ?',
       [user.id]
     );
@@ -412,7 +411,7 @@ router.put('/profile', authService.authenticateMiddleware.bind(authService), asy
       });
     }
 
-    await databaseService.db.run(
+    await databaseService.run(
       'UPDATE users SET first_name = ?, last_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [firstName, lastName, user.id]
     );
@@ -479,7 +478,7 @@ router.post('/change-password', authService.authenticateMiddleware.bind(authServ
     const newPasswordHash = await databaseService.hashPassword(newPassword);
 
     // Mettre à jour le mot de passe
-    await databaseService.db.run(
+    await databaseService.run(
       'UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [newPasswordHash, user.id]
     );
@@ -513,7 +512,7 @@ router.get('/sessions', authService.authenticateMiddleware.bind(authService), as
   try {
     const { user } = req;
 
-    const sessions = await databaseService.db.all(
+    const sessions = await databaseService.query(
       `SELECT session_token, ip_address, user_agent, created_at, expires_at 
        FROM user_sessions 
        WHERE user_id = ? AND expires_at > CURRENT_TIMESTAMP 
@@ -565,7 +564,7 @@ router.post('/set-password', async (req, res) => {
     const userQuery = `
       SELECT id, email, first_name, last_name, first_login_token_expires
       FROM users 
-      WHERE first_login_token = ? AND first_login_token_expires > NOW()
+      WHERE first_login_token = ? AND first_login_token_expires > datetime('now')
     `;
     
     const user = await databaseService.get(userQuery, [token]);

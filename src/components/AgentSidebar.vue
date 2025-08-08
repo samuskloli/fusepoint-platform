@@ -74,6 +74,17 @@
           </router-link>
 
           <router-link
+            to="/agent/project-templates"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/project-templates' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>Modèles de Projets</span>
+          </router-link>
+
+          <router-link
             to="/agent/prestataires"
             class="nav-item"
             :class="{ 'nav-item-active': $route.path === '/agent/prestataires' }"
@@ -143,6 +154,58 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <span>Analytics Globales</span>
+          </router-link>
+        </div>
+      </div>
+
+      <!-- Personnalisation -->
+      <div class="pt-4">
+        <h3 class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+          Personnalisation
+        </h3>
+        <div class="mt-2 space-y-1">
+          <router-link
+            to="/agent/customization/themes"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/customization/themes' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z" />
+            </svg>
+            <span>Thèmes & Apparence</span>
+          </router-link>
+
+          <router-link
+            to="/agent/customization/dashboard"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/customization/dashboard' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+            </svg>
+            <span>Personnaliser Tableau de Bord</span>
+          </router-link>
+
+          <router-link
+            to="/agent/customization/notifications"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/customization/notifications' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.868 19.718c.64.64 1.536 1.032 2.524 1.032h8.236a4 4 0 003.464-6l-4-7A4 4 0 0011.618 6H4.868C3.28 6 2 7.28 2 8.868v8.236c0 .988.392 1.884 1.032 2.524l1.836 1.09z" />
+            </svg>
+            <span>Préférences Notifications</span>
+          </router-link>
+
+          <router-link
+            to="/agent/customization/workflows"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/customization/workflows' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Automatisations & Workflows</span>
           </router-link>
         </div>
       </div>

@@ -339,7 +339,7 @@ router.get('/:id/stats', async (req, res) => {
     );
     
     const [upcomingDeadlines] = await databaseService.query(
-      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > NOW()',
+      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > datetime("now")',
       [clientId]
     );
 
@@ -380,13 +380,13 @@ router.post('/tasks/:id/validate', async (req, res) => {
     // Mettre à jour le statut de la tâche
     const newStatus = approved ? 'approved' : 'rejected';
     await databaseService.run(
-      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = NOW() WHERE id = ?',
+      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = datetime("now") WHERE id = ?',
       [newStatus, comments || null, taskId]
     );
 
     // Enregistrer l'historique
     await databaseService.run(
-      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, NOW())',
+      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, datetime("now"))',
       [taskId, `Task ${newStatus}`, comments || null, userId]
     );
 

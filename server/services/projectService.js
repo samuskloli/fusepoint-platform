@@ -18,7 +18,7 @@ class ProjectService {
     try {
       systemLogsService.info('Récupération des projets du client', 'projects', null, null, { clientId });
       
-      const projects = await databaseService.all(
+      const projects = await databaseService.query(
         'SELECT * FROM projects WHERE client_id = ? ORDER BY created_at DESC',
         [clientId]
       );
@@ -80,12 +80,12 @@ class ProjectService {
 
       const project = await databaseService.get(
         'SELECT * FROM projects WHERE id = ?',
-        [projectId.lastID]
+        [projectId.insertId]
       );
 
       systemLogsService.info('Projet créé avec succès', 'projects', null, null, { 
         clientId, 
-        projectId: projectId.lastID 
+        projectId: projectId.insertId 
       });
       
       return project;
@@ -107,7 +107,7 @@ class ProjectService {
     try {
       systemLogsService.info('Récupération des projets de l\'agent', 'projects', null, null, { agentId });
       
-      const projects = await databaseService.all(
+      const projects = await databaseService.query(
         `SELECT p.*, u.first_name, u.last_name, u.email as client_email
          FROM projects p
          LEFT JOIN users u ON p.client_id = u.id
@@ -264,7 +264,7 @@ class ProjectService {
       query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
       params.push(limit, offset);
       
-      const projects = await databaseService.all(query, params);
+      const projects = await databaseService.query(query, params);
       
       // Compter le total
       let countQuery = 'SELECT COUNT(*) as total FROM projects WHERE client_id = ?';
@@ -312,7 +312,7 @@ class ProjectService {
     try {
       systemLogsService.info('Récupération des tâches du client', 'projects', null, null, { clientId });
       
-      const tasks = await databaseService.all(
+      const tasks = await databaseService.query(
         `SELECT t.*, p.name as project_name
          FROM tasks t
          LEFT JOIN projects p ON t.project_id = p.id

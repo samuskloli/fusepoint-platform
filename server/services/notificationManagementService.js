@@ -469,7 +469,7 @@ class NotificationManagementService {
          data
        ]);
  
-       return result.lastID;
+       return result.insertId;
  
      } catch (error) {
        console.error('Erreur lors de la création de la notification système:', error);
@@ -489,9 +489,9 @@ class NotificationManagementService {
        // Créer la table si elle n'existe pas
        await databaseService.run(`
          CREATE TABLE IF NOT EXISTS communication_history (
-           id INT AUTO_INCREMENT PRIMARY KEY,
-           client_id INT NOT NULL,
-           agent_id INT NOT NULL,
+           id INTEGER PRIMARY KEY AUTOINCREMENT,
+           client_id INTEGER NOT NULL,
+           agent_id INTEGER NOT NULL,
            type VARCHAR(50) NOT NULL,
            content TEXT NOT NULL,
            metadata TEXT,
@@ -512,7 +512,7 @@ class NotificationManagementService {
          JSON.stringify(metadata || {})
        ]);
  
-       return result.lastID;
+       return result.insertId;
  
      } catch (error) {
        console.error('Erreur lors de l\'enregistrement de la communication:', error);

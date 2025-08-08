@@ -38,21 +38,55 @@ export function useClientManagement() {
   
   // Créer un nouveau client
   const createClient = async (clientData) => {
+    console.log('📝 Création de client appelée avec:', clientData);
+    console.log('📝 Type de clientData:', typeof clientData);
+    console.log('📝 Clés de clientData:', Object.keys(clientData));
+    
     try {
-      const response = await api.post('/api/agent/clients', clientData)
-      
-      if (response.data.success) {
-        // Ajouter le nouveau client à la liste locale
-        clients.value.unshift(response.data.client)
-        return response.data.client
-      } else {
-        throw new Error(response.data.message || 'Erreur lors de la création')
+      // Vérifier que les champs requis sont présents
+      if (!clientData.first_name || !clientData.last_name) {
+        console.error('❌ Champs requis manquants:', {
+          first_name: clientData.first_name,
+          last_name: clientData.last_name
+        });
+        throw new Error('Les champs first_name et last_name sont requis');
       }
-    } catch (err) {
-      console.error('Erreur lors de la création du client:', err)
-      throw err
+      
+      // Mapper les données
+      const backendData = {
+        first_name: clientData.first_name,
+        last_name: clientData.last_name,
+        email: clientData.email,
+        phone: clientData.phone,
+        company: clientData.company,
+        status: clientData.status
+      };
+      console.log('📤 Données envoyées au backend:', backendData);
+      console.log('📤 JSON stringifié:', JSON.stringify(backendData, null, 2));
+      
+      const response = await api.post('/api/agent/clients', backendData);
+      console.log('✅ Réponse du backend:', response.data);
+      
+      clients.value.push(response.data);
+      showSuccess('Client créé avec succès');
+    } catch (error) {
+      console.error('❌ Erreur lors de la création:', error);
+      console.error('❌ Type d\'erreur:', typeof error);
+      console.error('❌ Message d\'erreur:', error.message);
+      if (error.response) {
+        console.error('❌ Statut:', error.response.status);
+        console.error('❌ Données de réponse:', error.response.data);
+        console.error('❌ Headers de réponse:', error.response.headers);
+      }
+      if (error.request) {
+        console.error('❌ Requête:', error.request);
+      }
+      showError('Erreur lors de la création du client');
+      throw error; // Re-lancer l'erreur pour que le composant puisse la gérer
+    } finally {
+      loading.value = false;
     }
-  }
+  };
   
   // Mettre à jour un client existant
   const updateClient = async (clientId, clientData) => {
@@ -127,6 +161,33 @@ export function useClientManagement() {
     } catch (err) {
       console.error('Erreur lors des suppressions en masse:', err)
       throw err
+    }
+  }
+
+  // Mettre à jour le mot de passe d'un client
+  const updateClientPassword = async (clientId, newPassword) => {
+    try {
+      loading.value = true
+      error.value = null
+      
+      const response = await api.put(`${API_BASE}/${clientId}/password`, {
+        newPassword
+      })
+      
+      if (response.data.success) {
+        showSuccess(response.data.message || 'Mot de passe du client mis à jour avec succès')
+        return response.data
+      } else {
+        throw new Error(response.data.message || 'Erreur lors de la mise à jour du mot de passe')
+      }
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour du mot de passe:', err)
+      const errorMessage = err.response?.data?.message || err.message || 'Erreur lors de la mise à jour du mot de passe'
+      error.value = errorMessage
+      showError(errorMessage)
+      throw err
+    } finally {
+      loading.value = false
     }
   }
   
@@ -267,6 +328,7 @@ export function useClientManagement() {
     updateClient,
     deleteClient,
     bulkDeleteClients,
+    updateClientPassword,
     
     // Gestion de statut
     changeClientStatus,

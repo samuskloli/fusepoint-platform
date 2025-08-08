@@ -1,6 +1,15 @@
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+
+// Configuration de la base de données MariaDB
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'fusepoint',
+  port: process.env.DB_PORT || 3306
+};
 
 /**
  * Script d'initialisation de la base de données
@@ -9,16 +18,8 @@ async function initializeDatabase() {
   try {
     console.log('🚀 Initialisation de la base de données...');
     
-    // Chemin vers la base de données
-    const dbPath = path.join(__dirname, '..', 'database', 'fusepoint.db');
+    // Chemin vers le fichier de schéma
     const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
-    
-    // Créer le répertoire database s'il n'existe pas
-    const dbDir = path.dirname(dbPath);
-    if (!fs.existsSync(dbDir)) {
-      fs.mkdirSync(dbDir, { recursive: true });
-      console.log('📁 Répertoire database créé');
-    }
     
     // Lire le fichier SQL
     if (!fs.existsSync(schemaPath)) {
@@ -29,45 +30,35 @@ async function initializeDatabase() {
     const sqlContent = fs.readFileSync(schemaPath, 'utf8');
     console.log('📄 Fichier schema.sql lu avec succès');
     
-    // Créer la base de données
-    const db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error('❌ Erreur création base de données:', err);
-        process.exit(1);
-      }
-      console.log('✅ Base de données créée/ouverte:', dbPath);
-    });
+    // Créer la connexion à la base de données
+    const connection = await mysql.createConnection(dbConfig);
+    console.log('✅ Connexion à la base de données établie');
     
-    // Exécuter le script SQL
-    return new Promise((resolve, reject) => {
-      db.exec(sqlContent, (err) => {
-        if (err) {
-          console.error('❌ Erreur exécution SQL:', err);
-          reject(err);
-        } else {
-          console.log('✅ Tables créées et données de test insérées');
-          
-          // Vérifier les tables créées
-          db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, tables) => {
-            if (err) {
-              console.error('❌ Erreur vérification tables:', err);
-            } else {
-              console.log('📋 Tables créées:', tables.map(t => t.name).join(', '));
-            }
-            
-            db.close((err) => {
-              if (err) {
-                console.error('❌ Erreur fermeture base de données:', err);
-                reject(err);
-              } else {
-                console.log('✅ Base de données fermée');
-                resolve();
-              }
-            });
-          });
-        }
-      });
-    });
+    // Diviser le contenu SQL en requêtes individuelles
+    const queries = sqlContent.split(';').filter(query => query.trim());
+    
+    // Exécuter chaque requête
+    for (const query of queries) {
+      if (query.trim()) {
+        await connection.execute(query);
+      }
+    }
+    
+    console.log('✅ Tables créées et données de test insérées');
+    
+    // Vérifier les tables créées
+    const [tables] = await connection.execute(`
+      SELECT TABLE_NAME as name 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = ?
+    `, [dbConfig.database]);
+    
+    console.log('📋 Tables créées:', tables.map(t => t.name).join(', '));
+    
+    await connection.end();
+    console.log('✅ Connexion fermée');
+    
+    return Promise.resolve();
     
   } catch (error) {
     console.error('❌ Erreur initialisation:', error);

@@ -221,7 +221,7 @@
       v-if="showCreateProjectModal"
       :client-id="clientId"
       @close="showCreateProjectModal = false"
-      @create="onProjectCreated"
+      @projectCreated="onProjectCreated"
     />
 
     <!-- Modal d'édition de projet -->
@@ -247,7 +247,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import AgentSidebar from '../components/AgentSidebar.vue'
-import CreateProjectModal from '../components/ProjectManagement/CreateProjectModal.vue'
+import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import EditProjectModal from '../components/ProjectManagement/EditProjectModal.vue'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
 import projectManagementService, { clientProjectService } from '../services/projectManagementService'
@@ -275,10 +275,13 @@ export default {
     const selectedProject = ref(null)
 
     const stats = computed(() => {
-      const totalProjects = projects.value.length
-      const completedProjects = projects.value.filter(p => p.status === 'completed').length
-      const activeProjects = projects.value.filter(p => p.status === 'in_progress').length
-      const overdueProjects = projects.value.filter(p => {
+      // Vérifier que projects.value est un tableau
+      const projectsArray = Array.isArray(projects.value) ? projects.value : []
+      
+      const totalProjects = projectsArray.length
+      const completedProjects = projectsArray.filter(p => p.status === 'completed').length
+      const activeProjects = projectsArray.filter(p => p.status === 'in_progress').length
+      const overdueProjects = projectsArray.filter(p => {
         if (!p.end_date) return false
         return new Date(p.end_date) < new Date() && p.status !== 'completed'
       }).length
@@ -287,9 +290,10 @@ export default {
     })
 
     const filteredProjects = computed(() => {
-      if (!statusFilter.value) return projects.value
-      return projects.value.filter(project => project.status === statusFilter.value)
-    })
+        const projectsArray = Array.isArray(projects.value) ? projects.value : []
+        if (!statusFilter.value) return projectsArray
+        return projectsArray.filter(project => project.status === statusFilter.value)
+      })
 
     const loadClientData = async () => {
       try {
@@ -416,7 +420,8 @@ export default {
       try {
         loading.value = true
         await projectManagementService.deleteProject(selectedProject.value.id)
-        projects.value = projects.value.filter(p => p.id !== selectedProject.value.id)
+        const projectsArray = Array.isArray(projects.value) ? projects.value : []
+        projects.value = projectsArray.filter(p => p.id !== selectedProject.value.id)
         showDeleteModal.value = false
         selectedProject.value = null
         // Notification de succès
@@ -428,25 +433,18 @@ export default {
       }
     }
 
-    const onProjectCreated = async (projectData) => {
+    const onProjectCreated = (projectData) => {
       try {
-        loading.value = true
-        const response = await projectManagementService.createProject(clientId, projectData)
-        
-        if (response.success) {
-          // response.data contient déjà le projet créé
-          projects.value.push(response.data.data)
-          showCreateProjectModal.value = false
-          // Optionnel: afficher une notification de succès
-          console.log('Projet créé avec succès:', response.data.data)
-        } else {
-          console.error('Erreur lors de la création du projet:', response.error)
-          // Optionnel: afficher une notification d'erreur
+        // Vérifier que projects.value est un tableau avant d'ajouter
+        if (!Array.isArray(projects.value)) {
+          projects.value = []
         }
+        // Le modal a déjà créé le projet, on l'ajoute simplement à la liste
+        projects.value.push(projectData)
+        showCreateProjectModal.value = false
+        console.log('Projet créé avec succès:', projectData)
       } catch (error) {
-        console.error('Erreur lors de la création du projet:', error)
-      } finally {
-        loading.value = false
+        console.error('Erreur lors de l\'ajout du projet à la liste:', error)
       }
     }
 

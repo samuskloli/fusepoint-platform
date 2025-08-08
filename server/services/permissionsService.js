@@ -1,294 +1,367 @@
 const MariaDBService = require('./mariadbService');
-const path = require('path');
 
 class PermissionsService {
   constructor() {
-    this.mariadbService = new MariaDBService();
-  }
-
-  // Initialiser le service
-  async init() {
-    try {
-      await this.mariadbService.initialize();
-      await this.initializePermissionsTables();
-    } catch (error) {
-      console.error('Erreur lors de l\'initialisation du service de permissions:', error);
-      throw error;
-    }
+    this.mariadb = new MariaDBService();
+    this.initializePermissionsTables();
   }
 
   // Initialiser les tables de permissions
   async initializePermissionsTables() {
+    const createRolesTable = `
+      CREATE TABLE IF NOT EXISTS roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        description TEXT,
+        is_system_role BOOLEAN DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `;
+
+    const createPermissionsTable = `
+      CREATE TABLE IF NOT EXISTS permissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) UNIQUE NOT NULL,
+        description TEXT,
+        category VARCHAR(100) DEFAULT 'general',
+        resource VARCHAR(100),
+        action VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    const createRolePermissionsTable = `
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        role_id INT NOT NULL,
+        permission_id INT NOT NULL,
+        granted BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
+        FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE,
+        UNIQUE(role_id, permission_id)
+      )
+    `;
+
+    const createUserRolesTable = `
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        role_id INT NOT NULL,
+        assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        assigned_by INT,
+        FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
+        UNIQUE(user_id, role_id)
+      )
+    `;
+
+    // Créer les tables
     try {
-      const createRolesTable = `
-        CREATE TABLE IF NOT EXISTS roles (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          name VARCHAR(255) UNIQUE NOT NULL,
-          description TEXT,
-          is_system_role BOOLEAN DEFAULT 0,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-        )
-      `;
-
-      const createPermissionsTable = `
-        CREATE TABLE IF NOT EXISTS permissions (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          name VARCHAR(255) UNIQUE NOT NULL,
-          description TEXT,
-          category VARCHAR(100) DEFAULT 'general',
-          resource VARCHAR(100),
-          action VARCHAR(100),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `;
-
-      const createRolePermissionsTable = `
-        CREATE TABLE IF NOT EXISTS role_permissions (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          role_id INT NOT NULL,
-          permission_id INT NOT NULL,
-          granted BOOLEAN DEFAULT 1,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
-          FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE CASCADE,
-          UNIQUE(role_id, permission_id)
-        )
-      `;
-
-      const createUserRolesTable = `
-        CREATE TABLE IF NOT EXISTS user_roles (
-          id INT AUTO_INCREMENT PRIMARY KEY,
-          user_id INT NOT NULL,
-          role_id INT NOT NULL,
-          assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          assigned_by INT,
-          FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE CASCADE,
-          UNIQUE(user_id, role_id)
-        )
-      `;
-
-      // Créer les tables
-      await this.mariadbService.query(createRolesTable);
-      await this.mariadbService.query(createPermissionsTable);
-      await this.mariadbService.query(createRolePermissionsTable);
-      await this.mariadbService.query(createUserRolesTable);
-      
+      await this.mariadb.run(createRolesTable);
+      await this.mariadb.run(createPermissionsTable);
+      await this.mariadb.run(createRolePermissionsTable);
+      await this.mariadb.run(createUserRolesTable);
       console.log('Tables de permissions initialisées avec succès');
       await this.insertDefaultData();
-    } catch (error) {
-      console.error('Erreur lors de la création des tables de permissions:', error);
+    } catch (err) {
+      console.error('Erreur lors de la création des tables de permissions:', err);
     }
   }
 
   // Insérer les données par défaut
   async insertDefaultData() {
-    try {
-      // Rôles par défaut
-      const defaultRoles = [
-        { name: 'super_admin', description: 'Super Administrateur avec tous les droits', is_system_role: 1 },
-        { name: 'admin', description: 'Administrateur', is_system_role: 1 },
-        { name: 'agent', description: 'Agent', is_system_role: 1 },
-        { name: 'user', description: 'Utilisateur standard', is_system_role: 1 }
-      ];
+    // Rôles par défaut
+    const defaultRoles = [
+      { name: 'super_admin', description: 'Super Administrateur avec tous les droits', is_system_role: 1 },
+      { name: 'admin', description: 'Administrateur', is_system_role: 1 },
+      { name: 'agent', description: 'Agent', is_system_role: 1 },
+      { name: 'user', description: 'Utilisateur standard', is_system_role: 1 }
+    ];
 
-      // Permissions par défaut
-      const defaultPermissions = [
-        // Permissions système
-        { name: 'system.manage', description: 'Gérer le système', category: 'system', resource: 'system', action: 'manage' },
-        { name: 'system.view_health', description: 'Voir la santé du système', category: 'system', resource: 'system', action: 'view_health' },
-        { name: 'system.view_logs', description: 'Voir les logs système', category: 'system', resource: 'system', action: 'view_logs' },
-        { name: 'system.backup', description: 'Créer des sauvegardes', category: 'system', resource: 'system', action: 'backup' },
-        
-        // Permissions utilisateurs
-        { name: 'users.create', description: 'Créer des utilisateurs', category: 'users', resource: 'users', action: 'create' },
-        { name: 'users.read', description: 'Voir les utilisateurs', category: 'users', resource: 'users', action: 'read' },
-        { name: 'users.update', description: 'Modifier les utilisateurs', category: 'users', resource: 'users', action: 'update' },
-        { name: 'users.delete', description: 'Supprimer les utilisateurs', category: 'users', resource: 'users', action: 'delete' },
-        { name: 'user_management', description: 'Gestion complète des utilisateurs', category: 'users', resource: 'users', action: 'management' },
-        
-        // Permissions rôles
-        { name: 'roles.create', description: 'Créer des rôles', category: 'roles', resource: 'roles', action: 'create' },
-        { name: 'roles.read', description: 'Voir les rôles', category: 'roles', resource: 'roles', action: 'read' },
-        { name: 'roles.update', description: 'Modifier les rôles', category: 'roles', resource: 'roles', action: 'update' },
-        { name: 'roles.delete', description: 'Supprimer les rôles', category: 'roles', resource: 'roles', action: 'delete' },
-        
-        // Permissions paramètres
-        { name: 'settings.read', description: 'Voir les paramètres', category: 'settings', resource: 'settings', action: 'read' },
-        { name: 'settings.update', description: 'Modifier les paramètres', category: 'settings', resource: 'settings', action: 'update' },
-        { name: 'platform.settings.write', description: 'Écrire les paramètres de plateforme', category: 'platform', resource: 'platform', action: 'settings_write' },
-        { name: 'platform.logs.read', description: 'Lire les logs de plateforme', category: 'platform', resource: 'platform', action: 'logs_read' },
-        { name: 'system_backup', description: 'Créer des sauvegardes système', category: 'system', resource: 'system', action: 'backup' },
-        
-        // Permissions agents
-        { name: 'agents.manage', description: 'Gérer les agents', category: 'agents', resource: 'agents', action: 'manage' },
-        { name: 'agents.view', description: 'Voir les agents', category: 'agents', resource: 'agents', action: 'view' },
-        
-        // Permissions accompagnement
-        { name: 'accompagnement.create', description: 'Créer des accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'create' },
-        { name: 'accompagnement.read', description: 'Voir les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'read' },
-        { name: 'accompagnement.update', description: 'Modifier les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'update' },
-        { name: 'accompagnement.delete', description: 'Supprimer les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'delete' }
-      ];
+    // Permissions par défaut
+    const defaultPermissions = [
+      // Permissions système
+      { name: 'system.manage', description: 'Gérer le système', category: 'system', resource: 'system', action: 'manage' },
+      { name: 'system.view_health', description: 'Voir la santé du système', category: 'system', resource: 'system', action: 'view_health' },
+      { name: 'system.view_logs', description: 'Voir les logs système', category: 'system', resource: 'system', action: 'view_logs' },
+      { name: 'system.backup', description: 'Créer des sauvegardes', category: 'system', resource: 'system', action: 'backup' },
+      
+      // Permissions utilisateurs
+      { name: 'users.create', description: 'Créer des utilisateurs', category: 'users', resource: 'users', action: 'create' },
+      { name: 'users.read', description: 'Voir les utilisateurs', category: 'users', resource: 'users', action: 'read' },
+      { name: 'users.update', description: 'Modifier les utilisateurs', category: 'users', resource: 'users', action: 'update' },
+      { name: 'users.delete', description: 'Supprimer les utilisateurs', category: 'users', resource: 'users', action: 'delete' },
+      { name: 'user_management', description: 'Gestion complète des utilisateurs', category: 'users', resource: 'users', action: 'management' },
+      
+      // Permissions rôles
+      { name: 'roles.create', description: 'Créer des rôles', category: 'roles', resource: 'roles', action: 'create' },
+      { name: 'roles.read', description: 'Voir les rôles', category: 'roles', resource: 'roles', action: 'read' },
+      { name: 'roles.update', description: 'Modifier les rôles', category: 'roles', resource: 'roles', action: 'update' },
+      { name: 'roles.delete', description: 'Supprimer les rôles', category: 'roles', resource: 'roles', action: 'delete' },
+      
+      // Permissions paramètres
+      { name: 'settings.read', description: 'Voir les paramètres', category: 'settings', resource: 'settings', action: 'read' },
+      { name: 'settings.update', description: 'Modifier les paramètres', category: 'settings', resource: 'settings', action: 'update' },
+      { name: 'platform.settings.write', description: 'Écrire les paramètres de plateforme', category: 'platform', resource: 'platform', action: 'settings_write' },
+      { name: 'platform.logs.read', description: 'Lire les logs de plateforme', category: 'platform', resource: 'platform', action: 'logs_read' },
+      { name: 'system_backup', description: 'Créer des sauvegardes système', category: 'system', resource: 'system', action: 'backup' },
+      
+      // Permissions agents
+      { name: 'agents.manage', description: 'Gérer les agents', category: 'agents', resource: 'agents', action: 'manage' },
+      { name: 'agents.view', description: 'Voir les agents', category: 'agents', resource: 'agents', action: 'view' },
+      
+      // Permissions accompagnement
+      { name: 'accompagnement.create', description: 'Créer des accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'create' },
+      { name: 'accompagnement.read', description: 'Voir les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'read' },
+      { name: 'accompagnement.update', description: 'Modifier les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'update' },
+      { name: 'accompagnement.delete', description: 'Supprimer les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'delete' }
+    ];
 
-      // Insérer les rôles
-      for (const role of defaultRoles) {
-        try {
-          await this.mariadbService.query(
-            'INSERT IGNORE INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
-            [role.name, role.description, role.is_system_role]
-          );
-        } catch (error) {
-          console.error(`Erreur lors de l'insertion du rôle ${role.name}:`, error);
-        }
+    // Insérer les rôles
+    for (const role of defaultRoles) {
+      try {
+        await this.mariadb.run(
+          'INSERT IGNORE INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
+          [role.name, role.description, role.is_system_role]
+        );
+      } catch (err) {
+        console.error(`Erreur lors de l'insertion du rôle ${role.name}:`, err);
       }
-
-      // Insérer les permissions
-      for (const permission of defaultPermissions) {
-        try {
-          await this.mariadbService.query(
-            'INSERT IGNORE INTO permissions (name, description, category, resource, action) VALUES (?, ?, ?, ?, ?)',
-            [permission.name, permission.description, permission.category, permission.resource, permission.action]
-          );
-        } catch (error) {
-          console.error(`Erreur lors de l'insertion de la permission ${permission.name}:`, error);
-        }
-      }
-
-      // Attribuer toutes les permissions au super_admin
-      await this.assignAllPermissionsToSuperAdmin();
-    } catch (error) {
-      console.error('Erreur lors de l\'insertion des données par défaut:', error);
     }
+
+    // Insérer les permissions
+    for (const permission of defaultPermissions) {
+      try {
+        await this.mariadb.run(
+          'INSERT IGNORE INTO permissions (name, description, category, resource, action) VALUES (?, ?, ?, ?, ?)',
+          [permission.name, permission.description, permission.category, permission.resource, permission.action]
+        );
+      } catch (err) {
+        console.error(`Erreur lors de l'insertion de la permission ${permission.name}:`, err);
+      }
+    }
+
+    // Attribuer toutes les permissions au super_admin
+    await this.assignAllPermissionsToSuperAdmin();
   }
 
   // Attribuer toutes les permissions au super_admin
   async assignAllPermissionsToSuperAdmin() {
     try {
-      const roleResult = await this.mariadbService.query('SELECT id FROM roles WHERE name = "super_admin"');
-      if (!roleResult || roleResult.length === 0) {
+      const role = await this.mariadb.get('SELECT id FROM roles WHERE name = ?', ['super_admin']);
+      if (!role) {
         console.error('Rôle super_admin non trouvé');
         return;
       }
 
-      const role = roleResult[0];
-      const permissions = await this.mariadbService.query('SELECT id FROM permissions');
+      const permissions = await this.mariadb.all('SELECT id FROM permissions');
       
       for (const permission of permissions) {
         try {
-          await this.mariadbService.query(
+          await this.mariadb.run(
             'INSERT IGNORE INTO role_permissions (role_id, permission_id, granted) VALUES (?, ?, 1)',
             [role.id, permission.id]
           );
-        } catch (error) {
-          console.error('Erreur lors de l\'attribution des permissions:', error);
+        } catch (err) {
+          console.error('Erreur lors de l\'attribution des permissions:', err);
         }
       }
-    } catch (error) {
-      console.error('Erreur lors de l\'attribution des permissions au super_admin:', error);
+    } catch (err) {
+      console.error('Erreur lors de l\'attribution des permissions au super_admin:', err);
     }
   }
 
   // Récupérer tous les rôles
   async getAllRoles() {
     try {
-      const rows = await this.mariadbService.query('SELECT * FROM roles ORDER BY name');
+      const rows = await this.mariadb.all('SELECT * FROM roles ORDER BY name');
       return rows.map(role => ({
         ...role,
         is_system_role: Boolean(role.is_system_role)
       }));
-    } catch (error) {
-      throw error;
+    } catch (err) {
+      throw err;
     }
   }
 
   // Récupérer les permissions d'un rôle
   async getRolePermissions(roleId) {
     try {
-      const rows = await this.mariadbService.query(
-        `SELECT p.*, rp.granted 
-         FROM permissions p 
-         LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
-         ORDER BY p.category, p.name`,
+      const query = `
+        SELECT p.*, rp.granted, p.category
+        FROM permissions p
+        LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
+        ORDER BY p.category, p.name
+      `;
+
+      const rows = await this.mariadb.all(query, [roleId]);
+      
+      // Organiser par catégorie
+      const permissionsByCategory = {};
+      
+      rows.forEach(permission => {
+        const category = permission.category || 'general';
+        if (!permissionsByCategory[category]) {
+          permissionsByCategory[category] = {
+            granted: [],
+            denied: []
+          };
+        }
+
+        const permissionData = {
+          id: permission.id,
+          name: permission.name,
+          description: permission.description,
+          resource: permission.resource,
+          action: permission.action
+        };
+
+        if (permission.granted) {
+          permissionsByCategory[category].granted.push(permissionData);
+        } else {
+          permissionsByCategory[category].denied.push(permissionData);
+        }
+      });
+
+      return permissionsByCategory;
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Créer un nouveau rôle
+  async createRole(name, description, isSystemRole = false) {
+    try {
+      const result = await this.mariadb.run(
+        'INSERT INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
+        [name, description, isSystemRole ? 1 : 0]
+      );
+      return { id: result.insertId, affectedRows: result.affectedRows };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Supprimer un rôle
+  async deleteRole(roleId) {
+    try {
+      // Vérifier si c'est un rôle système
+      const role = await this.mariadb.get(
+        'SELECT is_system_role FROM roles WHERE id = ?',
         [roleId]
       );
-      return rows.map(permission => ({
-        ...permission,
-        granted: Boolean(permission.granted)
-      }));
-    } catch (error) {
-      throw error;
+
+      if (!role) {
+        throw new Error('Rôle non trouvé');
+      }
+
+      if (role.is_system_role) {
+        throw new Error('Impossible de supprimer un rôle système');
+      }
+
+      // Supprimer les permissions associées
+      await this.mariadb.run(
+        'DELETE FROM role_permissions WHERE role_id = ?',
+        [roleId]
+      );
+
+      // Supprimer le rôle
+      const result = await this.mariadb.run(
+        'DELETE FROM roles WHERE id = ?',
+        [roleId]
+      );
+
+      return { affectedRows: result.affectedRows };
+    } catch (err) {
+      throw err;
+    }
+  }
+
+  // Mettre à jour les permissions d'un rôle
+  async updateRolePermissions(roleId, permissions) {
+    try {
+      // Supprimer toutes les permissions existantes pour ce rôle
+      await this.mariadb.run(
+        'DELETE FROM role_permissions WHERE role_id = ?',
+        [roleId]
+      );
+
+      // Ajouter les nouvelles permissions
+      if (permissions.length === 0) {
+        return { affectedRows: 0 };
+      }
+
+      let affectedRows = 0;
+      for (const permission of permissions) {
+        const result = await this.mariadb.run(
+          'INSERT INTO role_permissions (role_id, permission_id, granted) VALUES (?, ?, ?)',
+          [roleId, permission.permission_id, permission.granted ? 1 : 0]
+        );
+        affectedRows += result.affectedRows;
+      }
+
+      return { affectedRows };
+    } catch (err) {
+      throw err;
     }
   }
 
   // Récupérer un rôle par nom
   async getRoleByName(roleName) {
     try {
-      const rows = await this.mariadbService.query(
+      const row = await this.mariadb.get(
         'SELECT * FROM roles WHERE name = ?',
         [roleName]
       );
-      const row = rows[0];
-      return row ? {
-        ...row,
-        is_system_role: Boolean(row.is_system_role)
-      } : null;
-    } catch (error) {
-      throw error;
+      return row ? { ...row, is_system_role: Boolean(row.is_system_role) } : null;
+    } catch (err) {
+      throw err;
     }
   }
 
   // Vérifier si un utilisateur a une permission
-  async userHasPermission(userId, resource, action) {
+  async userHasPermission(userId, permissionName) {
     try {
       const query = `
         SELECT COUNT(*) as count
-        FROM users u
-        JOIN roles r ON u.role_id = r.id
-        JOIN role_permissions rp ON r.id = rp.role_id
+        FROM user_roles ur
+        JOIN role_permissions rp ON ur.role_id = rp.role_id
         JOIN permissions p ON rp.permission_id = p.id
-        WHERE u.id = ? AND p.resource = ? AND p.action = ? AND rp.granted = 1
+        WHERE ur.user_id = ? AND p.name = ? AND rp.granted = 1
       `;
 
-      const rows = await this.mariadbService.query(query, [userId, resource, action]);
-      return rows[0].count > 0;
-    } catch (error) {
-      throw error;
+      const row = await this.mariadb.get(query, [userId, permissionName]);
+      return row.count > 0;
+    } catch (err) {
+      throw err;
     }
   }
 
   // Attribuer un rôle à un utilisateur
   async assignRoleToUser(userId, roleId, assignedBy = null) {
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        'INSERT OR IGNORE INTO user_roles (user_id, role_id, assigned_by) VALUES (?, ?, ?)',
-        [userId, roleId, assignedBy],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ success: this.changes > 0 });
-          }
-        }
+    try {
+      const result = await this.mariadb.run(
+        'INSERT IGNORE INTO user_roles (user_id, role_id, assigned_by) VALUES (?, ?, ?)',
+        [userId, roleId, assignedBy]
       );
-    });
+      return { success: result.affectedRows > 0 };
+    } catch (err) {
+      throw err;
+    }
   }
 
   // Retirer un rôle d'un utilisateur
   async removeRoleFromUser(userId, roleId) {
-    return new Promise((resolve, reject) => {
-      this.db.run(
+    try {
+      const result = await this.mariadb.run(
         'DELETE FROM user_roles WHERE user_id = ? AND role_id = ?',
-        [userId, roleId],
-        function(err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve({ success: this.changes > 0 });
-          }
-        }
+        [userId, roleId]
       );
-    });
+      return { success: result.affectedRows > 0 };
+    } catch (err) {
+      throw err;
+    }
   }
 
   // Récupérer les rôles d'un utilisateur
@@ -302,49 +375,38 @@ class PermissionsService {
         ORDER BY r.name
       `;
 
-      const rows = await this.mariadbService.query(query, [userId]);
+      const rows = await this.mariadb.all(query, [userId]);
       return rows.map(role => ({
         ...role,
         is_system_role: Boolean(role.is_system_role)
       }));
-    } catch (error) {
-      console.error('❌ Erreur récupération rôles utilisateur:', error);
-      return [];
+    } catch (err) {
+      throw err;
     }
   }
 
   // Récupérer toutes les permissions
   async getAllPermissions() {
-    return new Promise((resolve, reject) => {
-      this.db.all(
-        'SELECT * FROM permissions ORDER BY category, name',
-        [],
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows);
-          }
-        }
+    try {
+      const rows = await this.mariadb.all(
+        'SELECT * FROM permissions ORDER BY category, name'
       );
-    });
+      return rows;
+    } catch (err) {
+      throw err;
+    }
   }
 
   // Récupérer les catégories de permissions
   async getPermissionCategories() {
-    return new Promise((resolve, reject) => {
-      this.db.all(
-        'SELECT DISTINCT category FROM permissions ORDER BY category',
-        [],
-        (err, rows) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(rows.map(row => row.category));
-          }
-        }
+    try {
+      const rows = await this.mariadb.all(
+        'SELECT DISTINCT category FROM permissions ORDER BY category'
       );
-    });
+      return rows.map(row => row.category);
+    } catch (err) {
+      throw err;
+    }
   }
 
   // Vérifier si un utilisateur est super admin
@@ -357,32 +419,19 @@ class PermissionsService {
         WHERE ur.user_id = ? AND r.name = 'super_admin'
       `;
 
-      const rows = await this.mariadbService.query(query, [userId]);
-      return rows[0].count > 0;
-    } catch (error) {
-      console.error('❌ Erreur vérification super admin:', error);
-      return false;
+      const row = await this.mariadb.get(query, [userId]);
+      return row.count > 0;
+    } catch (err) {
+      throw err;
     }
   }
 
   // Fermer la connexion
   close() {
-    this.db.close((err) => {
-      if (err) {
-        console.error('Erreur lors de la fermeture de la base de données:', err);
-      } else {
-        console.log('Connexion à la base de données fermée.');
-      }
-    });
+    if (this.mariadb && this.mariadb.close) {
+      this.mariadb.close();
+    }
   }
 }
 
-// Créer et initialiser l'instance
-const permissionsServiceInstance = new PermissionsService();
-
-// Initialiser le service de manière asynchrone
-permissionsServiceInstance.init().catch(error => {
-  console.error('Erreur lors de l\'initialisation du service de permissions:', error);
-});
-
-module.exports = permissionsServiceInstance;
+module.exports = new PermissionsService();

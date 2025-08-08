@@ -87,7 +87,7 @@ router.get('/:companyId', async (req, res) => {
       const { companyId } = req.params;
       const { user } = req;
 
-      const company = await databaseService.db.get(
+      const company = await databaseService.get(
         'SELECT * FROM companies WHERE id = ?',
         [companyId]
       );
@@ -97,7 +97,7 @@ router.get('/:companyId', async (req, res) => {
       }
 
       // Vérifier que l'utilisateur a accès à cette entreprise
-      const userCompany = await databaseService.db.get(
+      const userCompany = await databaseService.get(
         'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ?',
         [user.id, companyId]
       );
@@ -132,7 +132,7 @@ router.put('/:companyId', async (req, res) => {
       const { user } = req;
       const { companyId } = req.params;
       
-      const userCompany = await databaseService.db.get(
+      const userCompany = await databaseService.get(
         'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ? AND (role = "admin" OR role = "owner")',
         [user.id, companyId]
       );
@@ -149,7 +149,7 @@ router.put('/:companyId', async (req, res) => {
         });
       }
 
-      await databaseService.db.run(
+      await databaseService.run(
         `UPDATE companies 
          SET name = ?, industry = ?, size = ?, location = ?, website = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
          WHERE id = ?`,
@@ -188,7 +188,7 @@ router.post('/:companyId/api-config', async (req, res) => {
       const { user } = req;
       const { companyId } = req.params;
       
-      const userCompany = await databaseService.db.get(
+      const userCompany = await databaseService.get(
         'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ? AND (role = "admin" OR role = "owner")',
         [user.id, companyId]
       );
@@ -320,7 +320,7 @@ router.post('/:companyId/test-api', async (req, res) => {
       const { user } = req;
       const { companyId } = req.params;
       
-      const userCompany = await databaseService.db.get(
+      const userCompany = await databaseService.get(
         'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ? AND (role = "admin" OR role = "owner")',
         [user.id, companyId]
       );
@@ -413,7 +413,7 @@ router.get('/:companyId/users', async (req, res) => {
          return res.status(403).json({ error: 'Permissions insuffisantes' });
        }
 
-      const users = await databaseService.db.all(
+      const users = await databaseService.all(
         `SELECT u.id, u.email, u.first_name, u.last_name, uc.role, uc.permissions, uc.created_at
          FROM users u
          JOIN user_companies uc ON u.id = uc.user_id
@@ -448,7 +448,7 @@ router.delete('/:companyId',
       const { user } = req;
 
       // Vérifier que l'utilisateur est propriétaire
-      const userCompany = await databaseService.db.get(
+      const userCompany = await databaseService.get(
         'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ? AND role = "owner"',
         [user.id, companyId]
       );
@@ -460,7 +460,7 @@ router.delete('/:companyId',
       }
 
       // Supprimer l'entreprise (cascade supprimera les relations)
-      await databaseService.db.run(
+      await databaseService.run(
         'DELETE FROM companies WHERE id = ?',
         [companyId]
       );

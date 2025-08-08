@@ -144,11 +144,9 @@ class BulkEmailService {
       
       // Créer une entrée dans agent_prestataires pour la compatibilité
       await databaseService.run(`
-        INSERT INTO agent_prestataires 
+        INSERT OR REPLACE INTO agent_prestataires 
         (agent_id, prestataire_id, status, assigned_at, created_at, updated_at)
         VALUES (?, ?, 'active', NOW(), NOW(), NOW())
-        ON DUPLICATE KEY UPDATE 
-        status = VALUES(status), assigned_at = VALUES(assigned_at), updated_at = VALUES(updated_at)
       `, [availableAgent.id, clientId]);
       
       return {

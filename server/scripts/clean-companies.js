@@ -1,31 +1,33 @@
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2/promise');
 const path = require('path');
 
-// Chemin vers la base de données
-const dbPath = path.join(__dirname, '../database/fusepoint.db');
+// Configuration de la base de données MariaDB
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'fusepoint',
+  port: process.env.DB_PORT || 3306
+};
 
-// Fonction utilitaire pour promisifier les requêtes SQLite
-function dbRun(db, query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(query, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
+// Fonction utilitaire pour exécuter les requêtes MariaDB
+async function dbRun(connection, query, params = []) {
+  const [result] = await connection.execute(query, params);
+  return { insertId: result.insertId, affectedRows: result.affectedRows };
 }
 
 // Fonction pour nettoyer et recréer les entreprises
 async function cleanCompanies() {
-  const db = new sqlite3.Database(dbPath);
+  const connection = await mysql.createConnection(dbConfig);
   
   try {
     console.log('🧹 Nettoyage de la table companies...');
     
     // Supprimer toutes les entreprises
-    await dbRun(db, 'DELETE FROM companies');
+    await dbRun(connection, 'DELETE FROM companies');
     
     // Réinitialiser l'auto-increment
-    await dbRun(db, 'DELETE FROM sqlite_sequence WHERE name="companies"');
+    await dbRun(connection, 'ALTER TABLE companies AUTO_INCREMENT = 1');
     
     console.log('✅ Table companies nettoyée');
     
@@ -67,7 +69,7 @@ async function cleanCompanies() {
     
     // Insérer les entreprises
     for (const company of defaultCompanies) {
-      await dbRun(db, `
+      await dbRun(connection, `
         INSERT INTO companies (name, description, industry, size, location, website) 
         VALUES (?, ?, ?, ?, ?, ?)
       `, [
@@ -87,7 +89,7 @@ async function cleanCompanies() {
     console.error('❌ Erreur lors du nettoyage:', error);
     throw error;
   } finally {
-    db.close();
+    await connection.end();
   }
 }
 

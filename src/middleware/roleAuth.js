@@ -30,7 +30,31 @@ export const requireRole = (allowedRoles = []) => {
 /**
  * Middleware spécifique pour les agents/admins
  */
-export const requireAgent = requireRole(['admin', 'agent', 'super_admin'])
+export const requireAgent = (to, from, next) => {
+  const authStore = useAuthStore()
+  
+  // Vérifier si l'utilisateur est authentifié
+  if (!authStore.isAuthenticated) {
+    next('/login')
+    return
+  }
+  
+  // Utiliser la logique du store pour vérifier l'accès agent
+  if (authStore.isAgent || authStore.isSuperAdmin) {
+    next()
+    return
+  }
+  
+  // Fallback sur la vérification de rôle classique
+  const userRole = authStore.user?.role
+  if (['admin', 'agent', 'super_admin'].includes(userRole)) {
+    next()
+    return
+  }
+  
+  // Rediriger vers le dashboard principal si pas le bon rôle
+  next('/dashboard')
+}
 
 /**
  * Middleware spécifique pour les admins

@@ -121,7 +121,7 @@ class ClientService {
       const updateFields = [];
       const updateValues = [];
       
-      const allowedFields = ['first_name', 'last_name', 'email', 'phone', 'company', 'company_id'];
+      const allowedFields = ['first_name', 'last_name', 'email', 'company', 'company_id'];
       
       allowedFields.forEach(field => {
         if (updateData[field] !== undefined) {
@@ -149,7 +149,7 @@ class ClientService {
       
       const result = await databaseService.run(updateQuery, updateValues);
       
-      if (result.changes === 0) {
+      if (result.affectedRows === 0) {
         const error = new Error('Erreur lors de la mise à jour du client');
         error.code = 'UPDATE_FAILED';
         throw error;
@@ -158,7 +158,7 @@ class ClientService {
       // Récupérer le client mis à jour avec les informations de l'entreprise
       const updatedClient = await databaseService.get(
         `SELECT 
-          u.id, u.first_name, u.last_name, u.email, u.phone, u.company, u.company_id, u.is_active, u.created_at, u.updated_at,
+          u.id, u.first_name, u.last_name, u.email, u.company, u.company_id, u.is_active, u.created_at, u.updated_at,
           c.name as company_name, c.industry, c.size, c.location
          FROM users u
          LEFT JOIN companies c ON u.company_id = c.id
@@ -190,11 +190,7 @@ class ClientService {
    */
   async updateClientStatus(clientId, status, agentId = null) {
     try {
-      try {
-        await systemLogsService.info('Mise à jour du statut du client', 'clients', null, null, { clientId, status, agentId });
-      } catch (logError) {
-        console.error('❌ Erreur lors du log initial:', logError.message);
-      }
+      systemLogsService.info('Mise à jour du statut du client', 'clients', null, null, { clientId, status, agentId });
       
       // Validation du statut
       if (!['active', 'inactive'].includes(status)) {
@@ -226,11 +222,6 @@ class ClientService {
       
       // Envoyer un email de notification au client
       try {
-        // Attendre que le service email soit prêt
-        if (!emailService.transporter) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-        
         // Récupérer les informations de l'agent si fourni
         let agentData = {
           agentName: 'Équipe Fusepoint',
@@ -260,41 +251,20 @@ class ClientService {
         
         if (status === 'active') {
           await emailService.sendClientActivationEmail(clientData);
-          try {
-            await systemLogsService.info('Email d\'activation envoyé', 'emails', null, null, { email: client.email });
-          } catch (logError) {
-            console.error('❌ Erreur lors du log d\'activation:', logError.message);
-          }
+          systemLogsService.info('Email d\'activation envoyé', 'emails', null, null, { email: client.email });
         } else {
           await emailService.sendClientDeactivationEmail(clientData);
-          try {
-            await systemLogsService.info('Email de désactivation envoyé', 'emails', null, null, { email: client.email });
-          } catch (logError) {
-            console.error('❌ Erreur lors du log de désactivation:', logError.message);
-          }
+          systemLogsService.info('Email de désactivation envoyé', 'emails', null, null, { email: client.email });
         }
       } catch (emailError) {
-        console.error('❌ Erreur lors de l\'envoi de l\'email de notification:', {
+        systemLogsService.error('Erreur lors de l\'envoi de l\'email', 'emails', null, null, {
           email: client.email,
-          error: emailError.message,
-          stack: emailError.stack
+          error: emailError.message
         });
-        try {
-          await systemLogsService.error('Erreur lors de l\'envoi de l\'email', 'emails', null, null, {
-            email: client.email,
-            error: emailError.message
-          });
-        } catch (logError) {
-          console.error('❌ Erreur lors du log d\'erreur email:', logError.message);
-        }
         // Ne pas faire échouer la requête si l'email échoue
       }
       
-      try {
-        await systemLogsService.info('Statut du client mis à jour avec succès', 'clients', null, null, { clientId, status });
-      } catch (logError) {
-        console.error('❌ Erreur lors du log de succès:', logError.message);
-      }
+      systemLogsService.info('Statut du client mis à jour avec succès', 'clients', null, null, { clientId, status });
       
       return {
         clientId: clientId,
@@ -302,7 +272,7 @@ class ClientService {
         isActive: isActive
       };
     } catch (error) {
-      console.error('❌ Erreur lors de la mise à jour du statut du client:', { 
+      translationService.log('error', 'clients.errorUpdatingClientStatus', { 
         clientId, 
         status, 
         error: error.message 
@@ -321,7 +291,7 @@ class ClientService {
    */
   async deleteClient(clientId, agentId, password, reason) {
     try {
-      await systemLogsService.info('Suppression du client', 'clients', null, null, { clientId, agentId });
+      systemLogsService.info('Suppression du client', 'clients', null, null, { clientId, agentId });
       
       // Vérifier le mot de passe de l'agent
       const agent = await databaseService.get(
@@ -368,7 +338,7 @@ class ClientService {
         [clientId]
       );
       
-      if (result.changes === 0) {
+      if (result.affectedRows === 0) {
         const error = new Error('Erreur lors de la suppression du client');
         error.code = 'DELETE_FAILED';
         throw error;
@@ -394,17 +364,17 @@ class ClientService {
           ]
         );
       } catch (logError) {
-        await systemLogsService.error('Erreur lors de la création du log', 'logs', null, null, { error: logError.message });
+        systemLogsService.error('Erreur lors de la création du log', 'logs', null, null, { error: logError.message });
       }
       
-      await systemLogsService.info('Client supprimé avec succès', 'clients', null, null, { clientId });
+      systemLogsService.info('Client supprimé avec succès', 'clients', null, null, { clientId });
       
       return {
         clientId,
         status: 'deleted'
       };
     } catch (error) {
-      console.error('❌ Erreur lors de la suppression du client:', { 
+      translationService.log('error', 'clients.errorDeletingClient', { 
         clientId, 
         agentId, 
         error: error.message 
@@ -420,7 +390,7 @@ class ClientService {
    */
   async getClientStats(clientId) {
     try {
-      await systemLogsService.info('Récupération des statistiques du client', 'clients', null, null, { clientId });
+      systemLogsService.info('Récupération des statistiques du client', 'clients', null, null, { clientId });
       
       // Vérifier que le client existe
       const client = await databaseService.get(
@@ -543,7 +513,7 @@ class ClientService {
       query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
       params.push(limit, offset);
       
-      const notifications = await databaseService.all(query, params);
+      const notifications = await databaseService.query(query, params);
       
       systemLogsService.info('Notifications du client récupérées', 'clients', null, null, { 
         clientId, 
@@ -583,12 +553,12 @@ class ClientService {
       
       systemLogsService.info('Notifications marquées comme lues', 'clients', null, null, { 
         agentId, 
-        count: result.changes 
+        count: result.affectedRows 
       });
       
       return {
         success: true,
-        markedCount: result.changes
+        markedCount: result.affectedRows
       };
     } catch (error) {
       systemLogsService.error('Erreur lors du marquage des notifications', 'clients', null, null, { 
@@ -610,7 +580,7 @@ class ClientService {
       systemLogsService.info('Récupération du client par ID', 'clients', null, null, { clientId });
       
       const client = await databaseService.get(
-        'SELECT id, first_name, last_name, email, phone, is_active, agent_id, created_at, updated_at FROM users WHERE id = ? AND role IN ("user", "client")',
+        'SELECT id, first_name, last_name, email, is_active, agent_id, last_login, created_at, updated_at FROM users WHERE id = ? AND role IN ("user", "client")',
         [clientId]
       );
       
@@ -626,6 +596,8 @@ class ClientService {
       
       return {
         ...client,
+        firstName: client.first_name,
+        lastName: client.last_name,
         status: client.is_active ? 'active' : 'inactive'
       };
     } catch (error) {
@@ -677,7 +649,7 @@ class ClientService {
         [agentId, clientId]
       );
       
-      if (result.changes === 0) {
+      if (result.affectedRows === 0) {
         const error = new Error('Échec de l\'assignation');
         error.code = 'ASSIGNMENT_FAILED';
         throw error;

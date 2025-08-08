@@ -118,6 +118,7 @@
             @send-message="openSendMessageModal"
             @toggle-status="toggleClientStatus"
             @status-change="handleStatusChange"
+            @show-client-info="showClientInfo"
             @retry="loadClients"
           />
 
@@ -187,6 +188,39 @@
     @sent="handleNotificationSent"
     @close="closeSendNotificationModal"
   />
+
+  <!-- Modal d'information client -->
+  <ClientInfoModal
+    :show="showInfoModal"
+    :client="selectedClient || {}"
+    :messages="messages.infoModal"
+    @close="closeInfoModal"
+    @edit="editClientFromInfo"
+    @send-email="openSendEmailModal"
+    @assign-agent="openAssignAgentModal"
+    @change-password="openChangePasswordModal"
+  />
+
+  <!-- Modal de modification de mot de passe -->
+  <ChangePasswordModal
+    :show="showChangePasswordModal"
+    :client="selectedClient || {}"
+    :loading="isChangingPassword"
+    @close="closeChangePasswordModal"
+    @submit="handleChangePassword"
+  />
+
+  <!-- Modal de création/édition de client -->
+  <ClientModal
+    :show="showCreateModal || showEditModal"
+    :client="newClient"
+    :is-editing="showEditModal"
+    :validation-errors="validationErrors"
+    :is-saving="isSaving"
+    :messages="messages.modal"
+    @save="(clientData) => showEditModal ? updateClient(clientData) : createClient(clientData)"
+    @close="closeModal"
+  />
 </template>
 
 <script>
@@ -197,6 +231,8 @@ import SearchAndFilters from '@/components/clients/SearchAndFilters.vue'
 import ClientsTable from '@/components/clients/ClientsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import ClientModal from '@/components/clients/ClientModal.vue'
+import ClientInfoModal from '@/components/clients/ClientInfoModal.vue'
+import ChangePasswordModal from '@/components/clients/ChangePasswordModal.vue'
 import DeleteModal from '@/components/clients/DeleteModal.vue'
 import BulkDeleteModal from '@/components/clients/BulkDeleteModal.vue'
 import AgentAssignmentModal from '@/components/AgentAssignmentModal.vue'
@@ -216,6 +252,8 @@ export default {
     ClientsTable,
     Pagination,
     ClientModal,
+    ClientInfoModal,
+    ChangePasswordModal,
     DeleteModal,
     BulkDeleteModal,
     AgentAssignmentModal,
@@ -238,7 +276,8 @@ export default {
       createClient: createClientAPI,
       updateClient: updateClientAPI,
       deleteClient: deleteClientAPI,
-      bulkDeleteClients: bulkDeleteClientsAPI
+      bulkDeleteClients: bulkDeleteClientsAPI,
+      updateClientPassword: updateClientPasswordAPI
     } = useClientManagement()
     const {
       changeClientStatus,
@@ -271,6 +310,7 @@ export default {
     // Modales
     const showCreateModal = ref(false)
     const showEditModal = ref(false)
+    const showInfoModal = ref(false)
     const showDeleteModal = ref(false)
     const showBulkDeleteModal = ref(false)
     
@@ -300,12 +340,14 @@ export default {
     const showAssignAgentModal = ref(false)
     const showEmailModal = ref(false)
     const showNotificationModal = ref(false)
+    const showChangePasswordModal = ref(false)
     const selectedClient = ref(null)
     const selectedClientForAssignment = ref(null)
     const loadingAgents = ref(false)
     const assigningAgent = ref(false)
     const sendingEmail = ref(false)
     const sendingNotification = ref(false)
+    const isChangingPassword = ref(false)
     const availableAgents = ref([])
     
     const emailForm = ref({
@@ -429,6 +471,21 @@ export default {
       validationErrors.value = {}
     }
     
+    const showClientInfo = (client) => {
+      selectedClient.value = client
+      showInfoModal.value = true
+    }
+    
+    const closeInfoModal = () => {
+      showInfoModal.value = false
+      selectedClient.value = null
+    }
+    
+    const editClientFromInfo = (client) => {
+      closeInfoModal()
+      editClient(client)
+    }
+    
     const editClient = (client) => {
       newClient.value = { ...client }
       showEditModal.value = true
@@ -457,12 +514,21 @@ export default {
     }
     
     // Actions CRUD
-    const createClient = async () => {
+    const createClient = async (clientData = null) => {
+      console.log('🏗️ AgentClients - createClient appelé avec:', clientData);
+      console.log('🏗️ AgentClients - newClient.value:', newClient.value);
+      
       try {
         isSaving.value = true
         validationErrors.value = {}
         
-        await createClientAPI(newClient.value)
+        // Utiliser les données passées en paramètre ou les données par défaut
+        const dataToSave = clientData || newClient.value
+        console.log('🏗️ AgentClients - dataToSave final:', dataToSave);
+        console.log('🏗️ AgentClients - dataToSave.first_name:', dataToSave.first_name);
+        console.log('🏗️ AgentClients - dataToSave.last_name:', dataToSave.last_name);
+        
+        await createClientAPI(dataToSave)
         showSuccess(messages.notifications.clientCreated)
         closeModal()
         await loadClients()
@@ -477,12 +543,14 @@ export default {
       }
     }
     
-    const updateClient = async () => {
+    const updateClient = async (clientData = null) => {
       try {
         isSaving.value = true
         validationErrors.value = {}
         
-        await updateClientAPI(newClient.value.id, newClient.value)
+        // Utiliser les données passées en paramètre ou les données par défaut
+        const dataToSave = clientData || newClient.value
+        await updateClientAPI(dataToSave.id, dataToSave)
         showSuccess(messages.notifications.clientUpdated)
         closeModal()
         await loadClients()
@@ -567,14 +635,27 @@ export default {
     const loadAvailableAgents = async () => {
       loadingAgents.value = true
       try {
+        // Utiliser la même logique de récupération de token que aiChatService
+        const authToken = localStorage.getItem('accessToken') || localStorage.getItem('authToken') || null
+        
+        if (!authToken) {
+          console.error('Aucun token d\'authentification trouvé')
+          return
+        }
+        
         const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/agent/available`, {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
           }
         })
+        
         if (response.ok) {
           const data = await response.json()
-          availableAgents.value = data.data
+          availableAgents.value = data.data || data
+          console.log('Agents disponibles chargés:', availableAgents.value)
+        } else {
+          console.error('Erreur HTTP lors du chargement des agents:', response.status, response.statusText)
         }
       } catch (error) {
         console.error('Erreur lors du chargement des agents:', error)
@@ -690,6 +771,30 @@ export default {
       // Alias pour openSendNotificationModal
       openSendNotificationModal(client)
     }
+    
+    const openChangePasswordModal = (client) => {
+      selectedClient.value = client
+      showChangePasswordModal.value = true
+    }
+    
+    const closeChangePasswordModal = () => {
+      showChangePasswordModal.value = false
+      selectedClient.value = null
+    }
+    
+    const handleChangePassword = async (passwordData) => {
+      try {
+        isChangingPassword.value = true
+        await updateClientPasswordAPI(passwordData.clientId, passwordData.newPassword)
+        showSuccess('Mot de passe modifié avec succès')
+        closeChangePasswordModal()
+      } catch (error) {
+        console.error('Erreur lors de la modification du mot de passe:', error)
+        showError('Erreur lors de la modification du mot de passe')
+      } finally {
+        isChangingPassword.value = false
+      }
+    }
 
     // Watchers
     watch([searchQuery, filters], () => {
@@ -718,10 +823,12 @@ export default {
       // Modales
       showCreateModal,
       showEditModal,
+      showInfoModal,
       showDeleteModal,
       showBulkDeleteModal,
       showAssignAgentModal,
       showEmailModal,
+      showChangePasswordModal,
       
       // Données
       newClient,
@@ -741,6 +848,7 @@ export default {
       loadingAgents,
       assigningAgent,
       sendingEmail,
+      isChangingPassword,
       validationErrors,
       
       // Computed
@@ -756,6 +864,9 @@ export default {
       nextPage,
       goToPage,
       closeModal,
+      showClientInfo,
+      closeInfoModal,
+      editClientFromInfo,
       editClient,
       openDeleteModal,
       closeDeleteModal,
@@ -782,6 +893,9 @@ export default {
       handleSendNotification,
       handleNotificationSent,
       openSendMessageModal,
+      openChangePasswordModal,
+      closeChangePasswordModal,
+      handleChangePassword,
       loadClients,
       showSuccess,
       showError

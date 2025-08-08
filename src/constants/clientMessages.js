@@ -78,7 +78,31 @@ export const MESSAGES = {
     cancelButton: 'Annuler',
     createButton: 'Créer',
     editButton: 'Modifier',
-    saving: 'Enregistrement...'
+    saving: 'Enregistrement...',
+    lastLogin: 'Dernière connexion',
+    neverConnected: 'Jamais connecté'
+  },
+  
+  // Modal d'information client
+  infoModal: {
+    clientDetails: 'Détails du client',
+    personalInfo: 'Informations personnelles',
+    systemInfo: 'Informations système',
+    firstName: 'Prénom',
+    lastName: 'Nom',
+    email: 'Email',
+    phone: 'Téléphone',
+    company: 'Entreprise',
+    status: 'Statut',
+    assignedAgent: 'Agent attribué',
+    noAgentAssigned: 'Aucun agent attribué',
+    createdAt: 'Date de création',
+    lastLogin: 'Dernière connexion',
+    neverConnected: 'Jamais connecté',
+    edit: 'Modifier',
+    sendEmail: 'Envoyer un email',
+    assignAgent: 'Attribuer un agent',
+    close: 'Fermer'
   },
   
   // Modal de suppression individuelle

@@ -6,7 +6,7 @@
           {{ isEditing ? messages.editTitle : messages.createTitle }}
         </h3>
         
-        <form @submit.prevent="$emit('save')">
+        <form @submit.prevent="handleSave">
           <div class="space-y-4">
             <!-- Prénom -->
             <div>
@@ -104,6 +104,19 @@
                 <option value="inactive">{{ messages.statusInactive }}</option>
               </select>
             </div>
+            
+            <!-- Dernière connexion (en lecture seule, uniquement en mode édition) -->
+            <div v-if="isEditing && localClient.last_login">
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                {{ messages.lastLoginLabel || 'Dernière connexion' }}
+              </label>
+              <input
+                :value="formatLastLogin(localClient.last_login)"
+                type="text"
+                readonly
+                class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-600 cursor-not-allowed"
+              />
+            </div>
           </div>
           
           <!-- Boutons d'action -->
@@ -183,18 +196,49 @@ export default {
       { deep: true, immediate: true }
     )
     
-    // Émettre les changements vers le parent
-    watch(
-      localClient,
-      (newValue) => {
-        // Mettre à jour les données du parent
-        Object.assign(props.client, newValue)
-      },
-      { deep: true }
-    )
+    // Émettre les changements vers le parent sans muter les props
+    const handleSave = () => {
+      console.log('🔄 ClientModal - handleSave appelé');
+      console.log('🔄 ClientModal - localClient.value:', localClient.value);
+      console.log('🔄 ClientModal - Type:', typeof localClient.value);
+      console.log('🔄 ClientModal - Clés:', Object.keys(localClient.value));
+      console.log('🔄 ClientModal - first_name:', localClient.value.first_name);
+      console.log('🔄 ClientModal - last_name:', localClient.value.last_name);
+      emit('save', localClient.value)
+    }
+    
+    // Formater la date de dernière connexion
+    const formatLastLogin = (lastLogin) => {
+      if (!lastLogin) return 'Jamais connecté'
+      
+      const date = new Date(lastLogin)
+      if (isNaN(date.getTime())) return 'Date invalide'
+      
+      const now = new Date()
+      const diffInMs = now - date
+      const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+      
+      if (diffInDays === 0) {
+        return `Aujourd'hui à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+      } else if (diffInDays === 1) {
+        return `Hier à ${date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`
+      } else if (diffInDays < 7) {
+        return `Il y a ${diffInDays} jours`
+      } else {
+        return date.toLocaleDateString('fr-FR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      }
+    }
     
     return {
-      localClient
+      localClient,
+      handleSave,
+      formatLastLogin
     }
   }
 }

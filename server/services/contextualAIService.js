@@ -408,7 +408,7 @@ Contexte de la conversation: ${sessionData.conversationHistory || 'Nouvelle conv
     try {
       console.log('👤 Récupération données utilisateur depuis la base de données:', userId);
       
-      const user = await databaseService.db.get(
+      const user = await databaseService.get(
         'SELECT id, email, first_name, last_name, preferences, created_at, last_login FROM users WHERE id = ? AND is_active = 1',
         [userId]
       );
@@ -422,7 +422,7 @@ Contexte de la conversation: ${sessionData.conversationHistory || 'Nouvelle conv
       const companies = await databaseService.getUserCompanies(userId);
 
       // Récupérer les sessions récentes
-      const recentSessions = await databaseService.db.all(
+      const recentSessions = await databaseService.query(
         'SELECT * FROM user_sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT 5',
         [userId]
       );

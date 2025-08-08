@@ -74,7 +74,7 @@ class ClientManagementService {
    * @returns {Object} - Client créé
    */
   static async createClientWithValidation(clientData, agentId) {
-    const { name, email, phone, company, password } = clientData;
+    const { name, email, company, password } = clientData;
 
     // Validation des champs requis
     if (!name || !email || !password) {
@@ -95,7 +95,6 @@ class ClientManagementService {
     const newClient = await clientService.createClient({
       name,
       email,
-      phone,
       company,
       password,
       agentId,
@@ -120,42 +119,32 @@ class ClientManagementService {
    * @returns {Object} - Client mis à jour
    */
   static async updateClientStatus(clientId, status, agentId) {
-    try {
-      // Vérifier que l'agent a accès au client
-      const hasAccess = await agentService.checkAgentClientAccess(agentId, clientId);
-      if (!hasAccess) {
-        const error = new Error('Access denied');
-        error.code = 'ACCESS_DENIED';
-        throw error;
-      }
-
-      // Valider le statut
-      const validStatuses = ['active', 'inactive', 'suspended', 'pending'];
-      if (!validStatuses.includes(status)) {
-        const error = new Error('Invalid status');
-        error.code = 'INVALID_STATUS';
-        throw error;
-      }
-
-      const updatedClient = await clientService.updateClientStatus(clientId, status, agentId);
-      
-      // Log de l'opération
-      await systemLogsService.info('Statut du client mis à jour', 'clients', null, null, {
-        clientId,
-        agentId,
-        newStatus: status
-      });
-
-      return updatedClient;
-    } catch (error) {
-      console.error('❌ Erreur dans ClientManagementService.updateClientStatus:', {
-        clientId,
-        status,
-        agentId,
-        error: error.message
-      });
+    // Vérifier que l'agent a accès au client
+    const hasAccess = await agentService.checkAgentClientAccess(agentId, clientId);
+    if (!hasAccess) {
+      const error = new Error('Access denied');
+      error.code = 'ACCESS_DENIED';
       throw error;
     }
+
+    // Valider le statut
+    const validStatuses = ['active', 'inactive', 'suspended', 'pending'];
+    if (!validStatuses.includes(status)) {
+      const error = new Error('Invalid status');
+      error.code = 'INVALID_STATUS';
+      throw error;
+    }
+
+    const updatedClient = await clientService.updateClientStatus(clientId, status, agentId);
+    
+    // Log de l'opération
+    systemLogsService.info('Statut du client mis à jour', 'clients', null, null, {
+      clientId,
+      agentId,
+      newStatus: status
+    });
+
+    return updatedClient;
   }
 
   /**
@@ -177,7 +166,7 @@ class ClientManagementService {
     const updatedClient = await clientService.updateClient(clientId, updateData);
     
     // Log de l'opération
-    await systemLogsService.info('Client mis à jour', 'clients', null, null, {
+    systemLogsService.info('Client mis à jour', 'clients', null, null, {
       clientId,
       agentId
     });
@@ -221,7 +210,7 @@ class ClientManagementService {
     const result = await clientService.deleteClient(clientId, agentId, password, reason);
     
     // Log de l'opération
-    await systemLogsService.info('Client supprimé', 'clients', null, null, {
+    systemLogsService.info('Client supprimé', 'clients', null, null, {
       clientId,
       agentId
     });
@@ -258,11 +247,11 @@ class ClientManagementService {
 
     if (emailSent) {
       // Log de l'opération
-      await systemLogsService.info('Email de bienvenue envoyé', 'clients', null, null, {
-        clientId,
-        agentId,
-        email: client.email
-      });
+    systemLogsService.info('Email de bienvenue envoyé', 'clients', null, null, {
+      clientId,
+      agentId,
+      email: client.email
+    });
     }
 
     return emailSent;
@@ -296,7 +285,7 @@ class ClientManagementService {
     const result = await agentService.assignAgentToClient(clientId, agentId);
     
     // Log de l'opération
-    await systemLogsService.info('Agent assigné au client', 'clients', null, null, {
+    systemLogsService.info('Agent assigné au client', 'clients', null, null, {
       clientId,
       agentId,
       assignedBy: currentAgentId
@@ -383,6 +372,52 @@ class ClientManagementService {
       assignedAgent: availableAgent,
       client: client
     };
+  }
+
+  /**
+   * Met à jour le mot de passe d'un client
+   * @param {string} clientId - ID du client
+   * @param {string} newPassword - Nouveau mot de passe
+   * @param {string} agentId - ID de l'agent qui effectue la modification
+   * @returns {Object} - Résultat de l'opération
+   */
+  static async updateClientPassword(clientId, newPassword, agentId) {
+    try {
+      // Utiliser la méthode d'agentService pour mettre à jour le mot de passe
+      const result = await agentService.updateClientPassword(clientId, newPassword, agentId);
+      
+      // Log de l'opération
+      systemLogsService.info('Mot de passe client mis à jour', 'clients', null, null, {
+        clientId,
+        agentId,
+        clientName: result.clientName
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Erreur lors de la mise à jour du mot de passe du client:', error);
+      
+      // Convertir les erreurs en format standardisé
+      if (error.message.includes('Accès refusé')) {
+        const accessError = new Error('Access denied');
+        accessError.code = 'ACCESS_DENIED';
+        throw accessError;
+      }
+      
+      if (error.message.includes('Client non trouvé')) {
+        const notFoundError = new Error('Client not found');
+        notFoundError.code = 'CLIENT_NOT_FOUND';
+        throw notFoundError;
+      }
+      
+      if (error.message.includes('mot de passe doit contenir')) {
+        const validationError = new Error('Password validation failed');
+        validationError.code = 'INVALID_PASSWORD_FORMAT';
+        throw validationError;
+      }
+      
+      throw error;
+    }
   }
 }
 

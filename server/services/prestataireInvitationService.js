@@ -1,5 +1,5 @@
-const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const MariaDBService = require('./mariadbService');
@@ -8,8 +8,8 @@ const bcrypt = require('bcryptjs');
 
 class PrestataireInvitationService {
     constructor() {
-        this.mariadbService = new MariaDBService();
-        console.log('✅ PrestataireInvitationService: Base de données initialisée');
+        this.mariadb = new MariaDBService();
+        console.log('✅ PrestataireInvitationService: Base de données MariaDB initialisée');
     }
 
     /**
@@ -32,22 +32,20 @@ class PrestataireInvitationService {
             const { email, agentId, prestataireInfo = {}, expirationDays = 7 } = invitationData;
 
             // Vérifier si l'email existe déjà
-            const existingUserRows = await this.mariadbService.query(
+            const existingUser = await this.mariadb.get(
                 'SELECT id FROM users WHERE email = ?',
                 [email]
             );
-            const existingUser = existingUserRows[0];
 
             if (existingUser) {
                 throw new Error('Un utilisateur avec cet email existe déjà');
             }
 
             // Vérifier si une invitation active existe déjà
-            const existingInvitationRows = await this.mariadbService.query(
+            const existingInvitation = await this.mariadb.get(
                 'SELECT id FROM prestataire_invitations WHERE email = ? AND status = "pending" AND expires_at > NOW()',
                 [email]
             );
-            const existingInvitation = existingInvitationRows[0];
 
             if (existingInvitation) {
                 throw new Error('Une invitation active existe déjà pour cet email');
@@ -59,7 +57,7 @@ class PrestataireInvitationService {
             expiresAt.setDate(expiresAt.getDate() + expirationDays);
 
             // Créer l'invitation
-            const result = await this.mariadbService.query(
+            const result = await this.mariadb.run(
                 `INSERT INTO prestataire_invitations 
                  (email, token, agent_id, expires_at, invitation_data) 
                  VALUES (?, ?, ?, ?, ?)`,
@@ -75,11 +73,10 @@ class PrestataireInvitationService {
             const invitationId = result.insertId;
 
             // Récupérer les informations de l'agent
-            const agentRows = await this.mariadbService.query(
+            const agent = await this.mariadb.get(
                 'SELECT first_name, last_name, email FROM users WHERE id = ?',
                 [agentId]
             );
-            const agent = agentRows[0];
 
             // Envoyer l'email d'invitation avec template HTML
             await this.sendInvitationEmail({
@@ -256,14 +253,13 @@ L'équipe Fusepoint
      */
     async verifyInvitationToken(token) {
         try {
-            const invitationRows = await this.mariadbService.query(
+            const invitation = await this.db.get(
                 `SELECT i.*, u.first_name as agent_first_name, u.last_name as agent_last_name 
                  FROM prestataire_invitations i 
                  JOIN users u ON i.agent_id = u.id 
                  WHERE i.token = ?`,
                 [token]
             );
-            const invitation = invitationRows[0];
 
             if (!invitation) {
                 return { valid: false, error: 'Token d\'invitation invalide' };
@@ -312,7 +308,7 @@ L'équipe Fusepoint
             const hashedPassword = await bcrypt.hash(password, 12);
 
             // Créer l'utilisateur prestataire
-            const userResult = await this.mariadbService.query(
+            const userResult = await this.mariadb.run(
                 `INSERT INTO users 
                  (email, password, first_name, last_name, phone, role, status, created_at) 
                  VALUES (?, ?, ?, ?, ?, 'prestataire', 'active', NOW())`,
@@ -328,14 +324,13 @@ L'équipe Fusepoint
             const prestataireId = userResult.insertId;
 
             // Récupérer l'invitation complète
-            const fullInvitationRows = await this.mariadbService.query(
+            const fullInvitation = await this.mariadb.get(
                 'SELECT * FROM prestataire_invitations WHERE token = ?',
                 [token]
             );
-            const fullInvitation = fullInvitationRows[0];
 
             // Créer la relation agent-prestataire
-            await this.mariadbService.query(
+            await this.mariadb.run(
                 `INSERT INTO agent_prestataires 
                  (agent_id, prestataire_id, relationship_type, status) 
                  VALUES (?, ?, 'collaborator', 'active')`,
@@ -343,7 +338,7 @@ L'équipe Fusepoint
             );
 
             // Marquer l'invitation comme acceptée
-            await this.mariadbService.query(
+            await this.mariadb.run(
                 `UPDATE prestataire_invitations 
                  SET status = 'accepted', accepted_at = NOW(), created_user_id = ? 
                  WHERE token = ?`,
@@ -385,7 +380,7 @@ L'équipe Fusepoint
 
             query += ' ORDER BY i.invited_at DESC';
 
-            const invitations = await this.mariadbService.query(query, params);
+            const invitations = await this.mariadb.all(query, params);
 
             return invitations.map(inv => ({
                 id: inv.id,
@@ -413,8 +408,8 @@ L'équipe Fusepoint
      */
     async getAgentPrestataires(agentId) {
         try {
-            const prestataires = await this.mariadbService.query(
-                `SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.created_at,
+            const prestataires = await this.mariadb.all(
+                `SELECT u.id, u.email, u.first_name, u.last_name, u.created_at,
                         ap.relationship_type, ap.status as relationship_status, ap.created_at as relationship_created
                  FROM agent_prestataires ap
                  JOIN users u ON ap.prestataire_id = u.id
@@ -428,7 +423,7 @@ L'équipe Fusepoint
                 email: p.email,
                 firstName: p.first_name,
                 lastName: p.last_name,
-                phone: p.phone,
+                phone: null, // Colonne phone non disponible dans le schéma actuel
                 createdAt: p.created_at,
                 relationship: {
                     type: p.relationship_type,
@@ -448,7 +443,7 @@ L'équipe Fusepoint
      */
     async cancelInvitation(invitationId, agentId) {
         try {
-            const result = await this.mariadbService.query(
+            const result = await this.mariadb.run(
                 `UPDATE prestataire_invitations 
                  SET status = 'cancelled' 
                  WHERE id = ? AND agent_id = ? AND status = 'pending'`,
@@ -473,7 +468,7 @@ L'équipe Fusepoint
      */
     async cleanupExpiredInvitations() {
         try {
-            const result = await this.mariadbService.query(
+            const result = await this.mariadb.run(
                 `UPDATE prestataire_invitations 
                  SET status = 'expired' 
                  WHERE status = 'pending' AND expires_at < NOW()`

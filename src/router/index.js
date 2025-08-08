@@ -3,17 +3,17 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import ConfirmAccount from '../views/ConfirmAccount.vue'
 import SetPassword from '../views/SetPassword.vue'
-import ForgotPassword from '../views/ForgotPassword.vue'
-import ResetPassword from '../views/ResetPassword.vue'
 import ClientDashboard from '../views/ClientDashboard.vue'
 
-
+// Store d'authentification
+import { useAuthStore } from '../stores/auth.js'
 
 // Middlewares d'authentification
 import { requireAuth, requireGuest, initializeAuth } from '../middleware/auth.js'
 import { requireAgent } from '../middleware/roleAuth.js'
 import { requireSuperAdmin } from '../middleware/superAdminAuth.js'
 import { requirePrestataire } from '../middleware/prestataireAuth.js'
+import { requireAdmin, requireAdminOrAgent } from '../middleware/adminAuth.js'
 
 // Analytics
 import Analytics from '../views/Analytics/Analytics.vue'
@@ -62,6 +62,10 @@ import AgentPrestataires from '../views/AgentPrestataires.vue'
 
 // Super Admin Dashboard
 import SuperAdminDashboard from '../views/SuperAdminDashboard.vue'
+
+// Admin Dashboard
+import Admin from '../views/Admin.vue'
+import AdminUsers from '../views/AdminUsers.vue'
 
 // Prestataire
 import RegisterPrestataire from '../views/RegisterPrestataire.vue'
@@ -113,18 +117,6 @@ const routes = [
     path: '/set-password',
     name: 'SetPassword',
     component: SetPassword,
-    beforeEnter: requireGuest
-  },
-  {
-    path: '/forgot-password',
-    name: 'ForgotPassword',
-    component: ForgotPassword,
-    beforeEnter: requireGuest
-  },
-  {
-    path: '/reset-password',
-    name: 'ResetPassword',
-    component: ResetPassword,
     beforeEnter: requireGuest
   },
   {
@@ -298,6 +290,12 @@ const routes = [
       beforeEnter: requireAgent
     },
     {
+      path: '/agent/project-templates',
+      name: 'ProjectTemplatesManagement',
+      component: () => import('../views/ProjectTemplatesManagement.vue'),
+      beforeEnter: requireAgent
+    },
+    {
       path: '/agent/clients/:clientId/dashboard',
       name: 'ClientProjectDashboard',
       component: () => import('../views/ClientProjectDashboard.vue'),
@@ -321,11 +319,36 @@ const routes = [
     component: AgentPrestataires,
     beforeEnter: requireAgent
   },
+  // Routes Admin (accessibles aux admin et super_admin)
+  {
+    path: '/admin',
+    name: 'AdminDashboard',
+    component: Admin,
+    beforeEnter: requireAdmin
+  },
+  {
+    path: '/admin/users',
+    name: 'AdminUsers',
+    component: AdminUsers,
+    beforeEnter: requireAdmin
+  },
+  {
+    path: '/admin/agent-view',
+    name: 'AdminAgentView',
+    component: AgentDashboard,
+    beforeEnter: requireAdminOrAgent
+  },
   // Routes Super Admin
   {
     path: '/super-admin',
     name: 'SuperAdminDashboard',
     component: SuperAdminDashboard,
+    beforeEnter: requireSuperAdmin
+  },
+  {
+    path: '/super-admin/agent-view',
+    name: 'SuperAdminAgentView',
+    component: AgentDashboard,
     beforeEnter: requireSuperAdmin
   },
   // Routes Prestataire

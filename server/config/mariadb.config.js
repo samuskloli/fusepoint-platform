@@ -7,11 +7,12 @@ const mariadb = require('mariadb');
 
 class MariaDBConfig {
   constructor() {
+    // Configuration pour MariaDB local
     this.config = {
       host: process.env.MARIADB_HOST || 'localhost',
       port: process.env.MARIADB_PORT || 3306,
-      user: process.env.MARIADB_USER || 'oliveirasamuel',
-      password: process.env.MARIADB_PASSWORD || '',
+      user: process.env.MARIADB_USER || 'fusepoint_db',
+      password: process.env.MARIADB_PASSWORD || 'FusepointBD2025!',
       database: process.env.MARIADB_DATABASE || 'fusepoint_db',
       connectionLimit: 10,
       charset: 'utf8mb4',

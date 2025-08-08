@@ -8,6 +8,7 @@ const emailService = require('./emailService');
 const translationService = require('./translationService');
 const validationService = require('./validationService');
 const bcrypt = require('bcryptjs');
+const { randomBytes } = require('node:crypto');
 
 class AgentService {
   /**
@@ -40,11 +41,11 @@ class AgentService {
       );
 
       return {
-        totalClients: totalClients?.count || 0,
-        activeClients: activeClients?.count || 0,
-        inactiveClients: inactiveClients?.count || 0,
-        assignedClients: assignedClients?.count || 0,
-        unassignedClients: unassignedClients?.count || 0
+        totalClients: totalClients.count,
+        activeClients: activeClients.count,
+        inactiveClients: inactiveClients.count,
+        assignedClients: assignedClients.count,
+        unassignedClients: unassignedClients.count
       };
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des statistiques agent:', error);
@@ -64,19 +65,20 @@ class AgentService {
           u.first_name,
           u.last_name,
           u.email,
-          u.phone,
+          u.role,
           u.is_active,
           u.created_at,
           COUNT(assigned.id) as client_count
         FROM users u
         LEFT JOIN users assigned ON assigned.agent_id = u.id AND assigned.role IN ('user', 'client')
-        WHERE u.role = 'agent' AND u.is_active = 1
-        GROUP BY u.id, u.first_name, u.last_name, u.email, u.phone, u.is_active, u.created_at
+        WHERE u.role IN ('agent', 'admin', 'super_admin') AND u.is_active = 1
+        GROUP BY u.id, u.first_name, u.last_name, u.email, u.role, u.is_active, u.created_at
         ORDER BY client_count ASC, u.created_at ASC`
       );
 
       return agents.map(agent => ({
         ...agent,
+        client_count: Number(agent.client_count), // Convertir BigInt en Number
         status: agent.is_active ? 'active' : 'inactive'
       }));
     } catch (error) {
@@ -129,7 +131,9 @@ class AgentService {
           u.last_name,
           u.email,
           u.phone,
+          u.company,
           u.is_active,
+          u.last_login,
           u.created_at,
           u.updated_at,
           agent.first_name as agent_first_name,
@@ -178,6 +182,8 @@ class AgentService {
       
       return clients.map(client => ({
         ...client,
+        firstName: client.first_name,
+        lastName: client.last_name,
         status: client.is_active ? 'active' : 'inactive',
         assigned_agent: client.agent_first_name ? {
           first_name: client.agent_first_name,
@@ -239,6 +245,8 @@ class AgentService {
 
       return {
         ...updatedClient,
+        firstName: updatedClient.first_name,
+        lastName: updatedClient.last_name,
         status: updatedClient.is_active ? 'active' : 'inactive'
       };
     } catch (error) {
@@ -359,7 +367,7 @@ class AgentService {
         [clientId]
       );
 
-      if (result.changes === 0) {
+      if (result.affectedRows === 0) {
         throw new Error(translationService.t('client.deletionError'));
       }
 
@@ -459,11 +467,9 @@ class AgentService {
 
       // Créer une entrée dans agent_prestataires pour la compatibilité
       await databaseService.run(`
-        INSERT INTO agent_prestataires 
+        INSERT OR REPLACE INTO agent_prestataires 
         (agent_id, prestataire_id, status, assigned_at, created_at, updated_at)
         VALUES (?, ?, 'active', NOW(), NOW(), NOW())
-        ON DUPLICATE KEY UPDATE 
-        status = VALUES(status), assigned_at = VALUES(assigned_at), updated_at = VALUES(updated_at)
       `, [availableAgent.id, clientId]);
 
       return {
@@ -493,10 +499,23 @@ class AgentService {
    */
   async createClient(clientData) {
     try {
-      const { firstName, lastName, email, phone, companyName, isActive } = clientData;
+      // Accepter les deux formats : firstName/lastName ou first_name/last_name
+      const firstName = clientData.firstName || clientData.first_name;
+      const lastName = clientData.lastName || clientData.last_name;
+      const { email, phone, companyName, company, isActive } = clientData;
+      
+      // Utiliser company si companyName n'est pas fourni
+      const finalCompanyName = companyName || company;
+      
+      // Mapper les champs pour la validation
+      const validationData = {
+        ...clientData,
+        first_name: firstName,
+        last_name: lastName
+      };
       
       // Validation des données
-      const validation = validationService.validateClientData(clientData);
+      const validation = validationService.validateClientData(validationData);
       if (!validation.isValid) {
         throw new Error(JSON.stringify(validation.errors));
       }
@@ -511,35 +530,76 @@ class AgentService {
         throw new Error(translationService.t('errors.emailExists'));
       }
 
-      // Créer l'utilisateur
-      const result = await databaseService.run(
-        `INSERT INTO users (first_name, last_name, email, phone, role, is_active, created_at) 
-         VALUES (?, ?, ?, ?, 'client', ?, NOW())`,
-        [firstName, lastName, email, phone || null, isActive ? 1 : 0]
-      );
-      
-      const userId = result.lastID;
+      let companyId = null;
       
       // Créer la compagnie si fournie
-      if (companyName) {
+      if (finalCompanyName) {
         const companyResult = await databaseService.run(
-          'INSERT INTO companies (name, created_at) VALUES (?, NOW())',
-          [companyName]
+          'INSERT INTO companies (name, created_at) VALUES (?, CURRENT_TIMESTAMP)',
+          [finalCompanyName]
         );
-        
-        // Lier l'utilisateur à la compagnie
+        companyId = Number(companyResult.insertId);
+      }
+      
+      // Générer un token de première connexion
+      const firstLoginToken = randomBytes(32).toString('hex');
+      
+      // Créer l'utilisateur avec les informations de l'entreprise et le token
+      const result = await databaseService.run(
+        `INSERT INTO users (first_name, last_name, email, phone, company, company_id, role, is_active, first_login_token, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'user', ?, ?, CURRENT_TIMESTAMP)`,
+        [firstName, lastName, email, phone || null, finalCompanyName || null, companyId, isActive ? 1 : 0, firstLoginToken]
+      );
+      
+      const userId = Number(result.insertId);
+      
+      // Lier l'utilisateur à la compagnie si elle existe
+      if (companyId) {
         await databaseService.run(
-          'INSERT INTO user_companies (user_id, company_id, role, created_at) VALUES (?, ?, \'owner\', NOW())',
-          [userId, companyResult.lastID]
+          'INSERT INTO user_companies (user_id, company_id, role, created_at) VALUES (?, ?, \'owner\', CURRENT_TIMESTAMP)',
+          [userId, companyId]
         );
       }
 
+      // Récupérer le client créé avec toutes ses données
+      const createdClient = await databaseService.get(
+        'SELECT id, first_name, last_name, email, phone, role, is_active, created_at, updated_at FROM users WHERE id = ?',
+        [userId]
+      );
+      
+      // Envoyer l'e-mail de bienvenue automatiquement
+      try {
+        const emailData = {
+          to: email,
+          subject: '🎉 Bienvenue sur Fusepoint Hub !',
+          clientName: `${firstName} ${lastName}`,
+          agentName: 'Équipe Fusepoint',
+          firstLoginToken: firstLoginToken,
+          companyName: finalCompanyName
+        };
+        
+        await emailService.sendWelcomeEmail(emailData);
+        console.log('✅ E-mail de bienvenue envoyé automatiquement à:', email);
+      } catch (emailError) {
+        console.error('⚠️ Erreur lors de l\'envoi de l\'e-mail de bienvenue:', emailError);
+        // Ne pas faire échouer la création du client si l'e-mail échoue
+      }
+      
       return {
-        userId: userId,
-        email: email,
+        id: userId,
+        first_name: firstName,
+        last_name: lastName,
         firstName: firstName,
         lastName: lastName,
-        firstLoginToken: 'temp-token-' + userId
+        email: email,
+        phone: phone,
+        company: finalCompanyName || null,
+        status: isActive ? 'active' : 'inactive',
+        is_active: isActive ? 1 : 0,
+        role: 'client',
+        created_at: createdClient.created_at,
+        updated_at: createdClient.updated_at,
+        firstLoginToken: firstLoginToken
       };
     } catch (error) {
       console.error('❌ Erreur lors de la création du client:', error);
@@ -566,18 +626,22 @@ class AgentService {
       }
       
       // Vérifier que l'agent existe
+      console.log('🔍 Debug assignAgentToClient - Recherche agent avec ID:', agentId);
       const agent = await databaseService.get(
-        'SELECT id, email, first_name, last_name FROM users WHERE id = ? AND role = \'agent\'',
+        'SELECT id, email, first_name, last_name, role FROM users WHERE id = ? AND role IN ("agent", "super_admin", "admin")',
         [agentId]
       );
       
+      console.log('🔍 Debug assignAgentToClient - Agent trouvé:', agent);
+      
       if (!agent) {
+        console.log('❌ Debug assignAgentToClient - Aucun agent trouvé avec ID:', agentId);
         throw new Error(translationService.t('agent.notFound'));
       }
       
       // Mettre à jour la colonne agent_id du client
       await databaseService.run(
-        'UPDATE users SET agent_id = ?, updated_at = NOW() WHERE id = ?',
+        'UPDATE users SET agent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [agentId, clientId]
       );
 
@@ -609,18 +673,24 @@ class AgentService {
    */
   async checkAgentClientAccess(agentId, clientId) {
     try {
+      console.log('🔍 Debug checkAgentClientAccess - agentId:', agentId, 'clientId:', clientId);
+      
       // Vérifier si l'agent existe et est actif
       const agent = await databaseService.get(
         'SELECT id, role FROM users WHERE id = ? AND role IN ("agent", "super_admin", "admin") AND is_active = 1',
         [agentId]
       );
       
+      console.log('🔍 Debug checkAgentClientAccess - agent trouvé:', agent);
+      
       if (!agent) {
+        console.log('❌ Debug checkAgentClientAccess - agent non trouvé ou inactif');
         return false;
       }
       
       // Les super_admin et admin ont accès à tous les clients
       if (agent.role === 'super_admin' || agent.role === 'admin') {
+        console.log('✅ Debug checkAgentClientAccess - accès accordé (super_admin/admin)');
         return true;
       }
       
@@ -630,12 +700,17 @@ class AgentService {
         [clientId]
       );
       
+      console.log('🔍 Debug checkAgentClientAccess - client trouvé:', client);
+      
       if (!client) {
+        console.log('❌ Debug checkAgentClientAccess - client non trouvé');
         return false;
       }
       
       // Vérifier si l'agent est assigné à ce client
-      return client.agent_id === agentId;
+      const hasAccess = client.agent_id === agentId;
+      console.log('🔍 Debug checkAgentClientAccess - accès par assignation:', hasAccess);
+      return hasAccess;
       
     } catch (error) {
       console.error('❌ Erreur lors de la vérification d\'accès:', error);
@@ -651,7 +726,7 @@ class AgentService {
   async getAgentById(agentId) {
     try {
       const agent = await databaseService.get(
-        'SELECT id, first_name, last_name, email, phone, role, is_active, created_at FROM users WHERE id = ? AND role IN ("agent", "super_admin", "admin")',
+        'SELECT id, first_name, last_name, email, role, is_active, created_at FROM users WHERE id = ? AND role IN ("agent", "super_admin", "admin")',
         [agentId]
       );
       
@@ -683,6 +758,57 @@ class AgentService {
     } catch (error) {
       console.error('❌ Erreur lors de la vérification du mot de passe:', error);
       return false;
+    }
+  }
+
+  /**
+   * Met à jour le mot de passe d'un client
+   * @param {number} clientId - ID du client
+   * @param {string} newPassword - Nouveau mot de passe
+   * @param {number} agentId - ID de l'agent qui effectue la modification
+   * @returns {Object} - Résultat de l'opération
+   */
+  async updateClientPassword(clientId, newPassword, agentId) {
+    try {
+      // Vérifier que l'agent a accès au client
+      const hasAccess = await this.checkAgentClientAccess(agentId, clientId);
+      if (!hasAccess) {
+        throw new Error('Accès refusé : vous n\'avez pas l\'autorisation de modifier ce client');
+      }
+
+      // Vérifier que le client existe
+      const client = await databaseService.get(
+        'SELECT id, email, first_name, last_name FROM users WHERE id = ? AND role IN ("user", "client")',
+        [clientId]
+      );
+
+      if (!client) {
+        throw new Error('Client non trouvé');
+      }
+
+      // Valider le nouveau mot de passe
+      if (!newPassword || newPassword.length < 6) {
+        throw new Error('Le mot de passe doit contenir au moins 6 caractères');
+      }
+
+      // Hasher le nouveau mot de passe
+      const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+      // Mettre à jour le mot de passe
+      await databaseService.updateUserPassword(clientId, hashedPassword);
+
+      // Log de l'opération
+      console.log(`✅ Mot de passe du client ${clientId} mis à jour par l'agent ${agentId}`);
+
+      return {
+        success: true,
+        message: 'Mot de passe du client mis à jour avec succès',
+        clientId: clientId,
+        clientName: `${client.first_name} ${client.last_name}`
+      };
+    } catch (error) {
+      console.error('❌ Erreur lors de la mise à jour du mot de passe du client:', error);
+      throw error;
     }
   }
 }

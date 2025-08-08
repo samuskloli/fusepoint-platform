@@ -5,7 +5,7 @@
 
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const EmailService = require('./emailService');
 const emailService = new EmailService();
 const path = require('path');
@@ -145,7 +145,6 @@ class MariaDBService {
         password,
         firstName,
         lastName,
-        phone,
         role = 'user',
         agentId = null,
         companyId = null
@@ -170,15 +169,15 @@ class MariaDBService {
 
       const sql = `
         INSERT INTO users (
-          email, password_hash, first_name, last_name, phone, 
+          email, password_hash, first_name, last_name, 
           role, agent_id, company_id, first_login_token,
           confirmation_token, token_expiry, is_active,
           created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW(), NOW())
       `;
 
       const result = await this.run(sql, [
-        email, passwordHash, firstName, lastName, phone,
+        email, passwordHash, firstName, lastName,
         role, agentId, companyId, firstLoginToken,
         confirmationToken, tokenExpiryFormatted
       ]);
@@ -194,7 +193,7 @@ class MariaDBService {
       }
 
       return {
-        id: result.lastID,
+        id: result.insertId,
         email,
         firstName,
         lastName,
@@ -300,7 +299,7 @@ class MariaDBService {
       const result = await this.run(sql, [name, description, website, industry, size]);
       
       return {
-        id: result.lastID,
+        id: result.insertId,
         name,
         description,
         website,
@@ -362,7 +361,7 @@ class MariaDBService {
       const result = await this.run(sql, [userId, title, message, type]);
       
       return {
-        id: result.lastID,
+        id: result.insertId,
         userId,
         title,
         message,
@@ -539,6 +538,74 @@ class MariaDBService {
     return await bcrypt.hash(password, 12);
   }
 
+  /**
+   * Authentifier un utilisateur
+   */
+  async authenticateUser(email, password) {
+    try {
+      const user = await this.getUserByEmail(email);
+      if (!user) {
+        throw new Error('Compte inexistant');
+      }
+
+      const isValidPassword = await this.verifyPassword(password, user.password_hash);
+      
+      if (!isValidPassword) {
+        console.log('❌ Mot de passe incorrect pour:', email);
+        throw new Error('Mot de passe incorrect');
+      }
+
+      // Mettre à jour la dernière connexion
+      await this.run(
+        'UPDATE users SET last_login = NOW() WHERE id = ?',
+        [user.id]
+      );
+
+      console.log('✅ Utilisateur authentifié:', email);
+      return user;
+    } catch (error) {
+      console.error('❌ Erreur authentification:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Créer une session utilisateur
+   */
+  async createSession(userId, sessionToken, expiresAt, ipAddress, userAgent) {
+    try {
+      await this.run(
+        `INSERT INTO user_sessions (user_id, session_token, expires_at, ip_address, user_agent) 
+         VALUES (?, ?, ?, ?, ?)`,
+        [userId, sessionToken, expiresAt, ipAddress, userAgent]
+      );
+
+      return true;
+    } catch (error) {
+      console.error('❌ Erreur création session:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Valider une session
+   */
+  async validateSession(sessionToken) {
+    try {
+      const session = await this.get(
+        `SELECT s.*, u.* FROM user_sessions s 
+         JOIN users u ON s.user_id = u.id 
+         WHERE s.session_token = ? AND s.expires_at > NOW() AND u.is_active = 1`,
+        [sessionToken]
+      );
+
+      return session;
+    } catch (error) {
+      console.error('❌ Erreur validation session:', error);
+      throw error;
+    }
+  }
+
   // ===== MÉTHODES UTILITAIRES =====
 
   /**
@@ -623,6 +690,122 @@ class MariaDBService {
       return stats;
     } catch (error) {
       console.error('❌ Erreur récupération statistiques:', error);
+      throw error;
+    }
+  }
+
+  // ===== MÉTHODES PROJETS =====
+
+  /**
+   * Récupérer les tâches d'un projet
+   */
+  async getProjectTasks(projectId) {
+    try {
+      const tasks = await this.all(
+        'SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at DESC',
+        [projectId]
+      );
+      return tasks;
+    } catch (error) {
+      console.error('❌ Erreur récupération tâches du projet:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les fichiers d'un projet
+   */
+  async getProjectFiles(projectId) {
+    try {
+      const files = await this.all(
+        'SELECT * FROM files WHERE project_id = ? ORDER BY created_at DESC',
+        [projectId]
+      );
+      return files;
+    } catch (error) {
+      console.error('❌ Erreur récupération fichiers du projet:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les membres de l'équipe d'un projet
+   */
+  async getProjectTeamMembers(projectId) {
+    try {
+      const members = await this.all(
+        `SELECT u.id, u.first_name, u.last_name, u.email, u.role, tm.role as project_role
+         FROM team_members tm
+         JOIN users u ON tm.user_id = u.id
+         WHERE tm.project_id = ?
+         ORDER BY u.first_name, u.last_name`,
+        [projectId]
+      );
+      return members;
+    } catch (error) {
+      console.error('❌ Erreur récupération équipe du projet:', error);
+      throw error;
+    }
+  }
+
+  // ===== MÉTHODES STATISTIQUES UTILISATEURS =====
+
+  /**
+   * Récupérer les statistiques de tous les utilisateurs
+   */
+  async getAllUsersStats() {
+    try {
+      const stats = await this.all(
+        `SELECT 
+          u.id as user_id,
+          COUNT(DISTINCT p.id) as projects_count,
+          COUNT(DISTINCT CASE WHEN p.status = 'active' THEN p.id END) as active_projects_count,
+          COUNT(DISTINCT uc.company_id) as companies_count,
+          CASE 
+            WHEN u.last_login IS NOT NULL 
+            THEN DATEDIFF(NOW(), u.last_login)
+            ELSE NULL 
+          END as last_activity_days
+        FROM users u
+        LEFT JOIN projects p ON u.id = p.user_id
+        LEFT JOIN user_companies uc ON u.id = uc.user_id
+        WHERE u.role IN ('user', 'admin', 'agent', 'prestataire')
+        GROUP BY u.id, u.last_login
+        ORDER BY u.id`
+      );
+      return stats;
+    } catch (error) {
+      console.error('❌ Erreur récupération statistiques utilisateurs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les statistiques d'un utilisateur spécifique
+   */
+  async getUserStats(userId) {
+    try {
+      const stats = await this.get(
+        `SELECT 
+          u.id as user_id,
+          COUNT(DISTINCT p.id) as projects_count,
+          COUNT(DISTINCT CASE WHEN p.status = 'active' THEN p.id END) as active_projects_count,
+          COUNT(DISTINCT uc.company_id) as companies_count,
+          CASE 
+            WHEN u.last_login IS NOT NULL 
+            THEN DATEDIFF(NOW(), u.last_login)
+            ELSE NULL 
+          END as last_activity_days
+        FROM users u
+        LEFT JOIN projects p ON u.id = p.user_id
+        LEFT JOIN user_companies uc ON u.id = uc.user_id
+        WHERE u.id = ?
+        GROUP BY u.id, u.last_login`,
+        [userId]
+      );
+      return stats;
+    } catch (error) {
+      console.error('❌ Erreur récupération statistiques utilisateur:', error);
       throw error;
     }
   }

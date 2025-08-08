@@ -1,31 +1,29 @@
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2/promise');
 const path = require('path');
 
-// Chemin vers la base de données
-const dbPath = path.join(__dirname, '../database/fusepoint.db');
+// Configuration de la base de données MariaDB
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'fusepoint',
+  port: process.env.DB_PORT || 3306
+};
 
-// Fonction utilitaire pour promisifier les requêtes SQLite
-function dbAll(db, query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.all(query, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+// Fonction utilitaire pour exécuter les requêtes MariaDB
+async function dbAll(connection, query, params = []) {
+  const [rows] = await connection.execute(query, params);
+  return rows;
 }
 
-function dbRun(db, query, params = []) {
-  return new Promise((resolve, reject) => {
-    db.run(query, params, function(err) {
-      if (err) reject(err);
-      else resolve({ lastID: this.lastID, changes: this.changes });
-    });
-  });
+async function dbRun(connection, query, params = []) {
+  const [result] = await connection.execute(query, params);
+  return { insertId: result.insertId, affectedRows: result.affectedRows };
 }
 
 // Fonction pour migrer vers le système de companies
 async function migrateToCompanies() {
-  const db = new sqlite3.Database(dbPath);
+  const connection = await mysql.createConnection(dbConfig);
   
   try {
     console.log('🔄 Début de la migration vers le système de companies...');
@@ -40,14 +38,14 @@ async function migrateToCompanies() {
     
     // Insérer les entreprises par défaut
     for (const company of defaultCompanies) {
-      await dbRun(db, 'INSERT OR IGNORE INTO companies (name, description) VALUES (?, ?)', 
+      await dbRun(connection, 'INSERT IGNORE INTO companies (name, description) VALUES (?, ?)', 
         [company.name, company.description]);
     }
     
     console.log(`✅ ${defaultCompanies.length} entreprises par défaut créées`);
     
     // 2. Migrer les données existantes des users
-    const existingCompanies = await dbAll(db, `
+    const existingCompanies = await dbAll(connection, `
       SELECT DISTINCT company 
       FROM users 
       WHERE company IS NOT NULL AND company != ''
@@ -58,12 +56,12 @@ async function migrateToCompanies() {
     // Créer les entreprises manquantes
     for (const row of existingCompanies) {
       if (row.company) {
-        await dbRun(db, 'INSERT OR IGNORE INTO companies (name) VALUES (?)', [row.company]);
+        await dbRun(connection, 'INSERT IGNORE INTO companies (name) VALUES (?)', [row.company]);
       }
     }
     
     // 3. Mettre à jour les company_id dans la table users
-    const userCompanyRows = await dbAll(db, `
+    const userCompanyRows = await dbAll(connection, `
       SELECT u.id, u.company, c.id as company_id
       FROM users u
       LEFT JOIN companies c ON u.company = c.name
@@ -74,13 +72,13 @@ async function migrateToCompanies() {
     
     for (const row of userCompanyRows) {
       if (row.company_id) {
-        await dbRun(db, 'UPDATE users SET company_id = ? WHERE id = ?', 
+        await dbRun(connection, 'UPDATE users SET company_id = ? WHERE id = ?', 
           [row.company_id, row.id]);
       }
     }
     
     // 4. Mettre à jour les company_id dans la table projects
-    const projectRows = await dbAll(db, `
+    const projectRows = await dbAll(connection, `
       SELECT p.id, u.company_id
       FROM projects p
       JOIN users u ON p.client_id = u.id
@@ -90,7 +88,7 @@ async function migrateToCompanies() {
     console.log(`🔄 Mise à jour de ${projectRows.length} projets avec company_id`);
     
     for (const row of projectRows) {
-      await dbRun(db, 'UPDATE projects SET company_id = ? WHERE id = ?', 
+      await dbRun(connection, 'UPDATE projects SET company_id = ? WHERE id = ?', 
         [row.company_id, row.id]);
     }
     
@@ -104,7 +102,7 @@ async function migrateToCompanies() {
     console.error('❌ Erreur lors de la migration:', error);
     throw error;
   } finally {
-    db.close();
+    await connection.end();
   }
 }
 

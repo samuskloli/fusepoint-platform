@@ -28,7 +28,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAgent = computed(() => {
     // Si super admin, il a accès à tout
-    if (user.value?.isSuperAdmin) {
+    if (userRole.value === 'super_admin' || user.value?.isSuperAdmin) {
       return true
     }
     // Sinon, vérifier les permissions spécifiques

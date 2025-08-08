@@ -32,62 +32,34 @@ class RouteHandlerService {
    * @param {Object} options - Options de gestion d'erreur
    */
   static handleError(error, res, options = {}) {
-    try {
-      const { logKey = 'error', errorKey = 'errors.serverError' } = options;
-      
-      console.error('❌ Erreur dans RouteHandlerService:', error.message);
-      
-      // Vérifier si la réponse a déjà été envoyée
-      if (res.headersSent) {
-        console.error('❌ Réponse déjà envoyée, impossible de gérer l\'erreur');
-        return;
-      }
-      
-      // Gestion des erreurs spécifiques
-      if (error.message === 'Client not found') {
-        return responseService.notFound(res, 'Client non trouvé');
-      }
-      if (error.message === 'Agent not found') {
-        return responseService.notFound(res, 'Agent non trouvé');
-      }
-      if (error.message === 'Project not found' || error.message === 'Projet non trouvé') {
-        return responseService.notFound(res, 'Projet non trouvé');
-      }
-      if (error.code === 'CLIENT_NOT_FOUND') {
-        return responseService.notFound(res, 'Client non trouvé');
-      }
-      if (error.code === 'AGENT_NOT_FOUND') {
-        return responseService.notFound(res, 'Agent non trouvé');
-      }
-      if (error.code === 'EMAIL_ALREADY_EXISTS') {
-        return responseService.badRequest(res, 'Cet email est déjà utilisé');
-      }
-      if (error.code === 'INVALID_PASSWORD') {
-        return responseService.badRequest(res, 'Mot de passe invalide');
-      }
-      if (error.code === 'ACCESS_DENIED') {
-        return responseService.forbidden(res, 'Accès refusé');
-      }
-      if (error.code === 'INVALID_STATUS') {
-        return responseService.badRequest(res, 'Statut invalide');
-      }
-      if (error.code === 'VALIDATION_ERROR') {
-        return responseService.validationError(res, error.message);
-      }
-      
-      // Erreur générique
-      console.error('❌ Erreur non gérée:', error);
-      return responseService.serverError(res, error, errorKey);
-    } catch (handlerError) {
-      console.error('❌ Erreur dans le gestionnaire d\'erreurs:', handlerError);
-      // Fallback en cas d'erreur dans le gestionnaire d'erreurs
-      if (!res.headersSent) {
-        res.status(500).json({
-          success: false,
-          message: 'Erreur interne du serveur'
-        });
-      }
+    const { logKey = 'error', errorKey = 'errors.serverError' } = options;
+    
+    console.error('❌ Erreur dans RouteHandlerService:', error.message);
+    
+    // Gestion des erreurs spécifiques
+    if (error.message === 'Client not found') {
+      return responseService.notFound(res, 'Client non trouvé');
     }
+    if (error.message === 'Agent not found') {
+      return responseService.notFound(res, 'Agent non trouvé');
+    }
+    if (error.message === 'Project not found' || error.message === 'Projet non trouvé') {
+      return responseService.notFound(res, 'Projet non trouvé');
+    }
+    if (error.code === 'CLIENT_NOT_FOUND') {
+      return responseService.notFound(res, 'Client non trouvé');
+    }
+    if (error.code === 'AGENT_NOT_FOUND') {
+      return responseService.notFound(res, 'Agent non trouvé');
+    }
+    if (error.code === 'EMAIL_ALREADY_EXISTS') {
+      return responseService.badRequest(res, 'Cet email est déjà utilisé');
+    }
+    if (error.code === 'INVALID_PASSWORD') {
+      return responseService.unauthorized(res, 'Mot de passe incorrect');
+    }
+    
+    return responseService.serverError(res, 'Erreur serveur');
   }
 
   /**

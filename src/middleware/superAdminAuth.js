@@ -30,8 +30,8 @@ export function requireSuperAdmin(to, from, next) {
   try {
     const user = JSON.parse(userStr);
     
-    // Utiliser les nouvelles propriétés de permissions
-    const hasAccess = user.isSuperAdmin || user.canAccessSuperAdmin || user.role === 'super_admin';
+    // Vérifier le rôle super_admin
+    const hasAccess = user.role === 'super_admin';
     
     if (!hasAccess) {
       console.log('❌ Super Admin: Accès refusé - permissions insuffisantes:', {
@@ -40,7 +40,7 @@ export function requireSuperAdmin(to, from, next) {
         canAccessSuperAdmin: user.canAccessSuperAdmin
       });
       // Rediriger vers le dashboard approprié selon les permissions
-      if (user.canAccessAgent || user.role === 'agent' || user.role === 'admin') {
+      if (user.role === 'agent' || user.role === 'admin') {
         next('/agent');
       } else {
         next('/dashboard');
@@ -72,8 +72,8 @@ export function isSuperAdmin() {
     if (!userStr) return false;
     
     const user = JSON.parse(userStr);
-    // Utiliser les nouvelles propriétés de permissions
-    return user.isSuperAdmin || user.canAccessSuperAdmin || user.role === 'super_admin';
+    // Vérifier le rôle super_admin
+    return user.role === 'super_admin';
   } catch (error) {
     console.error('Erreur vérification Super Admin:', error);
     return false;
@@ -89,8 +89,8 @@ export function getSuperAdminUser() {
     if (!userStr) return null;
     
     const user = JSON.parse(userStr);
-    // Utiliser les nouvelles propriétés de permissions
-    const hasAccess = user.isSuperAdmin || user.canAccessSuperAdmin || user.role === 'super_admin';
+    // Vérifier le rôle super_admin
+    const hasAccess = user.role === 'super_admin';
     if (!hasAccess) return null;
     
     return user;

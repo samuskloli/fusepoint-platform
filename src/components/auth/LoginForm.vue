@@ -1,41 +1,6 @@
 <template>
-  <div class="login-form">
-    <form @submit.prevent="handleLogin">
-      <div class="form-group">
-        <label for="email">{{ $t('auth.emailRequired') }}</label>
-        <input
-          id="email"
-          v-model="form.email"
-          type="email"
-          :class="{ 'error': errors.email }"
-          :placeholder="$t('auth.emailRequired')"
-        />
-        <span v-if="errors.email" class="error-message">
-          {{ errors.email }}
-        </span>
-      </div>
-
-      <div class="form-group">
-        <label for="password">{{ $t('auth.passwordRequired') }}</label>
-        <input
-          id="password"
-          v-model="form.password"
-          type="password"
-          :class="{ 'error': errors.password }"
-          :placeholder="$t('auth.passwordRequired')"
-        />
-        <span v-if="errors.password" class="error-message">
-          {{ errors.password }}
-        </span>
-      </div>
-
-      <div v-if="generalError" class="general-error">
-        {{ generalError }}
-      </div>
-
-      <button type="submit" :disabled="isLoading" class="login-button">
-        <span v-if="isLoading">{{ $t('common.loading') }}</span>
-        <span v-else>{{ $t('auth.login') }}</span>
+  <div  class="login-form=handleLogin form-group='email=email="form.email="email={ 'error='t('auth.emailRequired="error-message=form-group="password='password=form.password="password="{ 'error=t('auth.passwordRequired='error-message="generalError=general-error="submit='isLoading=login-button class="isLoading>{{ t('common.loading') }}</div>
+        <span v-else>{{ t('auth.login') }}</span>
       </button>
     </form>
   </div>
@@ -147,7 +112,8 @@ export default {
       errors,
       generalError,
       isLoading,
-      handleLogin
+      handleLogin,
+      t
     }
   }
 }

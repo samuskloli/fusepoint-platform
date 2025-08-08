@@ -87,6 +87,25 @@ router.get('/assigned-clients', RouteHandlerService.asyncHandler(async (req, res
 }, { logKey: 'logs.assignedClientsRetrieval', errorKey: 'errors.retrievingAssignedClients' }));
 
 /**
+ * POST /api/agent/clients
+ * Créer un nouveau client
+ */
+router.post('/clients', RouteHandlerService.asyncHandler(async (req, res) => {
+  console.log('🔍 Debug POST /clients - req.body:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 Debug POST /clients - req.body type:', typeof req.body);
+  console.log('🔍 Debug POST /clients - req.body keys:', Object.keys(req.body));
+  console.log('🔍 Debug POST /clients - first_name:', req.body.first_name);
+  console.log('🔍 Debug POST /clients - last_name:', req.body.last_name);
+  console.log('🔍 Debug POST /clients - firstName:', req.body.firstName);
+  console.log('🔍 Debug POST /clients - lastName:', req.body.lastName);
+  RouteHandlerService.logOperation('creatingClient', { agentId: req.user.id, clientData: req.body });
+  
+  const clientData = await agentService.createClient(req.body);
+  
+  RouteHandlerService.successResponse(res, { success: true, client: clientData }, 'success.clientCreated');
+}, { logKey: 'logs.clientCreation', errorKey: 'errors.creatingClient' }));
+
+/**
  * POST /api/agent/clients/create
  * Créer un nouveau client
  */
@@ -460,6 +479,20 @@ router.delete('/clients/:id', RouteHandlerService.validateIdParam('id'), RouteHa
   
   RouteHandlerService.successResponse(res, result, 'success.deleted');
 }, { logKey: 'logs.deletingClient', errorKey: 'errors.deletingClient' }));
+
+/**
+ * PUT /api/agent/clients/:id/password
+ * Mettre à jour le mot de passe d'un client
+ */
+router.put('/clients/:id/password', RouteHandlerService.validateIdParam('id'), RouteHandlerService.validateRequiredFieldsMiddleware(['newPassword']), RouteHandlerService.asyncHandler(async (req, res) => {
+  const clientId = req.validatedParams.id;
+  const agentId = req.user.id;
+  const { newPassword } = req.body;
+  
+  const result = await ClientManagementService.updateClientPassword(clientId, newPassword, agentId);
+  
+  RouteHandlerService.successResponse(res, result, 'success.passwordUpdated');
+}, { logKey: 'logs.updatingClientPassword', errorKey: 'errors.updatingClientPassword' }));
 
 /**
  * GET /api/agent/providers/available

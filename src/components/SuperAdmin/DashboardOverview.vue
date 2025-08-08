@@ -161,6 +161,16 @@
         Actions Rapides
       </h3>
       <div class="actions-grid">
+        <router-link to="/super-admin/agent-view" class="action-card">
+          <div class="action-icon">
+            <font-awesome-icon icon="user-tie" />
+          </div>
+          <div class="action-content">
+            <h4>Vue Agent</h4>
+            <p>Accéder au tableau de bord agent</p>
+          </div>
+        </router-link>
+        
         <router-link to="/super-admin?tab=1" class="action-card">
           <div class="action-icon">
             <font-awesome-icon icon="cog" />

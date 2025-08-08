@@ -18,8 +18,7 @@ const sharp = require('sharp');
 const aiChatService = require('./services/aiChatService');
 const contextualAIService = require('./services/contextualAIService');
 const companyDataService = require('./services/companyDataService');
-const MariaDBService = require('./services/mariadbService');
-const databaseService = new MariaDBService();
+const databaseService = require('./services/databaseService');
 const accompagnementService = require('./services/accompagnementService');
 const authService = require('./services/authService');
 const platformSettingsService = require('./services/platformSettingsService');
@@ -33,6 +32,7 @@ const instagramRoutes = require('./routes/instagram');
 const accompagnementRoutes = require('./routes/accompagnement');
 const agentRoutes = require('./routes/agent');
 const superAdminRoutes = require('./routes/superAdmin');
+const adminRoutes = require('./routes/admin');
 const prestataireRoutes = require('./routes/prestataire');
 const platformSettingsBlocksRoutes = require('./routes/platformSettingsBlocks');
 const clientRoutes = require('./routes/client');
@@ -47,28 +47,18 @@ app.use(helmet({
 }));
 
 // Configuration CORS optimisée pour production et développement
+// Liste d'origines autorisées depuis l'env, avec valeurs par défaut pour dev et prod
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://beta.fusepoint.ch,https://fusepoint.ch,https://www.fusepoint.ch,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin(origin, callback) {
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'https://beta.fusepoint.ch',
-      'https://fusepoint.ch',
-      'https://www.fusepoint.ch',
-      'http://localhost:5173',
-      'http://localhost:8080',
-      'http://localhost:8082',
-      'http://172.20.10.2:5173',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:8080'
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('❌ CORS blocked origin:', origin);
-      callback(null, false);
-    }
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.log('❌ CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -77,6 +67,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(compression());
 app.use(express.json());
 app.use(morgan('combined'));
@@ -211,11 +202,11 @@ app.use((req, res, next) => {
 async function initializeDatabase() {
   try {
     await databaseService.initialize();
-    console.log('✅ Base de données MariaDB initialisée');
+    console.log('✅ Base de données initialisée');
     
 
   } catch (error) {
-    console.error('❌ Erreur initialisation MariaDB:', error);
+    console.error('❌ Erreur initialisation:', error);
     process.exit(1);
   }
 }
@@ -227,6 +218,7 @@ app.use('/api/facebook', facebookRoutes);
 app.use('/api/instagram', instagramRoutes);
 app.use('/api/accompagnement', accompagnementRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/prestataire', prestataireRoutes);
 app.use('/api/super-admin', superAdminRoutes);
@@ -361,7 +353,7 @@ app.post('/api/analytics/test-connection', authMiddleware, async (req, res) => {
 // Route statut IA
 app.get('/api/ai/status', async (req, res) => {
   try {
-    const dbStatus = await databaseService.pool ? 'connected' : 'disconnected';
+    const dbStatus = await databaseService.checkConnection();
     
     res.json({
       status: 'active',
@@ -642,7 +634,7 @@ async function startServer() {
       console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
       console.log(`🌐 Port: ${PORT}`);
       console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`💾 Base de données: MariaDB (initialisée)`);
+      console.log(`💾 Base de données: SQLite (initialisée)`);
 
       console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
       console.log(`🔐 Authentification: JWT`);

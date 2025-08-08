@@ -1,20 +1,20 @@
-const sqlite3 = require('sqlite3').verbose();
+const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
 
-// Chemin vers la base de données
-const dbPath = path.join(__dirname, '../database/fusepoint.db');
+// Configuration de la base de données MariaDB
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'fusepoint',
+  port: process.env.DB_PORT || 3306
+};
+
 const schemaPath = path.join(__dirname, '../database/deletion_requests_schema.sql');
 
 console.log('🔧 Création de la table deletion_requests...');
-console.log('📁 Base de données:', dbPath);
 console.log('📄 Schéma:', schemaPath);
-
-// Vérifier que la base de données existe
-if (!fs.existsSync(dbPath)) {
-  console.error('❌ Base de données non trouvée:', dbPath);
-  process.exit(1);
-}
 
 // Vérifier que le fichier de schéma existe
 if (!fs.existsSync(schemaPath)) {
@@ -22,44 +22,50 @@ if (!fs.existsSync(schemaPath)) {
   process.exit(1);
 }
 
-// Lire le schéma SQL
-const schema = fs.readFileSync(schemaPath, 'utf8');
-
-// Connexion à la base de données
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Erreur connexion base de données:', err.message);
-    process.exit(1);
-  }
-  console.log('✅ Connexion à la base de données réussie');
-});
-
-// Exécuter le schéma
-db.exec(schema, (err) => {
-  if (err) {
-    console.error('❌ Erreur création table:', err.message);
-    process.exit(1);
-  }
-  
-  console.log('✅ Table deletion_requests créée avec succès');
-  
-  // Vérifier que la table a été créée
-  db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='deletion_requests'", (err, row) => {
-    if (err) {
-      console.error('❌ Erreur vérification table:', err.message);
-    } else if (row) {
+// Fonction principale asynchrone
+async function createDeletionRequestsTable() {
+  try {
+    // Lire le schéma SQL
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    
+    // Connexion à la base de données
+    const connection = await mysql.createConnection(dbConfig);
+    console.log('✅ Connexion à la base de données réussie');
+    
+    // Diviser le schéma en requêtes individuelles
+    const queries = schema.split(';').filter(query => query.trim());
+    
+    // Exécuter chaque requête
+    for (const query of queries) {
+      if (query.trim()) {
+        await connection.execute(query);
+      }
+    }
+    
+    console.log('✅ Table deletion_requests créée avec succès');
+    
+    // Vérifier que la table a été créée
+    const [tables] = await connection.execute(`
+      SELECT TABLE_NAME as name 
+      FROM INFORMATION_SCHEMA.TABLES 
+      WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'deletion_requests'
+    `, [dbConfig.database]);
+    
+    if (tables.length > 0) {
       console.log('✅ Table deletion_requests confirmée dans la base de données');
     } else {
       console.error('❌ Table deletion_requests non trouvée après création');
     }
     
     // Fermer la connexion
-    db.close((err) => {
-      if (err) {
-        console.error('❌ Erreur fermeture base de données:', err.message);
-      } else {
-        console.log('✅ Connexion fermée');
-      }
-    });
-  });
-});
+    await connection.end();
+    console.log('✅ Connexion fermée');
+    
+  } catch (error) {
+    console.error('❌ Erreur:', error.message);
+    process.exit(1);
+  }
+}
+
+// Exécuter la fonction
+createDeletionRequestsTable();
