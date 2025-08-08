@@ -19,6 +19,8 @@ dist-ssr
 .env.backup*
 .env.backup.*
 server/.env
+server/.env.*
+*.env.mariadb
 scripts/switch-env.sh
 
 # Database files
