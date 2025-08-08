@@ -1,12 +1,37 @@
-# 🚀 Fusepoint - Plateforme Marketing SaaS
+<div align="center">
 
-> **Version Actuelle**: Alpha 2.1.0  
-> **Statut**: ✅ Production Ready  
-> **Dernière mise à jour**: 2025-08-04
+![Fusepoint Logo](./public/fusepoint-logo.svg)
 
-## 📋 Vue d'ensemble
+# 🚀 Fusepoint Platform
+## Plateforme Marketing Intelligente
 
-Fusepoint est une plateforme SaaS complète de marketing digital qui combine intelligence artificielle, gestion de projets clients et automatisation des campagnes marketing.
+[![Version](https://img.shields.io/badge/Version-Alpha%201.1.0-blue?style=for-the-badge)](./docs/CHANGELOG.md)
+[![Status](https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge)](#)
+[![License](https://img.shields.io/badge/License-Propriétaire-red?style=for-the-badge)](#)
+[![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)](#)
+[![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)](#)
+
+**Plateforme SaaS tout-en-un pour le marketing digital**  
+*Intelligence artificielle • Gestion de projets • Automatisation*
+
+[🚀 Démarrage Rapide](#-démarrage-rapide) • [📚 Documentation](./docs/README.md) • [🔧 Installation](#-installation) • [💡 Fonctionnalités](#-fonctionnalités-principales)
+
+---
+
+</div>
+
+## 🎯 Vue d'ensemble
+
+Fusepoint Platform est une solution complète de marketing digital qui révolutionne la gestion des campagnes marketing grâce à l'intelligence artificielle intégrée. Notre plateforme offre une expérience unifiée pour les agents marketing, les clients et les administrateurs.
+
+### ✨ **Pourquoi Fusepoint ?**
+
+- 🤖 **IA Intégrée** : Assistant marketing intelligent pour optimiser vos campagnes
+- 🎯 **Gestion Centralisée** : Tous vos projets et clients en un seul endroit
+- 📊 **Analytics Avancés** : Tableaux de bord en temps réel avec métriques détaillées
+- 🔄 **Automatisation** : Workflows intelligents pour gagner du temps
+- 🌐 **Multi-plateforme** : Intégration native avec les réseaux sociaux
+- 🔐 **Sécurité Renforcée** : Gestion des rôles et permissions granulaires
 
 ## 🎯 Démarrage Rapide
 
@@ -94,42 +119,144 @@ Les utilitaires sont centralisés dans [scripts/utils/](scripts/utils/) :
 - **update-version-logs.sh** - Mise à jour des logs de version
 - **test-login.html** - Test de connexion
 
-## 🚀 Fonctionnalités Principales
+## 💡 Fonctionnalités Principales
 
-- **🤖 IA Marketing** - Assistant IA pour campagnes marketing
-- **👥 Gestion Clients** - CRM intégré avec assignation d'agents
-- **📊 Tableaux de Bord** - Analytics et métriques en temps réel
-- **💬 Chat Système** - Communication client-agent intégrée
-- **🔄 Automatisation** - Workflows marketing automatisés
-- **🔐 Authentification** - Système de rôles et permissions
-- **💾 Sauvegarde** - Système de backup automatisé
-- **🌐 Multi-plateforme** - Support réseaux sociaux
+<div align="center">
 
-## 🔧 Technologies
+### 🎯 **Pour les Agents Marketing**
 
-- **Frontend**: Vue.js 3, Tailwind CSS, Vite
-- **Backend**: Node.js, Express, SQLite
-- **IA**: Intégration APIs IA (OpenAI, Claude)
-- **Déploiement**: PM2, Apache, Infomaniak
-- **Base de données**: SQLite avec migrations
+</div>
 
-## 📞 Support
+| Fonctionnalité | Description | Statut |
+|---|---|---|
+| 👥 **Gestion Clients** | CRM intégré avec assignation automatique | ✅ Actif |
+| 🔑 **Mots de Passe** | Modification sécurisée des accès clients | 🆕 Nouveau |
+| 📊 **Rapports** | Analytics détaillés et métriques de performance | ✅ Actif |
+| 💬 **Communication** | Chat intégré avec les clients | ✅ Actif |
+| 🤝 **Prestataires** | Système d'invitation et de collaboration | ✅ Actif |
+| 📋 **Projets** | Gestion complète des projets marketing | ✅ Actif |
 
-### Diagnostic Rapide
-```bash
-# Rapport de santé complet
-./fusepoint.sh maintenance health
+<div align="center">
 
-# Nettoyage système
-./fusepoint.sh maintenance cleanup
-```
+### 👤 **Pour les Clients**
 
-### En Cas de Problème
-1. Consultez [scripts/docs/TROUBLESHOOTING_INFOMANIAK.md](scripts/docs/TROUBLESHOOTING_INFOMANIAK.md)
-2. Utilisez les outils de debug dans [scripts/debug/](scripts/debug/)
-3. Vérifiez les logs : `./fusepoint.sh server status`
+</div>
+
+| Fonctionnalité | Description | Statut |
+|---|---|---|
+| 🤖 **Assistant IA** | Chat intelligent pour conseils marketing | ✅ Actif |
+| 📊 **Dashboard** | Tableau de bord personnalisé et intuitif | ✅ Actif |
+| 📱 **Réseaux Sociaux** | Intégration Facebook, Instagram et plus | ✅ Actif |
+| 📋 **Suivi Projets** | Visualisation en temps réel de l'avancement | ✅ Actif |
+| 🔔 **Notifications** | Alertes et mises à jour automatiques | ⚠️ Beta |
+| 🔐 **Sécurité** | Authentification sécurisée et données protégées | ✅ Actif |
+
+<div align="center">
+
+### ⚙️ **Pour les Administrateurs**
+
+</div>
+
+| Fonctionnalité | Description | Statut |
+|---|---|---|
+| 👥 **Gestion Utilisateurs** | Administration complète des comptes | ✅ Actif |
+| 🎨 **Templates** | Gestion des modèles de projets | 🆕 Nouveau |
+| 🌐 **Internationalisation** | Support multilingue (FR/EN) | 🆕 Nouveau |
+| 📧 **Configuration SMTP** | Paramétrage des emails automatiques | ✅ Actif |
+| 📊 **Logs Système** | Surveillance et débogage avancés | 🔧 En cours |
+| ⚙️ **Paramètres** | Configuration globale de la plateforme | ✅ Actif |
 
 ---
 
-**Développé avec ❤️ pour optimiser vos campagnes marketing**  
-**© 2025 Fusepoint Platform - Tous droits réservés**
+## 🛠️ Stack Technique
+
+<div align="center">
+
+### 🎨 **Frontend**
+![Vue.js](https://img.shields.io/badge/Vue.js-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
+
+### ⚙️ **Backend**
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white)
+![Express.js](https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-003545?style=for-the-badge&logo=mariadb&logoColor=white)
+![PM2](https://img.shields.io/badge/PM2-2B037A?style=for-the-badge&logo=pm2&logoColor=white)
+
+### 🤖 **Intelligence Artificielle**
+![OpenAI](https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude-FF6B35?style=for-the-badge&logoColor=white)
+
+### 🚀 **Déploiement & DevOps**
+![Apache](https://img.shields.io/badge/Apache-D22128?style=for-the-badge&logo=apache&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![npm](https://img.shields.io/badge/npm-CB3837?style=for-the-badge&logo=npm&logoColor=white)
+
+</div>
+
+### 📊 **Métriques du Projet**
+- **Lignes de Code** : ~50,000+
+- **Composants Vue** : 80+
+- **Routes API** : 45+
+- **Couverture Tests** : En développement
+- **Documentation** : 95% complète
+
+## 📞 Support & Assistance
+
+<div align="center">
+
+### 🛠️ **Diagnostic Rapide**
+
+</div>
+
+| Commande | Description | Usage |
+|---|---|---|
+| `./fusepoint.sh maintenance health` | Rapport de santé complet | Vérification système |
+| `./fusepoint.sh maintenance cleanup` | Nettoyage automatique | Optimisation |
+| `./fusepoint.sh server status` | État des serveurs | Monitoring |
+| `./fusepoint.sh backup create` | Sauvegarde manuelle | Sécurité |
+
+### 🆘 **En Cas de Problème**
+
+1. 📚 **Documentation** : Consultez [scripts/docs/TROUBLESHOOTING_INFOMANIAK.md](scripts/docs/TROUBLESHOOTING_INFOMANIAK.md)
+2. 🔍 **Debug** : Utilisez les outils dans [scripts/debug/](scripts/debug/)
+3. 📊 **Logs** : Vérifiez avec `./fusepoint.sh server status`
+4. 💬 **Support** : Contactez l'équipe de développement
+
+### 📋 **Ressources Utiles**
+
+- 📖 [Documentation Complète](./docs/README.md)
+- 🔧 [Guide d'Installation](./docs/INSTALLATION_SCRIPTS.md)
+- 🚀 [Workflow de Développement](./docs/DEV-WORKFLOW.md)
+- 📝 [Changelog](./docs/CHANGELOG.md)
+- 🔍 [Dépannage](./docs/TROUBLESHOOTING_INFOMANIAK.md)
+
+---
+
+<div align="center">
+
+## 🎉 Merci d'utiliser Fusepoint Platform !
+
+![Fusepoint Icon](./public/fusepoint-icon.svg)
+
+### 🌟 **Développé avec passion pour révolutionner le marketing digital**
+
+![Made with Love](https://img.shields.io/badge/Made%20with-❤️-red?style=for-the-badge)
+![Team](https://img.shields.io/badge/Team-Fusepoint-blue?style=for-the-badge)
+![Year](https://img.shields.io/badge/Since-2025-green?style=for-the-badge)
+
+### 👥 **Équipe de Développement**
+**Lead Developer** : Samuel Oliveira  
+**Version Actuelle** : Alpha 1.1.0  
+**Dernière MAJ** : Janvier 2025
+
+### 🔗 **Liens Utiles**
+[📚 Documentation](./docs/README.md) • [🐛 Issues](./docs/CHANGELOG.md) • [🚀 Roadmap](./docs/CHANGELOG.md#-roadmap-2025) • [📞 Support](#-support--assistance)
+
+---
+
+**© 2025 Fusepoint Platform - Tous droits réservés**  
+*Plateforme Marketing Intelligente • Intelligence Artificielle • Automatisation*
+
+</div>
