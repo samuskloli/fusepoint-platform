@@ -62,7 +62,22 @@ module.exports = {
     assigned_successfully: 'Agent attribué avec succès',
     fetching_available: 'Récupération des agents disponibles',
     available_fetched: 'Agents disponibles récupérés avec succès',
-    fetch_available_error: 'Erreur lors de la récupération des agents disponibles'
+    fetch_available_error: 'Erreur lors de la récupération des agents disponibles',
+    assignment_notification_title: 'Agent attribué',
+    assignment_notification_message: 'Un agent vous a été attribué et va prendre contact avec vous prochainement.',
+    assignment_pending_title: 'Attribution en cours',
+    assignment_pending_message: 'Votre demande d\'attribution d\'agent est en cours de traitement.',
+    no_agent_assigned: 'Aucun agent attribué',
+    request_agent: 'Demander un agent',
+    requesting_agent: 'Demande en cours...',
+    contact_agent: 'Contacter l\'agent',
+    assigned_agent: 'Agent attribué',
+    agent_will_be_assigned: 'Un agent va bientôt vous être attribué',
+    agent_assignment_description: 'Notre équipe examine votre demande et vous attribuera le meilleur agent selon vos besoins. Vous recevrez une notification dès qu\'un agent sera disponible.',
+    request_agent_now: 'Demander un agent maintenant',
+    your_assigned_agent: 'Votre agent attribué',
+    assigned_on: 'Attribué le',
+    checking_assignment: 'Vérification de l\'attribution d\'agent...'
   },
 
   // Messages spécifiques aux clients

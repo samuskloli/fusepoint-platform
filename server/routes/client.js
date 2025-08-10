@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const databaseService = require('../services/databaseService');
 const ClientManagementService = require('../services/clientManagementService');
+const projectTemplateService = require('../services/projectTemplateService');
 
 // Middleware pour toutes les routes client
 router.use(authMiddleware);
@@ -271,8 +272,32 @@ router.get('/:id/assigned-agent', async (req, res) => {
 
     console.log('🔍 Vérification attribution pour client ID:', clientId);
     
-    // Vérifier l'attribution dans agent_prestataires
-    // Note: prestataire_id est utilisé pour stocker l'ID du client
+    // Vérifier d'abord l'attribution dans la table users (méthode principale)
+    const clientWithAgent = await databaseService.get(
+      `SELECT u.id, u.agent_id, a.first_name, a.last_name, a.email 
+       FROM users u 
+       LEFT JOIN users a ON u.agent_id = a.id 
+       WHERE u.id = ? AND u.role IN ('user', 'client')`,
+      [clientId]
+    );
+    
+    console.log('📊 Résultat attribution users:', clientWithAgent);
+    
+    if (clientWithAgent && clientWithAgent.agent_id) {
+      res.json({
+        success: true,
+        hasAssignedAgent: true,
+        agent: {
+          id: clientWithAgent.agent_id,
+          firstName: clientWithAgent.first_name,
+          lastName: clientWithAgent.last_name,
+          email: clientWithAgent.email
+        }
+      });
+      return;
+    }
+    
+    // Fallback: vérifier dans agent_prestataires pour compatibilité
     const assignment = await databaseService.get(
       `SELECT ap.*, u.first_name, u.last_name, u.email 
        FROM agent_prestataires ap 
@@ -281,7 +306,7 @@ router.get('/:id/assigned-agent', async (req, res) => {
       [clientId]
     );
     
-    console.log('📊 Résultat attribution:', assignment);
+    console.log('📊 Résultat attribution agent_prestataires:', assignment);
     
     if (assignment) {
       res.json({
@@ -323,23 +348,23 @@ router.get('/:id/stats', async (req, res) => {
     }
 
     // Récupérer les statistiques
-    const [completedProjects] = await databaseService.query(
+    const completedProjects = await databaseService.get(
       'SELECT COUNT(*) as count FROM projects WHERE client_id = ? AND status = "completed"',
       [clientId]
     );
     
-    const [activeActions] = await databaseService.query(
+    const activeActions = await databaseService.get(
       'SELECT COUNT(*) as count FROM projects WHERE client_id = ? AND status = "active"',
       [clientId]
     );
     
-    const [pendingTasks] = await databaseService.query(
+    const pendingTasks = await databaseService.get(
       'SELECT COUNT(*) as count FROM tasks WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND status = "pending"',
       [clientId]
     );
     
-    const [upcomingDeadlines] = await databaseService.query(
-      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > datetime("now")',
+    const upcomingDeadlines = await databaseService.get(
+      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > NOW()',
       [clientId]
     );
 
@@ -380,13 +405,13 @@ router.post('/tasks/:id/validate', async (req, res) => {
     // Mettre à jour le statut de la tâche
     const newStatus = approved ? 'approved' : 'rejected';
     await databaseService.run(
-      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = datetime("now") WHERE id = ?',
+      'UPDATE tasks SET status = ?, validation_comments = ?, validated_at = NOW() WHERE id = ?',
       [newStatus, comments || null, taskId]
     );
 
     // Enregistrer l'historique
     await databaseService.run(
-      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, datetime("now"))',
+      'INSERT INTO task_history (task_id, action, comments, created_by, created_at) VALUES (?, ?, ?, ?, NOW())',
       [taskId, `Task ${newStatus}`, comments || null, userId]
     );
 
@@ -531,6 +556,109 @@ router.post('/:id/assign-agent', async (req, res) => {
       success: false,
       message: message,
       error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/client/project-templates
+ * Récupérer les modèles de projets disponibles pour les clients
+ */
+router.get('/project-templates', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Permettre l'accès aux clients, utilisateurs, agents, admins et super_admins
+    const allowedRoles = ['client', 'user', 'agent', 'admin', 'super_admin'];
+    
+    // Vérification des rôles autorisés
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Rôle insuffisant.'
+      });
+    }
+
+    const filters = {
+      category: req.query.category,
+      search: req.query.search,
+      // Filtrer seulement les templates actifs pour les clients
+      status: 'active'
+    };
+    
+    const result = await projectTemplateService.getAllTemplates(filters);
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        data: result.data,
+        total: result.total || result.data.length
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des modèles de projets'
+      });
+    }
+  } catch (error) {
+    console.error('Erreur lors de la récupération des modèles pour client:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/client/:id
+ * Récupérer les informations d'un client par son ID
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const clientId = req.params.id;
+    const userId = req.user.id;
+    
+    // Vérifier que l'utilisateur peut accéder aux données de ce client
+    if (userId != clientId && !['admin', 'agent', 'super_admin'].includes(req.user.role)) {
+      return res.status(403).json({ 
+        success: false,
+        error: 'Accès non autorisé' 
+      });
+    }
+
+    // Récupérer les informations du client
+    const client = await databaseService.get(
+      'SELECT id, first_name, last_name, email, phone, company, is_active, created_at, last_login FROM users WHERE id = ? AND role IN ("user", "client")',
+      [clientId]
+    );
+    
+    if (!client) {
+      return res.status(404).json({ 
+        success: false,
+        error: 'Client non trouvé' 
+      });
+    }
+
+    // Formater les données pour le frontend
+    const formattedClient = {
+      id: client.id,
+      name: `${client.first_name} ${client.last_name}`.trim(),
+      firstName: client.first_name,
+      lastName: client.last_name,
+      email: client.email,
+      phone: client.phone,
+      company: client.company,
+      isActive: client.is_active,
+      createdAt: client.created_at,
+      lastLogin: client.last_login
+    };
+
+    res.json({
+      success: true,
+      data: formattedClient
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération du client:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur serveur' 
     });
   }
 });

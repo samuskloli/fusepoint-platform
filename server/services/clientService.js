@@ -648,6 +648,13 @@ class ClientService {
         'UPDATE users SET agent_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [agentId, clientId]
       );
+
+      // Créer une entrée dans agent_prestataires pour la compatibilité
+      await databaseService.run(`
+        INSERT OR REPLACE INTO agent_prestataires 
+        (agent_id, prestataire_id, status, assigned_at, created_at, updated_at)
+        VALUES (?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `, [agentId, clientId]);
       
       if (result.affectedRows === 0) {
         const error = new Error('Échec de l\'assignation');

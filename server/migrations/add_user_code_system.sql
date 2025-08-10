@@ -50,7 +50,7 @@ UPDATE users SET
 WHERE user_code IS NULL;
 
 -- Ajouter des données de test pour les agents avec spécialités
-INSERT OR IGNORE INTO users (email, password_hash, first_name, last_name, role, user_code, status, specialties) VALUES 
+INSERT IGNORE INTO users (email, password_hash, first_name, last_name, role, user_code, status, specialties) VALUES 
 ('agent1@fusepoint.com', '$2b$10$example_hash', 'Marie', 'Dupont', 'agent', 'AG101', 'active', '["SEO", "Content Marketing", "Analytics"]'),
 ('agent2@fusepoint.com', '$2b$10$example_hash', 'Pierre', 'Martin', 'agent', 'AG102', 'active', '["Social Media", "Publicité Facebook", "Instagram Marketing"]'),
 ('agent3@fusepoint.com', '$2b$10$example_hash', 'Sophie', 'Bernard', 'agent', 'AG103', 'active', '["E-commerce", "Shopify", "Conversion Optimization"]'),

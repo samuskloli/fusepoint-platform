@@ -318,6 +318,7 @@
 
 <script>
 import { ref, computed, onMounted, reactive } from 'vue';
+import authService from '@/services/authService'
 
 export default {
   name: 'PlatformSettings',
@@ -450,14 +451,14 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await response.data;
         settings.value = data.settings || [];
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         error.value = err.message;
         console.error('Erreur chargement paramètres:', err);
       } finally {
@@ -524,10 +525,6 @@ export default {
           body: JSON.stringify({ value: newValue })
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
         // Mettre à jour localement
         const settingIndex = settings.value.findIndex(s => s.key === key);
         if (settingIndex !== -1) {
@@ -539,6 +536,10 @@ export default {
         showNotification('Paramètre mis à jour avec succès');
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         validationErrors[key] = err.message;
         console.error('Erreur sauvegarde paramètre:', err);
       } finally {
@@ -592,17 +593,17 @@ export default {
           body: JSON.stringify(newSetting)
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await response.data;
         settings.value.push(data.setting);
         
         closeCreateDialog();
         showNotification('Paramètre créé avec succès');
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         createError.value = err.message;
         console.error('Erreur création paramètre:', err);
       } finally {
@@ -630,14 +631,14 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
         settings.value = settings.value.filter(s => s.key !== setting.key);
         showNotification('Paramètre supprimé avec succès');
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         showNotification(`Erreur lors de la suppression: ${err.message}`, 'error');
         console.error('Erreur suppression paramètre:', err);
       }

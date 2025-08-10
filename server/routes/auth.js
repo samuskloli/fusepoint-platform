@@ -538,6 +538,56 @@ router.get('/sessions', authService.authenticateMiddleware.bind(authService), as
 });
 
 /**
+ * PUT /api/auth/update-language
+ * Mettre à jour la préférence de langue de l'utilisateur
+ */
+router.put('/update-language', authService.authenticateMiddleware.bind(authService), async (req, res) => {
+  try {
+    const { user } = req;
+    const { language } = req.body;
+
+    if (!language) {
+      return res.status(400).json({ 
+        error: 'La langue est requise' 
+      });
+    }
+
+    // Validation de la langue (seulement fr et en supportés)
+    if (!['fr', 'en'].includes(language)) {
+      return res.status(400).json({ 
+        error: 'Langue non supportée. Utilisez "fr" ou "en"' 
+      });
+    }
+
+    // Mettre à jour la langue de l'utilisateur
+    await databaseService.run(
+      'UPDATE users SET language = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [language, user.id]
+    );
+
+    // Log d'audit
+    await databaseService.logAudit(
+      user.id,
+      null,
+      'LANGUAGE_UPDATED',
+      'users',
+      { language },
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: 'Langue mise à jour avec succès',
+      language
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur mise à jour langue:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la langue' });
+  }
+});
+
+/**
  * POST /api/auth/set-password
  * Définir le mot de passe lors de la première connexion avec un token
  */
@@ -564,7 +614,7 @@ router.post('/set-password', async (req, res) => {
     const userQuery = `
       SELECT id, email, first_name, last_name, first_login_token_expires
       FROM users 
-      WHERE first_login_token = ? AND first_login_token_expires > datetime('now')
+      WHERE first_login_token = ? AND first_login_token_expires > NOW()
     `;
     
     const user = await databaseService.get(userQuery, [token]);

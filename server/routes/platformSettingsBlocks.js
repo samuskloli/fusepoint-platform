@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const platformSettingsService = require('../services/platformSettingsService');
+const PlatformSettingsService = require('../services/platformSettingsService');
+const platformSettingsService = new PlatformSettingsService();
 const systemLogsService = require('../services/systemLogsService');
 const authMiddleware = require('../middleware/auth');
 const superAdminAuth = require('../middleware/superAdminAuth');

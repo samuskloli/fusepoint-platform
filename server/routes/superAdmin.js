@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const platformSettingsService = require('../services/platformSettingsService');
+const PlatformSettingsService = require('../services/platformSettingsService');
+const platformSettingsService = new PlatformSettingsService();
 const systemHealthService = require('../services/systemHealthService');
 const systemLogsService = require('../services/systemLogsService');
 const permissionsService = require('../services/permissionsService');

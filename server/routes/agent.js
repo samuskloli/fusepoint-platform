@@ -70,18 +70,43 @@ router.get('/clients', RouteHandlerService.asyncHandler(async (req, res) => {
 router.get('/assigned-clients', RouteHandlerService.asyncHandler(async (req, res) => {
   const agentId = req.user.id;
   const userRole = req.user.role;
+  
+  console.log(`🔍 [DEBUG] Récupération des clients assignés pour l'utilisateur:`, {
+    agentId,
+    role: userRole,
+    timestamp: new Date().toISOString()
+  });
+  
   RouteHandlerService.logOperation('retrievingAssignedClients', { agentId });
   
   // Construire les filtres selon le rôle
   const filters = {
-    agentId: userRole === 'super_admin' ? undefined : agentId,
+    // Pour super_admin et admin, ne pas filtrer par agentId (voir tous les clients)
+    // Pour les agents normaux, filtrer par leur agentId
+    agentId: (userRole === 'super_admin' || userRole === 'admin') ? null : agentId,
     status: 'active',
     search: req.query.search,
     limit: req.query.limit ? parseInt(req.query.limit) : undefined,
     offset: req.query.offset ? parseInt(req.query.offset) : undefined
   };
   
+  if (userRole !== 'super_admin' && userRole !== 'admin') {
+    console.log(`🔒 [DEBUG] Agent normal - filtrage par agentId: ${agentId}`);
+  } else {
+    console.log(`👑 [DEBUG] Super-admin/Admin - pas de filtrage par agentId (role: ${userRole})`);
+  }
+  
+  console.log(`📋 [DEBUG] Filtres appliqués:`, filters);
+  
   const clients = await agentService.getAgentClients(agentId, filters);
+  
+  console.log(`📊 [DEBUG] Résultat de agentService.getAgentClients:`, {
+    clientsLength: clients ? clients.length : 0,
+    role: userRole,
+    sampleClients: clients ? clients.slice(0, 2).map(c => ({ id: c.id, name: `${c.first_name} ${c.last_name}`, agent_id: c.agent_id })) : []
+  });
+  
+  console.log(`✅ [DEBUG] ${clients ? clients.length : 0} clients récupérés avec succès pour role: ${userRole}`);
   
   RouteHandlerService.successResponse(res, clients, 'success.assignedClientsRetrieved');
 }, { logKey: 'logs.assignedClientsRetrieval', errorKey: 'errors.retrievingAssignedClients' }));
@@ -311,7 +336,7 @@ router.post('/clients/:clientId/projects', RouteHandlerService.validateIdParam('
   const clientId = req.validatedParams.clientId;
   const projectData = req.body;
   
-  const project = await ProjectManagementService.createProject(clientId, projectData, req.user.id);
+  const project = await ProjectManagementService.createProjectWithValidation(projectData, clientId, req.user.id);
   
   RouteHandlerService.successResponse(res, project, 'projects.projectCreated', 201);
 }, { logKey: 'logs.creatingProject', errorKey: 'errors.creatingProject' }));
@@ -392,6 +417,50 @@ router.get('/projects/:projectId/team', RouteHandlerService.validateIdParam('pro
   
   RouteHandlerService.successResponse(res, members, 'success.retrieved');
 }, { logKey: 'logs.retrievingProjectTeam', errorKey: 'errors.retrievingProjectTeam' }));
+
+/**
+ * PUT /api/agent/projects/:projectId
+ * Mettre à jour un projet spécifique
+ */
+router.put('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+  const projectId = req.validatedParams.projectId;
+  const updateData = req.body;
+  
+  const updatedProject = await ProjectManagementService.updateProjectWithValidation(projectId, updateData, req.user.id);
+  
+  RouteHandlerService.successResponse(res, updatedProject, 'projects.projectUpdated');
+}, { logKey: 'logs.updatingProject', errorKey: 'errors.updatingProject' }));
+
+/**
+ * DELETE /api/agent/projects/:projectId
+ * Supprimer un projet spécifique
+ */
+router.delete('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+  const projectId = req.validatedParams.projectId;
+  
+  const result = await ProjectManagementService.deleteProjectWithValidation(projectId, req.user.id);
+  
+  RouteHandlerService.successResponse(res, result, 'projects.projectDeleted');
+}, { logKey: 'logs.deletingProject', errorKey: 'errors.deletingProject' }));
+
+/**
+ * DELETE /api/agent/projects/bulk
+ * Supprimer plusieurs projets en même temps
+ */
+router.delete('/projects/bulk', RouteHandlerService.validateRequiredFieldsMiddleware(['projectIds']), RouteHandlerService.asyncHandler(async (req, res) => {
+  const { projectIds } = req.body;
+  
+  if (!Array.isArray(projectIds) || projectIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'projectIds doit être un tableau non vide'
+    });
+  }
+  
+  const result = await ProjectManagementService.deleteMultipleProjectsWithValidation(projectIds, req.user.id);
+  
+  RouteHandlerService.successResponse(res, result, 'projects.multipleProjectsDeleted');
+}, { logKey: 'logs.deletingMultipleProjects', errorKey: 'errors.deletingMultipleProjects' }));
 
 /**
  * GET /api/agent/clients/:clientId/tasks
@@ -562,5 +631,132 @@ router.post('/auto-assign/:clientId', RouteHandlerService.validateIdParam('clien
   
   RouteHandlerService.successResponse(res, result, result.message);
 }, { logKey: 'logs.autoAssigning', errorKey: 'errors.autoAssigning' }));
+
+// Route pour récupérer les demandes de service pour les agents
+router.get('/service-requests', async (req, res) => {
+  try {
+    const agentId = req.user.id;
+    const agentRole = req.user.role;
+    
+    // Vérifier que l'utilisateur est bien un agent, admin ou super_admin
+    if (!['agent', 'admin', 'super_admin'].includes(agentRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Seuls les agents peuvent accéder aux demandes de service.'
+      });
+    }
+
+    let serviceRequests = [];
+    
+    if (agentRole === 'super_admin' || agentRole === 'admin') {
+      // Les admins et super_admins voient toutes les demandes
+      const query = `
+        SELECT sr.*, ags.name as service_name, ags.category as service_category,
+               u.first_name, u.last_name, u.email, u.company as client_name
+        FROM service_requests sr
+        JOIN agency_services ags ON sr.service_id = ags.id
+        JOIN users u ON sr.user_id = u.id
+        ORDER BY sr.created_at DESC
+      `;
+      serviceRequests = await databaseService.query(query);
+    } else {
+      // Les agents voient seulement les demandes de leurs clients assignés
+      const query = `
+        SELECT sr.*, ags.name as service_name, ags.category as service_category,
+               u.first_name, u.last_name, u.email, u.company as client_name
+        FROM service_requests sr
+        JOIN agency_services ags ON sr.service_id = ags.id
+        JOIN users u ON sr.user_id = u.id
+        WHERE u.agent_id = ? OR u.id IN (
+          SELECT client_id FROM agent_clients WHERE agent_id = ?
+        )
+        ORDER BY sr.created_at DESC
+      `;
+      serviceRequests = await databaseService.query(query, [agentId, agentId]);
+    }
+
+    res.json({
+      success: true,
+      data: serviceRequests
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des demandes de service:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des demandes de service',
+      error: error.message
+    });
+  }
+});
+
+// Route pour mettre à jour le statut d'une demande de service
+router.put('/service-requests/:requestId/status', async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { status } = req.body;
+    const agentId = req.user.id;
+    const agentRole = req.user.role;
+    
+    // Vérifier que l'utilisateur est bien un agent, admin ou super_admin
+    if (!['agent', 'admin', 'super_admin'].includes(agentRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Accès refusé. Seuls les agents peuvent modifier les demandes de service.'
+      });
+    }
+
+    // Vérifier que la demande existe et que l'agent y a accès
+    let accessQuery;
+    let accessParams;
+    
+    if (agentRole === 'super_admin' || agentRole === 'admin') {
+      accessQuery = 'SELECT sr.* FROM service_requests sr WHERE sr.id = ?';
+      accessParams = [requestId];
+    } else {
+      accessQuery = `
+        SELECT sr.* FROM service_requests sr
+        JOIN users u ON sr.user_id = u.id
+        WHERE sr.id = ? AND (u.agent_id = ? OR u.id IN (
+          SELECT client_id FROM agent_clients WHERE agent_id = ?
+        ))
+      `;
+      accessParams = [requestId, agentId, agentId];
+    }
+    
+    const serviceRequest = await databaseService.get(accessQuery, accessParams);
+    
+    if (!serviceRequest) {
+      return res.status(404).json({
+        success: false,
+        message: 'Demande de service non trouvée ou accès non autorisé'
+      });
+    }
+
+    // Mettre à jour le statut
+    await databaseService.run(
+      'UPDATE service_requests SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, requestId]
+    );
+
+    // Enregistrer l'historique du changement de statut
+    await databaseService.run(
+      `INSERT INTO request_status_history (request_id, old_status, new_status, changed_by, created_at) 
+       VALUES (?, ?, ?, ?, NOW())`,
+      [requestId, serviceRequest.status, status, agentId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Statut mis à jour avec succès'
+    });
+  } catch (error) {
+    console.error('❌ Erreur lors de la mise à jour du statut:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du statut',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;

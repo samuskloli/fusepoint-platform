@@ -34,16 +34,13 @@ export default defineConfig({
     }
   },
   server: {
-    host: '0.0.0.0', // Permet l'accès depuis le réseau local
     port: 5173,
     hmr: {
-      port: 24678,
-      host: 'localhost', // Utilise localhost pour éviter les erreurs WebSocket
-      overlay: false
+      port: 24681
     },
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3003',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false
       }

@@ -3,7 +3,7 @@ import axios from 'axios'
 
 class ProjectManagementService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 10000,
@@ -54,6 +54,18 @@ class ProjectManagementService {
     } catch (error) {
       console.error('Erreur lors de la suppression du projet:', error)
       return { success: false, error: error.response?.data?.message || 'Erreur lors de la suppression du projet' }
+    }
+  }
+
+  async deleteMultipleProjects(projectIds) {
+    try {
+      const response = await this.api.delete('/api/agent/projects/bulk', {
+        data: { projectIds }
+      })
+      return { success: true, data: response.data }
+    } catch (error) {
+      console.error('Erreur lors de la suppression multiple des projets:', error)
+      return { success: false, error: error.response?.data?.message || 'Erreur lors de la suppression multiple des projets' }
     }
   }
 
@@ -413,23 +425,85 @@ class ProjectManagementService {
   async getAgentProjects() {
     try {
       const response = await this.api.get('/api/agent/projects');
-      return response.data;
+      return {
+        success: true,
+        data: response.data.data || response.data || []
+      };
     } catch (error) {
       console.error('Erreur lors de la récupération des projets de l\'agent:', error);
-      return { projects: [] };
+      return {
+        success: false,
+        error: error.message,
+        data: []
+      };
     }
   }
 
   /**
-   * Récupérer les projets d'un client spécifique (pour les agents)
+   * Récupérer les projets d'un client spécifique
+   * Utilise la route appropriée selon le rôle de l'utilisateur
    */
   async getClientProjects(clientId) {
     try {
-      const response = await this.api.get(`/api/agent/clients/${clientId}/projects`);
-      return {
-        success: true,
-        data: response.data.data || []
-      };
+      // Récupérer les informations de l'utilisateur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      let response;
+      
+      // Si l'utilisateur est un client et que clientId correspond à son ID, utiliser la route client
+      if (user && (user.role === 'user' || user.role === 'client') && user.id == clientId) {
+        console.log('🔍 Utilisation de la route client pour récupérer les projets');
+        response = await this.api.get('/api/client/projects', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          params: {
+            _t: Date.now()
+          }
+        });
+        
+        // La route client retourne directement les projets
+        return {
+          success: true,
+          data: response.data || []
+        };
+      } else {
+        // Pour les agents, admins et super_admins, utiliser la route agent
+        console.log('🔍 Utilisation de la route agent pour récupérer les projets du client:', clientId);
+        response = await this.api.get(`/api/agent/clients/${clientId}/projects`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          params: {
+            _t: Date.now()
+          }
+        });
+        
+        // La réponse du serveur a la structure: { success: true, data: { projects, pagination } }
+        let projects = [];
+        
+        if (response.data && response.data.data && response.data.data.projects) {
+          projects = response.data.data.projects;
+        } else if (response.data && response.data.data && response.data.data.items) {
+          projects = response.data.data.items;
+        } else if (response.data && response.data.projects) {
+          projects = response.data.projects;
+        } else if (response.data && response.data.items) {
+          projects = response.data.items;
+        } else if (Array.isArray(response.data)) {
+          projects = response.data;
+        }
+        
+        return {
+          success: true,
+          data: projects
+        };
+      }
     } catch (error) {
       console.error('Erreur lors de la récupération des projets du client:', error);
       return {
@@ -567,7 +641,18 @@ class ProjectManagementService {
   // Méthode pour récupérer les clients assignés (compatibilité avec clientManagementService)
   async getAssignedClients() {
     try {
-      const response = await this.api.get('/api/agent/assigned-clients');
+      // Ajouter des headers pour forcer le rafraîchissement et éviter le cache
+      const response = await this.api.get('/api/agent/assigned-clients', {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        },
+        // Ajouter un timestamp pour forcer une nouvelle requête
+        params: {
+          _t: Date.now()
+        }
+      });
       return { success: true, data: response.data.data || response.data };
     } catch (error) {
       console.error('Erreur lors de la récupération des clients assignés:', error);

@@ -226,21 +226,31 @@ router.get('/projects/:projectId/widgets', authenticateToken, requireRole(['agen
 router.post('/:id/create-project', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), async (req, res) => {
   try {
     const templateId = parseInt(req.params.id);
-    const projectData = req.body;
-    const agentId = req.user.id;
-    
-    if (isNaN(templateId)) {
-      return responseService.error(res, 'ID de modèle invalide', 400);
-    }
-    
-    if (!projectData.client_id || !projectData.title) {
-      return responseService.error(res, 'Données de projet incomplètes', 400);
-    }
+  const projectData = req.body;
+  const agentId = req.user.id;
+  
+  console.log('🔍 Données reçues pour création de projet:', {
+    templateId,
+    projectData,
+    agentId
+  });
+  
+  if (isNaN(templateId)) {
+    return responseService.error(res, 'ID de modèle invalide', 400);
+  }
+  
+  if (!projectData.client_id || !projectData.title) {
+    console.log('❌ Validation échouée:', {
+      client_id: projectData.client_id,
+      title: projectData.title
+    });
+    return responseService.error(res, 'Données de projet incomplètes', 400);
+  }
     
     const result = await projectTemplateService.createProjectFromTemplate(templateId, projectData, agentId);
     
     if (result.success) {
-      responseService.success(res, result.data, 'Projet créé avec succès à partir du modèle', 201);
+      responseService.success(res, 'Projet créé avec succès à partir du modèle', result.data, 201);
     } else {
       responseService.error(res, result.error, 400);
     }

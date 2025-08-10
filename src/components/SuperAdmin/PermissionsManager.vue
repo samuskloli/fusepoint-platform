@@ -171,6 +171,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue';
+import authService from '@/services/authService'
 
 export default {
   name: 'PermissionsManager',
@@ -286,14 +287,14 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await response.data;
         permissions.value = data.permissions || [];
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         error.value = err.message;
         console.error('Erreur chargement permissions:', err);
       } finally {

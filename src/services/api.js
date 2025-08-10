@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Configuration de base pour les requêtes API
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3003',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
@@ -30,9 +30,11 @@ api.interceptors.response.use(
   (response) => {
     return response
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config
+    
     // Gestion des erreurs globales
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !originalRequest._retry) {
       // Vérifier si c'est une erreur de mot de passe pour la suppression
       const isDeleteRequest = error.config?.method === 'delete' && error.config?.url?.includes('/clients/')
       const hasPasswordInMessage = error.response?.data?.message?.toLowerCase().includes('mot de passe') || 
@@ -49,13 +51,40 @@ api.interceptors.response.use(
       console.log('🔍 Intercepteur 401 - isDeletePasswordError:', isDeletePasswordError)
       
       if (!isDeletePasswordError) {
-        // Token expiré ou invalide - déconnecter uniquement si ce n'est pas une erreur de mot de passe
-        console.log('🚪 Déconnexion automatique déclenchée')
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
-        localStorage.removeItem('sessionToken')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+        // Essayer de rafraîchir le token avant de déconnecter
+        const refreshToken = localStorage.getItem('refreshToken')
+        if (refreshToken) {
+          originalRequest._retry = true
+          
+          try {
+            console.log('🔄 Tentative de rafraîchissement du token...')
+            const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}/api/auth/refresh`, {
+              refreshToken
+            })
+            
+            const { accessToken } = response.data
+            localStorage.setItem('accessToken', accessToken)
+            
+            // Réessayer la requête originale avec le nouveau token
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`
+            return api(originalRequest)
+          } catch (refreshError) {
+            console.log('❌ Échec du rafraîchissement du token, déconnexion...')
+            // Seulement maintenant on déconnecte l'utilisateur
+            localStorage.removeItem('accessToken')
+            localStorage.removeItem('refreshToken')
+            localStorage.removeItem('sessionToken')
+            localStorage.removeItem('user')
+            window.location.href = '/login'
+          }
+        } else {
+          console.log('🚪 Pas de refresh token, déconnexion automatique')
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          localStorage.removeItem('sessionToken')
+          localStorage.removeItem('user')
+          window.location.href = '/login'
+        }
       } else {
         console.log('🔒 Erreur de mot de passe détectée - pas de déconnexion')
       }

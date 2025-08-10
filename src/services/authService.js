@@ -44,17 +44,16 @@ class AuthService {
               // Retry la requête originale
               return this.api.request(error.config);
             } catch (refreshError) {
+              // Seulement nettoyer les tokens si le rafraîchissement échoue
+              console.log('🔄 Échec du rafraîchissement du token, déconnexion nécessaire');
               this.clearTokens();
               this.clearUser();
               this.clearCompanies();
               // Ne pas rediriger automatiquement, laisser le routeur gérer
             }
-          } else {
-            this.clearTokens();
-            this.clearUser();
-            this.clearCompanies();
-            // Ne pas rediriger automatiquement, laisser le routeur gérer
           }
+          // Ne pas nettoyer automatiquement les tokens pour chaque 401
+          // Laisser l'application gérer les erreurs d'authentification
         }
         return Promise.reject(error);
       }
@@ -249,7 +248,19 @@ class AuthService {
   isAuthenticated() {
     const token = this.getAccessToken();
     const user = this.getUser();
-    return !!(token && user && !this.isTokenExpired());
+    
+    if (!token || !user) {
+      console.log('🔍 Authentification échouée: token ou utilisateur manquant', { hasToken: !!token, hasUser: !!user });
+      return false;
+    }
+    
+    if (this.isTokenExpired()) {
+      console.log('🔍 Authentification échouée: token expiré');
+      return false;
+    }
+    
+    console.log('✅ Utilisateur authentifié:', user.email);
+    return true;
   }
 
   /**
@@ -257,9 +268,23 @@ class AuthService {
    */
   isTokenExpired() {
     const expiresAt = localStorage.getItem('tokenExpiresAt');
-    if (!expiresAt) return true;
+    // Si pas d'expiration définie, considérer le token comme valide
+    // (pour compatibilité avec les anciens tokens)
+    if (!expiresAt) {
+      console.warn('⚠️ Pas d\'expiration définie pour le token, considéré comme valide');
+      return false;
+    }
     
-    return new Date() >= new Date(expiresAt);
+    // Ajouter une marge de 30 secondes pour éviter les déconnexions prématurées
+    const now = new Date();
+    const expiration = new Date(expiresAt);
+    const marginMs = 30 * 1000; // 30 secondes
+    const isExpired = now >= new Date(expiration.getTime() - marginMs);
+    
+    if (isExpired) {
+      console.log('🕐 Token expiré:', { expiresAt, now: now.toISOString(), margin: '30s' });
+    }
+    return isExpired;
   }
 
   /**

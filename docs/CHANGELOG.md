@@ -3,7 +3,7 @@
 # 📋 Changelog
 ## Plateforme Marketing Fusepoint
 
-![Version](https://img.shields.io/badge/Version-Alpha%201.1.0-blue?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-Alpha%201.0.0-blue?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-En%20Développement-orange?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-Propriétaire-red?style=for-the-badge)
 
@@ -11,7 +11,7 @@
 
 </div>
 
-## 🚀 Version Alpha 1.1.0 - Janvier 2025
+## 🚀 Version Alpha 1.0.0 - Janvier 2025
 
 ### 🆕 Nouvelles Fonctionnalités
 
@@ -50,7 +50,7 @@
 ### 👤 **Espace Client**
 | Fonctionnalité | Statut | Description |
 |---|---|---|
-| 🤖 Chat IA | ✅ Actif | Assistant marketing intelligent |
+| 📊 Analytics | ✅ Actif | Analyses et métriques avancées |
 | 📊 Dashboard | ✅ Actif | Tableau de bord personnalisé |
 | 🔐 Authentification | ✅ Actif | Connexion sécurisée |
 | 📱 Réseaux Sociaux | ✅ Actif | Intégration Facebook/Instagram |
@@ -84,7 +84,6 @@
 ### 🔴 Priorité Haute
 | Issue | Composant | Statut | Description |
 |---|---|---|---|
-| 🤖 Chat IA | Client | 🔧 En cours | Optimisation de l'API et des réponses |
 | 📊 Logs Système | Admin | 🔧 En cours | Affichage et filtrage des logs |
 | 📱 Responsive | Agent | 🔧 En cours | Adaptation mobile du dashboard |
 
@@ -153,7 +152,7 @@
 
 ### 👥 **Équipe de Développement**
 - **Lead Developer** : Samuel Oliveira
-- **Version** : Alpha 1.1.0
+- **Version** : Alpha 1.0.0
 - **Dernière MAJ** : Janvier 2025
 
 ---

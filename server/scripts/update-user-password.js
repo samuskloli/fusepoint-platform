@@ -37,7 +37,7 @@ const newPassword = 'client1!';
     
     // Mettre à jour le mot de passe
     const result = await databaseService.db.run(
-      'UPDATE users SET password_hash = ?, updated_at = datetime("now") WHERE id = ?',
+      'UPDATE users SET password_hash = ?, updated_at = NOW() WHERE id = ?',
       [hashedPassword, existingUser.id]
     );
     
