@@ -217,7 +217,12 @@ class SystemLogsService {
       );
       return { id: result.insertId };
     } catch (err) {
-      throw err;
+      // Log vers la console si MariaDB n'est pas disponible
+      console.log(`[${level.toUpperCase()}] ${category}: ${message}`);
+      if (metadata) {
+        console.log('Metadata:', metadata);
+      }
+      return null;
     }
   }
 
@@ -291,19 +296,39 @@ class SystemLogsService {
 
   // Méthodes de logging pratiques
   async info(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('info', message, category, userId, ipAddress, null, metadata);
+    try {
+      return await this.addLog('info', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.log(`[LOG INFO] ${category}: ${message}`);
+      return null;
+    }
   }
 
   async warning(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('warning', message, category, userId, ipAddress, null, metadata);
+    try {
+      return await this.addLog('warning', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.warn(`[LOG WARNING] ${category}: ${message}`);
+      return null;
+    }
   }
 
   async error(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('error', message, category, userId, ipAddress, null, metadata);
+    try {
+      return await this.addLog('error', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.error(`[LOG ERROR] ${category}: ${message}`);
+      return null;
+    }
   }
 
   async debug(message, category = 'general', userId = null, ipAddress = null, metadata = null) {
-    return this.addLog('debug', message, category, userId, ipAddress, null, metadata);
+    try {
+      return await this.addLog('debug', message, category, userId, ipAddress, null, metadata);
+    } catch (error) {
+      console.log(`[LOG DEBUG] ${category}: ${message}`);
+      return null;
+    }
   }
 
   // Fermer la connexion

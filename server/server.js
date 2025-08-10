@@ -21,7 +21,8 @@ const companyDataService = require('./services/companyDataService');
 const databaseService = require('./services/databaseService');
 const accompagnementService = require('./services/accompagnementService');
 const authService = require('./services/authService');
-const platformSettingsService = require('./services/platformSettingsService');
+const PlatformSettingsService = require('./services/platformSettingsService');
+const platformSettingsService = new PlatformSettingsService();
 
 
 // Routes
@@ -36,10 +37,11 @@ const adminRoutes = require('./routes/admin');
 const prestataireRoutes = require('./routes/prestataire');
 const platformSettingsBlocksRoutes = require('./routes/platformSettingsBlocks');
 const clientRoutes = require('./routes/client');
+const projectTemplatesRoutes = require('./routes/projectTemplates');
 
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3000;
 
 // Middleware de sécurité - CSP désactivée pour éviter les blocages
 app.use(helmet({
@@ -62,7 +64,7 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires'],
   optionsSuccessStatus: 200
 };
 
@@ -211,8 +213,21 @@ async function initializeDatabase() {
   }
 }
 
-// Routes API
+// Configuration des routes
+// Routes publiques (sans authentification)
 app.use('/api/auth', authRoutes);
+
+// Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth)
+app.use('/api', (req, res, next) => {
+  // Exclure les routes d'authentification
+  if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  // Appliquer le middleware d'authentification pour toutes les autres routes
+  return authMiddleware(req, res, next);
+});
+
+// Routes protégées (avec authentification)
 app.use('/api/companies', companyRoutes);
 app.use('/api/facebook', facebookRoutes);
 app.use('/api/instagram', instagramRoutes);
@@ -223,6 +238,7 @@ app.use('/api/client', clientRoutes);
 app.use('/api/prestataire', prestataireRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/super-admin', platformSettingsBlocksRoutes);
+app.use('/api/project-templates', projectTemplatesRoutes);
 
 
 // Route d'upload de fichiers
@@ -606,7 +622,7 @@ app.use((error, req, res, next) => {
     });
   }
 
-  if (error.code === 'SQLITE_BUSY') {
+  if (error.code === 'ER_LOCK_WAIT_TIMEOUT' || error.code === 'ER_LOCK_DEADLOCK') {
     return res.status(503).json({
       error: 'Base de données occupée',
       message: 'Veuillez réessayer dans quelques instants'
@@ -634,7 +650,7 @@ async function startServer() {
       console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
       console.log(`🌐 Port: ${PORT}`);
       console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`💾 Base de données: SQLite (initialisée)`);
+      console.log(`💾 Base de données: MariaDB (initialisée)`);
 
       console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
       console.log(`🔐 Authentification: JWT`);

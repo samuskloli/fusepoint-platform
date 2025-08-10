@@ -115,11 +115,11 @@
                   class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Tous les statuts</option>
-                  <option value="planning">Planification</option>
-                  <option value="in_progress">En cours</option>
-                  <option value="review">En révision</option>
-                  <option value="completed">Terminé</option>
-                  <option value="on_hold">En pause</option>
+                  <option value="planification">Planification</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="en_revision">En révision</option>
+                  <option value="termine">Terminé</option>
+                  <option value="en_pause">En pause</option>
                 </select>
                 <button 
                   @click="showCreateProjectModal = true"
@@ -134,10 +134,44 @@
             </div>
           </div>
 
+          <!-- Boutons d'actions en masse -->
+          <div v-if="selectedProjects.length > 0" class="px-6 py-4 bg-blue-50 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">
+                {{ selectedProjects.length }} projet(s) sélectionné(s)
+              </span>
+              <div class="flex space-x-2">
+                <button 
+                  @click="clearSelection"
+                  class="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+                >
+                  Désélectionner tout
+                </button>
+                <button 
+                  @click="deleteSelectedProjects"
+                  class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors flex items-center"
+                >
+                  <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                  </svg>
+                  Supprimer la sélection
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <input 
+                      type="checkbox" 
+                      :checked="isAllSelected" 
+                      @change="toggleSelectAll"
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    >
+                  </th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Projet</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Statut</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Priorité</th>
@@ -147,7 +181,16 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="project in filteredProjects" :key="project.id" class="hover:bg-gray-50">
+
+                <tr v-for="project in filteredProjects" :key="project.id" class="hover:bg-gray-50" :class="{ 'bg-blue-50': selectedProjects.includes(project.id) }">
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <input 
+                      type="checkbox" 
+                      :checked="selectedProjects.includes(project.id)"
+                      @change="toggleProjectSelection(project.id)"
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    >
+                  </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div>
                       <div class="text-sm font-medium text-gray-900">{{ project.title }}</div>
@@ -190,6 +233,12 @@
                         class="text-green-600 hover:text-green-900 transition-colors"
                       >
                         Modifier
+                      </button>
+                      <button 
+                        @click="deleteProject(project)" 
+                        class="text-red-600 hover:text-red-900 transition-colors"
+                      >
+                        Supprimer
                       </button>
                     </div>
                   </td>
@@ -240,6 +289,15 @@
       @close="showDeleteModal = false"
       @confirm="confirmDeleteProject"
     />
+
+    <!-- Modal de confirmation de suppression multiple -->
+    <ConfirmDeleteModal
+      v-if="showBulkDeleteModal"
+      :title="'Supprimer les projets sélectionnés'"
+      :message="`Êtes-vous sûr de vouloir supprimer ${selectedProjects.length} projet(s) ? Cette action est irréversible.`"
+      @close="showBulkDeleteModal = false"
+      @confirm="confirmBulkDeleteProjects"
+    />
   </div>
 </template>
 
@@ -251,6 +309,7 @@ import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import EditProjectModal from '../components/ProjectManagement/EditProjectModal.vue'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
 import projectManagementService, { clientProjectService } from '../services/projectManagementService'
+import { useProjectsStore } from '@/stores/projects'
 
 export default {
   name: 'ClientProjectDashboard',
@@ -264,6 +323,7 @@ export default {
     const router = useRouter()
     const route = useRoute()
     const clientId = route.params.clientId
+    const projectsStore = useProjectsStore()
     
     const clientInfo = ref(null)
     const projects = ref([])
@@ -272,28 +332,37 @@ export default {
     const showCreateProjectModal = ref(false)
     const showEditProjectModal = ref(false)
     const showDeleteModal = ref(false)
+    const showBulkDeleteModal = ref(false)
     const selectedProject = ref(null)
+    const selectedProjects = ref([])
 
     const stats = computed(() => {
       // Vérifier que projects.value est un tableau
       const projectsArray = Array.isArray(projects.value) ? projects.value : []
       
       const totalProjects = projectsArray.length
-      const completedProjects = projectsArray.filter(p => p.status === 'completed').length
-      const activeProjects = projectsArray.filter(p => p.status === 'in_progress').length
+      const completedProjects = projectsArray.filter(p => p.status === 'completed' || p.status === 'termine').length
+      const activeProjects = projectsArray.filter(p => p.status === 'in_progress' || p.status === 'en_cours').length
       const overdueProjects = projectsArray.filter(p => {
         if (!p.end_date) return false
-        return new Date(p.end_date) < new Date() && p.status !== 'completed'
+        return new Date(p.end_date) < new Date() && p.status !== 'completed' && p.status !== 'termine'
       }).length
       
       return { totalProjects, completedProjects, activeProjects, overdueProjects }
     })
 
     const filteredProjects = computed(() => {
-        const projectsArray = Array.isArray(projects.value) ? projects.value : []
-        if (!statusFilter.value) return projectsArray
-        return projectsArray.filter(project => project.status === statusFilter.value)
-      })
+      const projectsArray = Array.isArray(projects.value) ? projects.value : [];
+      
+      return statusFilter.value === '' 
+    ? projectsArray
+    : projectsArray.filter(project => project.status === statusFilter.value);
+    });
+
+    const isAllSelected = computed(() => {
+      return filteredProjects.value.length > 0 && 
+             filteredProjects.value.every(project => selectedProjects.value.includes(project.id))
+    })
 
     const loadClientData = async () => {
       try {
@@ -307,8 +376,17 @@ export default {
         
         // Récupérer les projets du client
         const projectsResponse = await clientProjectService.getClientProjects(clientId)
+        console.log('🔍 Debug - Réponse getClientProjects:', {
+          success: projectsResponse.success,
+          dataLength: projectsResponse.data ? projectsResponse.data.length : 0,
+          data: projectsResponse.data
+        });
         if (projectsResponse.success) {
+          // Les projets sont maintenant correctement extraits dans le service
           projects.value = projectsResponse.data || []
+          console.log('🔍 Debug - Projets assignés à projects.value:', projects.value.length);
+        } else {
+          console.error('Échec de récupération des projets:', projectsResponse)
         }
       } catch (error) {
         console.error('Erreur lors du chargement des données du client:', error)
@@ -328,10 +406,15 @@ export default {
     const getStatusClass = (status) => {
       const classes = {
         'planning': 'bg-gray-100 text-gray-800',
+        'planification': 'bg-gray-100 text-gray-800',
         'in_progress': 'bg-blue-100 text-blue-800',
+        'en_cours': 'bg-blue-100 text-blue-800',
         'review': 'bg-yellow-100 text-yellow-800',
+        'en_revision': 'bg-yellow-100 text-yellow-800',
         'completed': 'bg-green-100 text-green-800',
-        'on_hold': 'bg-red-100 text-red-800'
+        'termine': 'bg-green-100 text-green-800',
+        'on_hold': 'bg-red-100 text-red-800',
+        'en_pause': 'bg-red-100 text-red-800'
       }
       return classes[status] || 'bg-gray-100 text-gray-800'
     }
@@ -339,10 +422,15 @@ export default {
     const getStatusLabel = (status) => {
       const labels = {
         'planning': 'Planification',
+        'planification': 'Planification',
         'in_progress': 'En cours',
+        'en_cours': 'En cours',
         'review': 'En révision',
+        'en_revision': 'En révision',
         'completed': 'Terminé',
-        'on_hold': 'En pause'
+        'termine': 'Terminé',
+        'on_hold': 'En pause',
+        'en_pause': 'En pause'
       }
       return labels[status] || status
     }
@@ -419,12 +507,26 @@ export default {
     const confirmDeleteProject = async () => {
       try {
         loading.value = true
-        await projectManagementService.deleteProject(selectedProject.value.id)
-        const projectsArray = Array.isArray(projects.value) ? projects.value : []
-        projects.value = projectsArray.filter(p => p.id !== selectedProject.value.id)
-        showDeleteModal.value = false
-        selectedProject.value = null
-        // Notification de succès
+        const result = await projectManagementService.deleteProject(selectedProject.value.id)
+        
+        if (result.success) {
+          // Supprimer du store global
+          projectsStore.removeProject(selectedProject.value.id)
+          
+          // Supprimer de la liste locale
+          const projectsArray = Array.isArray(projects.value) ? projects.value : []
+          projects.value = projectsArray.filter(p => p.id !== selectedProject.value.id)
+          
+          // Forcer le rafraîchissement des données du client dans le store
+          await projectsStore.loadClientProjects(clientId, true)
+          
+          showDeleteModal.value = false
+          selectedProject.value = null
+          // Notification de succès
+        } else {
+          console.error('Erreur lors de la suppression du projet:', result.error)
+          // Notification d'erreur
+        }
       } catch (error) {
         console.error('Erreur lors de la suppression du projet:', error)
         // Notification d'erreur
@@ -439,9 +541,20 @@ export default {
         if (!Array.isArray(projects.value)) {
           projects.value = []
         }
-        // Le modal a déjà créé le projet, on l'ajoute simplement à la liste
-        projects.value.push(projectData)
+        
+        // S'assurer que le projet a les propriétés par défaut nécessaires
+        const projectWithDefaults = {
+          ...projectData,
+          status: projectData.status || 'planification',
+          progress: projectData.progress || 0,
+          priority: projectData.priority || 'medium'
+        }
+        
+        projects.value.unshift(projectWithDefaults)
         showCreateProjectModal.value = false
+        
+        // Forcer la réactivité des statistiques
+        // Les stats computed se mettront à jour automatiquement
         console.log('Projet créé avec succès:', projectData)
       } catch (error) {
         console.error('Erreur lors de l\'ajout du projet à la liste:', error)
@@ -451,10 +564,69 @@ export default {
     const onProjectUpdated = (updatedProject) => {
       const index = projects.value.findIndex(p => p.id === updatedProject.id)
       if (index !== -1) {
-        projects.value[index] = updatedProject
+        // S'assurer que le projet mis à jour a toutes les propriétés nécessaires
+        const projectWithDefaults = {
+          ...projects.value[index], // Garder les propriétés existantes
+          ...updatedProject, // Appliquer les mises à jour
+          status: updatedProject.status || projects.value[index].status || 'planification',
+          progress: updatedProject.progress !== undefined ? updatedProject.progress : (projects.value[index].progress || 0),
+          priority: updatedProject.priority || projects.value[index].priority || 'medium'
+        }
+        projects.value[index] = projectWithDefaults
       }
       showEditProjectModal.value = false
       selectedProject.value = null
+    }
+
+    // Méthodes pour la gestion de la sélection multiple
+    const toggleProjectSelection = (projectId) => {
+      const index = selectedProjects.value.indexOf(projectId)
+      if (index > -1) {
+        selectedProjects.value.splice(index, 1)
+      } else {
+        selectedProjects.value.push(projectId)
+      }
+    }
+
+    const toggleSelectAll = () => {
+      if (isAllSelected.value) {
+        selectedProjects.value = []
+      } else {
+        selectedProjects.value = filteredProjects.value.map(project => project.id)
+      }
+    }
+
+    const clearSelection = () => {
+      selectedProjects.value = []
+    }
+
+    const deleteSelectedProjects = () => {
+      if (selectedProjects.value.length > 0) {
+        showBulkDeleteModal.value = true
+      }
+    }
+
+    const confirmBulkDeleteProjects = async () => {
+      try {
+        loading.value = true
+        await projectManagementService.deleteMultipleProjects(selectedProjects.value)
+        
+        // Supprimer les projets de la liste locale
+        const projectsArray = Array.isArray(projects.value) ? projects.value : []
+        projects.value = projectsArray.filter(p => !selectedProjects.value.includes(p.id))
+        
+        // Réinitialiser la sélection
+        selectedProjects.value = []
+        showBulkDeleteModal.value = false
+        
+        // Notification de succès
+        console.log('Projets supprimés avec succès')
+      } catch (error) {
+        console.error('Erreur lors de la suppression des projets:', error)
+        // Notification d'erreur
+      } finally {
+        loading.value = false
+      }
     }
 
     onMounted(() => {
@@ -462,6 +634,7 @@ export default {
     })
 
     return {
+      clientId,
       clientInfo,
       projects,
       loading,
@@ -469,9 +642,12 @@ export default {
       showCreateProjectModal,
       showEditProjectModal,
       showDeleteModal,
+      showBulkDeleteModal,
       selectedProject,
+      selectedProjects,
       stats,
       filteredProjects,
+      isAllSelected,
       refreshData,
       goBack,
       getStatusClass,
@@ -488,7 +664,12 @@ export default {
       deleteProject,
       confirmDeleteProject,
       onProjectCreated,
-      onProjectUpdated
+      onProjectUpdated,
+      toggleProjectSelection,
+      toggleSelectAll,
+      clearSelection,
+      deleteSelectedProjects,
+      confirmBulkDeleteProjects
     }
   }
 }

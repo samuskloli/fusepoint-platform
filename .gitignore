@@ -40,6 +40,28 @@ server/logs/
 # Service account keys
 server/config/service-account-key.json
 
+# Configuration files with sensitive data
+phpmyadmin-config.inc.php
+php-phpmyadmin.ini
+php-temp.ini
+
+# Database backups and exports
+database-backups/
+*.sql
+
+# Local backups
+sauvegarde-*.tar.gz
+backup-*.tar.gz
+
+# Test files with potential credentials
+test-*.cjs
+test-*.html
+debug-*.cjs
+debug-*.html
+verify-*.cjs
+create-test-user.cjs
+fix-*.cjs
+
 # Temporary files
 *.tmp
 *.temp

@@ -25,6 +25,6 @@ CREATE INDEX IF NOT EXISTS idx_client_prestataire_assignments_agent ON client_pr
 CREATE INDEX IF NOT EXISTS idx_client_prestataire_assignments_status ON client_prestataire_assignments(status);
 
 -- Données de test
-INSERT OR IGNORE INTO client_prestataire_assignments (client_id, prestataire_id, agent_id, assignment_type, notes) VALUES 
+INSERT IGNORE INTO client_prestataire_assignments (client_id, prestataire_id, agent_id, assignment_type, notes) VALUES 
 (2, 4, 3, 'service', 'Assignation pour développement web'),
 (5, 4, 3, 'consultation', 'Consultation marketing digital');

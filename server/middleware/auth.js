@@ -11,10 +11,13 @@ const authMiddleware = (req, res, next) => {
       return next();
     }
     
+    console.log(`🔍 Auth middleware - ${req.method} ${req.path}`);
+    
     // Récupérer le token depuis l'en-tête Authorization
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('❌ Auth middleware - Pas de token Authorization:', { authHeader });
       return res.status(401).json({
         success: false,
         message: 'Token d\'authentification requis'
@@ -25,15 +28,20 @@ const authMiddleware = (req, res, next) => {
     const token = authHeader.substring(7); // Enlever "Bearer "
     
     if (!token) {
+      console.log('❌ Auth middleware - Token vide après extraction');
       return res.status(401).json({
         success: false,
         message: 'Token manquant'
       });
     }
 
-    // Vérifier le token
-    const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
+    // Vérifier le token avec le même secret que l'authService
+    const authService = require('../services/authService');
+    const jwtSecret = authService.jwtSecret;
+    console.log('🔑 Auth middleware - Vérification token avec secret:', jwtSecret.substring(0, 10) + '...');
     const decoded = jwt.verify(token, jwtSecret);
+    
+    console.log('✅ Auth middleware - Token valide:', { userId: decoded.id || decoded.userId, email: decoded.email });
     
     // Ajouter les informations utilisateur à la requête
     req.user = {
@@ -69,4 +77,8 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+// Export par défaut
 module.exports = authMiddleware;
+
+// Export nommé pour compatibilité
+module.exports.authenticateToken = authMiddleware;

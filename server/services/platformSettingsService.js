@@ -203,19 +203,5 @@ class PlatformSettingsService {
   }
 }
 
-// Créer et exporter une instance du service
-let instance;
-try {
-  console.log('🚀 Création instance PlatformSettingsService...');
-  instance = new PlatformSettingsService();
-  console.log('✅ Instance créée avec succès');
-  console.log('🔍 getAllSettings disponible:', typeof instance.getAllSettings);
-  console.log('🔍 getPlatformStats disponible:', typeof instance.getPlatformStats);
-  module.exports = instance;
-  console.log('✅ Service exporté avec succès');
-} catch (error) {
-  console.error('❌ ERREUR CRITIQUE:', error.message);
-  module.exports = {};
-}
-
-console.log('🏁 Fin du fichier platformSettingsService.js');
+// Exporter la classe au lieu d'une instance pour éviter les initialisations multiples
+module.exports = PlatformSettingsService;

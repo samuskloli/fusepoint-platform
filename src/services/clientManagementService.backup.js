@@ -7,6 +7,7 @@
 // import googleAnalyticsService from './googleAnalyticsService.js'; // Google Analytics integration removed
 import aiPersonalizationService from './aiPersonalizationService.js';
 import predictiveAnalyticsService from './predictiveAnalyticsService.js';
+import authService from '@/services/authService'
 
 class ClientManagementService {
   constructor() {
@@ -65,6 +66,10 @@ class ClientManagementService {
       this.initialized = true;
       console.log('Service de gestion clients initialisé avec succès');
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors de l\'initialisation du service clients:', error);
       throw error;
     }
@@ -94,6 +99,10 @@ class ClientManagementService {
       // Charger les interactions depuis l'API
       await this.loadInteractions();
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors du chargement des données:', error);
     }
   }
@@ -116,11 +125,7 @@ class ClientManagementService {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await response.data;
       
       // Organiser les interactions par entité (client/prospect)
       if (data.interactions) {
@@ -135,6 +140,10 @@ class ClientManagementService {
         });
       }
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors du chargement des interactions:', error);
     }
   }
@@ -687,16 +696,16 @@ class ClientManagementService {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await response.data;
       return {
         success: true,
         data: data.data || []
       };
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors de la récupération des prospects:', error);
       return {
         success: false,
@@ -728,16 +737,16 @@ class ClientManagementService {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await response.data;
       return {
         success: true,
         data: data.data || []
       };
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors de la récupération des clients:', error);
       return {
         success: false,
@@ -813,16 +822,16 @@ class ClientManagementService {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await response.data;
       return {
         success: true,
         data: data.data || []
       };
     } catch (error) {
+        if (error.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
       console.error('Erreur lors de la récupération des clients assignés:', error);
       return {
         success: false,

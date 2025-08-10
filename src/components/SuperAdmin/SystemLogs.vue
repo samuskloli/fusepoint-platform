@@ -369,6 +369,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from 'vue';
+import authService from '@/services/authService'
 
 export default {
   name: 'SystemLogs',
@@ -598,14 +599,14 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await response.data;
         logs.value = data.logs || [];
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         error.value = err.message;
         console.error('Erreur chargement logs:', err);
       } finally {
@@ -628,10 +629,6 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -643,6 +640,10 @@ export default {
         document.body.removeChild(a);
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         console.error('Erreur export logs:', err);
         // Notification d'erreur
       } finally {

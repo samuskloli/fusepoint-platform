@@ -23,7 +23,8 @@ class EmailService {
   initializePlatformSettings() {
     if (!this.platformSettingsService) {
       try {
-        this.platformSettingsService = require('./platformSettingsService');
+        const PlatformSettingsService = require('./platformSettingsService');
+        this.platformSettingsService = new PlatformSettingsService();
       } catch (error) {
         console.warn('⚠️ Impossible de charger platformSettingsService:', error.message);
       }

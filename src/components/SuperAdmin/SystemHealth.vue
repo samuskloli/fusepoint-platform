@@ -365,6 +365,7 @@
 
 <script>
 import { ref, onMounted, reactive } from 'vue';
+import authService from '@/services/authService'
 
 export default {
   name: 'SystemHealth',
@@ -528,17 +529,17 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const result = await response.json();
+        const result = await response.data;
         
         // L'API retourne { success: true, data: {...} }
         // Donc on doit utiliser result.data, pas result directement
         healthData.value = result.data;
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         error.value = err.message;
         console.error('Erreur chargement santé système:', err);
       } finally {
@@ -563,11 +564,7 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await response.data;
         showNotification('Sauvegarde créée avec succès');
         
         // Actualiser les données pour voir la nouvelle sauvegarde
@@ -576,6 +573,10 @@ export default {
         }, 2000);
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         showNotification(`Erreur lors de la création de la sauvegarde: ${err.message}`, 'error');
         console.error('Erreur création sauvegarde:', err);
       } finally {
@@ -592,10 +593,6 @@ export default {
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Erreur ${response.status}: ${response.statusText}`);
-        }
-
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -609,6 +606,10 @@ export default {
         showNotification('Téléchargement de la sauvegarde démarré');
         
       } catch (err) {
+        if (err.response?.status === 401) {
+          router.push('/login');
+          return;
+        }
         showNotification(`Erreur lors du téléchargement: ${err.message}`, 'error');
         console.error('Erreur téléchargement sauvegarde:', err);
       }

@@ -54,9 +54,9 @@ class ProjectService {
         throw new Error(validation.errors.join(', '));
       }
 
-      // Vérifier que le client existe
+      // Vérifier que le client existe et récupérer son agent assigné
       const client = await databaseService.get(
-        'SELECT id FROM users WHERE id = ? AND role = "client"',
+        'SELECT id, agent_id FROM users WHERE id = ? AND role IN ("client", "user")',
         [clientId]
       );
       
@@ -64,14 +64,19 @@ class ProjectService {
         throw new Error('Client non trouvé');
       }
 
+      // Récupérer l'agent assigné au client
+      const agentId = client.agent_id;
+
       const projectId = await databaseService.run(
-        `INSERT INTO projects (client_id, name, description, status, budget, start_date, end_date, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        `INSERT INTO projects (client_id, agent_id, name, description, status, progress, budget, start_date, end_date, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
           clientId,
+          agentId, // Assigner automatiquement l'agent du client au projet
           projectData.name,
           projectData.description || null,
-          projectData.status || 'pending',
+          projectData.status || 'en_cours',
+          projectData.progress || 0,
           projectData.budget || null,
           projectData.start_date || null,
           projectData.end_date || null
@@ -85,6 +90,7 @@ class ProjectService {
 
       systemLogsService.info('Projet créé avec succès', 'projects', null, null, { 
         clientId, 
+        agentId,
         projectId: projectId.insertId 
       });
       
@@ -112,7 +118,8 @@ class ProjectService {
          FROM projects p
          LEFT JOIN users u ON p.client_id = u.id
          WHERE p.agent_id = ? OR p.client_id IN (
-           SELECT client_id FROM agent_clients WHERE agent_id = ?
+           SELECT ac.client_id FROM agent_clients ac 
+           WHERE ac.agent_id = ? AND ac.status = 'active'
          )
          ORDER BY p.created_at DESC`,
         [agentId, agentId]
@@ -127,6 +134,33 @@ class ProjectService {
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des projets de l\'agent', 'projects', null, null, { 
         agentId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère un projet par son ID
+   * @param {number} projectId - ID du projet
+   * @returns {Promise<Object>} Projet trouvé
+   */
+  async getProjectById(projectId) {
+    try {
+      systemLogsService.info('Récupération du projet par ID', 'projects', null, null, { projectId });
+      
+      const project = await databaseService.getProjectById(projectId);
+      
+      if (!project) {
+        throw new Error('Projet non trouvé');
+      }
+      
+      systemLogsService.info('Projet récupéré avec succès', 'projects', null, null, { projectId });
+      
+      return project;
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la récupération du projet', 'projects', null, null, { 
+        projectId, 
         error: error.message 
       });
       throw error;
@@ -249,6 +283,8 @@ class ProjectService {
       const { page = 1, limit = 10, status = null } = options;
       const offset = (page - 1) * limit;
       
+      console.log('🔍 Debug projectService.getClientProjectsPaginated - clientId:', clientId, 'options:', options);
+      
       systemLogsService.info('Récupération des projets du client avec pagination', 'projects', null, null, { 
         clientId, page, limit 
       });
@@ -264,7 +300,10 @@ class ProjectService {
       query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
       params.push(limit, offset);
       
+      console.log('🔍 Debug projectService.getClientProjectsPaginated - query:', query, 'params:', params);
+      
       const projects = await databaseService.query(query, params);
+      console.log('🔍 Debug projectService.getClientProjectsPaginated - projects found:', projects.length, 'projects:', projects);
       
       // Compter le total
       let countQuery = 'SELECT COUNT(*) as total FROM projects WHERE client_id = ?';
@@ -276,7 +315,8 @@ class ProjectService {
       }
       
       const countResult = await databaseService.get(countQuery, countParams);
-      const total = countResult.total;
+      const total = Number(countResult.total); // Convertir BigInt en Number
+      console.log('🔍 Debug projectService.getClientProjectsPaginated - total count:', total);
       
       systemLogsService.info('Projets du client récupérés avec pagination', 'projects', null, null, { 
         clientId, 
@@ -297,6 +337,118 @@ class ProjectService {
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des projets du client avec pagination', 'projects', null, null, { 
         clientId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Récupère les projets d'un agent avec pagination
+   * @param {number} agentId - ID de l'agent
+   * @param {Object} filters - Filtres à appliquer
+   * @param {Object} options - Options de pagination
+   * @returns {Promise<Object>} Projets paginés
+   */
+  async getAgentProjectsPaginated(agentId, filters = {}, options = {}) {
+    try {
+      const { page = 1, limit = 10 } = options;
+      const offset = (page - 1) * limit;
+      
+      systemLogsService.info('Récupération des projets de l\'agent avec pagination', 'projects', null, null, { 
+        agentId, page, limit 
+      });
+      
+      // Vérifier le rôle de l'utilisateur
+      const user = await databaseService.get(
+        'SELECT role FROM users WHERE id = ?',
+        [agentId]
+      );
+      
+      let query, params;
+      
+      // Si c'est un super admin ou admin, voir tous les projets
+      if (user && (user.role === 'super_admin' || user.role === 'admin')) {
+        query = `SELECT p.*, u.first_name, u.last_name, u.email as client_email
+                 FROM projects p
+                 LEFT JOIN users u ON p.client_id = u.id
+                 WHERE 1=1`;
+        params = [];
+      } else {
+        // Pour les agents normaux, utiliser la table agent_clients pour voir tous les projets de leurs clients assignés
+        query = `SELECT p.*, u.first_name, u.last_name, u.email as client_email
+                 FROM projects p
+                 LEFT JOIN users u ON p.client_id = u.id
+                 WHERE (p.agent_id = ? OR p.client_id IN (
+                   SELECT client_id FROM agent_clients 
+                   WHERE agent_id = ? AND status = 'active'
+                 ))`;
+        params = [agentId, agentId];
+      }
+      
+      if (filters.status) {
+        query += ' AND p.status = ?';
+        params.push(filters.status);
+      }
+      
+      if (filters.clientId) {
+        query += ' AND p.client_id = ?';
+        params.push(filters.clientId);
+      }
+      
+      query += ' ORDER BY p.created_at DESC LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+      
+      const projects = await databaseService.query(query, params);
+      
+      // Compter le total
+      let countQuery, countParams;
+      
+      if (user && (user.role === 'super_admin' || user.role === 'admin')) {
+        countQuery = `SELECT COUNT(*) as total FROM projects p WHERE 1=1`;
+        countParams = [];
+      } else {
+        countQuery = `SELECT COUNT(*) as total FROM projects p 
+                      WHERE (p.agent_id = ? OR p.client_id IN (
+                        SELECT client_id FROM agent_clients 
+                        WHERE agent_id = ? AND status = 'active'
+                      ))`;
+        countParams = [agentId, agentId];
+      }
+      
+      if (filters.status) {
+        countQuery += ' AND p.status = ?';
+        countParams.push(filters.status);
+      }
+      
+      if (filters.clientId) {
+        countQuery += ' AND p.client_id = ?';
+        countParams.push(filters.clientId);
+      }
+      
+      const countResult = await databaseService.get(countQuery, countParams);
+      const total = Number(countResult.total); // Convertir BigInt en Number
+      
+      systemLogsService.info('Projets de l\'agent récupérés avec pagination', 'projects', null, null, { 
+        agentId, 
+        userRole: user?.role,
+        count: projects.length,
+        total,
+        page
+      });
+      
+      return {
+        projects,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la récupération des projets de l\'agent avec pagination', 'projects', null, null, { 
+        agentId, 
         error: error.message 
       });
       throw error;
@@ -330,6 +482,106 @@ class ProjectService {
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des tâches du client', 'projects', null, null, { 
         clientId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Vérifie si un projet a des tâches actives
+   * @param {number} projectId - ID du projet
+   * @returns {Promise<boolean>} True si le projet a des tâches actives
+   */
+  async hasActiveTasks(projectId) {
+    try {
+      const activeTasks = await databaseService.get(
+        'SELECT COUNT(*) as count FROM tasks WHERE project_id = ? AND status IN ("pending", "in_progress")',
+        [projectId]
+      );
+      
+      return Number(activeTasks.count) > 0;
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la vérification des tâches actives', 'projects', null, null, { 
+        projectId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  async getActiveProjectTasks(projectId) {
+    try {
+      systemLogsService.info('Récupération des tâches actives du projet', 'projects', null, null, { projectId });
+      
+      const tasks = await databaseService.query(
+        'SELECT * FROM tasks WHERE project_id = ? AND status IN ("pending", "in_progress") ORDER BY created_at DESC',
+        [projectId]
+      );
+      
+      systemLogsService.info('Tâches actives du projet récupérées avec succès', 'projects', null, null, { 
+        projectId, 
+        count: tasks.length 
+      });
+      
+      return tasks;
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la récupération des tâches actives du projet', 'projects', null, null, { 
+        projectId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Supprime un projet
+   * @param {number} projectId - ID du projet
+   * @returns {Promise<void>}
+   */
+  async deleteProject(projectId) {
+    try {
+      systemLogsService.info('Suppression du projet', 'projects', null, null, { projectId });
+      
+      // Vérifier que le projet existe avant de le supprimer
+      const project = await databaseService.get('SELECT id FROM projects WHERE id = ?', [projectId]);
+      if (!project) {
+        throw new Error(`Projet avec l'ID ${projectId} non trouvé`);
+      }
+      
+      // Supprimer d'abord les tâches associées
+      const tasksResult = await databaseService.run('DELETE FROM tasks WHERE project_id = ?', [projectId]);
+      systemLogsService.info('Tâches supprimées', 'projects', null, null, { projectId, deletedTasks: tasksResult.changes });
+      
+      // Supprimer les fichiers associés
+      const filesResult = await databaseService.run('DELETE FROM files WHERE project_id = ?', [projectId]);
+      systemLogsService.info('Fichiers supprimés', 'projects', null, null, { projectId, deletedFiles: filesResult.changes });
+      
+      // Supprimer les membres de l'équipe
+      const membersResult = await databaseService.run('DELETE FROM team_members WHERE project_id = ?', [projectId]);
+      systemLogsService.info('Membres d\'équipe supprimés', 'projects', null, null, { projectId, deletedMembers: membersResult.changes });
+      
+      // Supprimer le projet
+      const projectResult = await databaseService.run('DELETE FROM projects WHERE id = ?', [projectId]);
+      
+      // Vérifier que le projet a bien été supprimé
+      if (projectResult.changes === 0) {
+        throw new Error(`Échec de la suppression du projet ${projectId} - aucune ligne affectée`);
+      }
+      
+      systemLogsService.info('Projet supprimé avec succès', 'projects', null, null, { 
+        projectId, 
+        deletedRows: projectResult.changes 
+      });
+      
+      return {
+        success: true,
+        deletedRows: projectResult.changes,
+        message: `Projet ${projectId} supprimé avec succès`
+      };
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la suppression du projet', 'projects', null, null, { 
+        projectId, 
         error: error.message 
       });
       throw error;

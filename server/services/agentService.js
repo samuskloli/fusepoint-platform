@@ -101,15 +101,19 @@ class AgentService {
           u.email,
           u.role,
           u.is_active,
-          COUNT(ap.id) as active_assignments
+          0 as active_assignments
          FROM users u
-         LEFT JOIN agent_prestataires ap ON u.id = ap.agent_id AND ap.status = 'active'
          WHERE u.role IN ('agent', 'prestataire') AND u.is_active = 1
-         GROUP BY u.id
          ORDER BY u.first_name, u.last_name`
       );
       
-      return providers;
+      // Convertir les BigInt en nombres pour éviter les erreurs de sérialisation JSON
+      return providers.map(provider => ({
+        ...provider,
+        id: Number(provider.id),
+        is_active: Number(provider.is_active),
+        active_assignments: Number(provider.active_assignments)
+      }));
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des prestataires:', error);
       throw error;
@@ -145,8 +149,8 @@ class AgentService {
       
       const params = [];
       
-      // Filtrer par agent si spécifié
-      if (filters.agentId) {
+      // Filtrer par agent si spécifié (seulement pour les agents normaux)
+      if (filters.agentId !== null && filters.agentId !== undefined) {
         query += ' AND u.agent_id = ?';
         params.push(filters.agentId);
       }
@@ -645,6 +649,28 @@ class AgentService {
         [agentId, clientId]
       );
 
+      console.log('✅ Agent assigné au client dans la table users');
+
+      // Envoyer une notification au client
+      try {
+        const NotificationManagementService = require('./notificationManagementService');
+        const languageService = require('./languageService');
+        
+        await NotificationManagementService.sendNotificationToClient(
+          clientId,
+          languageService.get('agent.assignment_notification_title'),
+          languageService.get('agent.assignment_notification_message'),
+          'success',
+          'normal',
+          true // Envoyer aussi par email
+        );
+        
+        console.log('✅ Notification d\'attribution envoyée au client:', clientId);
+      } catch (notificationError) {
+        console.error('❌ Erreur lors de l\'envoi de la notification:', notificationError);
+        // Ne pas faire échouer l'attribution si la notification échoue
+      }
+
       return {
         client: {
           id: client.id,
@@ -696,7 +722,7 @@ class AgentService {
       
       // Vérifier si le client existe
       const client = await databaseService.get(
-        'SELECT id, agent_id FROM users WHERE id = ? AND role IN ("user", "client")',
+        'SELECT id FROM users WHERE id = ? AND role IN ("user", "client")',
         [clientId]
       );
       
@@ -707,9 +733,14 @@ class AgentService {
         return false;
       }
       
-      // Vérifier si l'agent est assigné à ce client
-      const hasAccess = client.agent_id === agentId;
-      console.log('🔍 Debug checkAgentClientAccess - accès par assignation:', hasAccess);
+      // Vérifier si l'agent est assigné à ce client via la table agent_clients
+      const assignment = await databaseService.get(
+        'SELECT id FROM agent_clients WHERE agent_id = ? AND client_id = ? AND is_active = 1',
+        [agentId, clientId]
+      );
+      
+      const hasAccess = !!assignment;
+      console.log('🔍 Debug checkAgentClientAccess - accès par assignation via agent_clients:', hasAccess);
       return hasAccess;
       
     } catch (error) {
@@ -808,6 +839,180 @@ class AgentService {
       };
     } catch (error) {
       console.error('❌ Erreur lors de la mise à jour du mot de passe du client:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Vérifie si un agent a accès à un projet spécifique
+   * @param {number} agentId - ID de l'agent
+   * @param {number} projectId - ID du projet
+   * @returns {boolean} - True si l'agent a accès au projet
+   */
+  async checkAgentProjectAccess(agentId, projectId) {
+    try {
+      console.log('🔍 Debug checkAgentProjectAccess - agentId:', agentId, 'projectId:', projectId);
+      
+      // Vérifier si l'agent existe et est actif
+      const agent = await databaseService.get(
+        'SELECT id, role FROM users WHERE id = ? AND role IN ("agent", "super_admin", "admin") AND is_active = 1',
+        [agentId]
+      );
+      
+      console.log('🔍 Debug checkAgentProjectAccess - agent trouvé:', agent);
+      
+      if (!agent) {
+        console.log('❌ Debug checkAgentProjectAccess - agent non trouvé ou inactif');
+        return false;
+      }
+      
+      // Les super_admin et admin ont accès à tous les projets
+      if (agent.role === 'super_admin' || agent.role === 'admin') {
+        console.log('✅ Debug checkAgentProjectAccess - accès accordé (super_admin/admin)');
+        return true;
+      }
+      
+      // Vérifier si le projet existe et si l'agent y a accès
+      const project = await databaseService.get(
+        'SELECT id, agent_id, client_id FROM projects WHERE id = ?',
+        [projectId]
+      );
+      
+      console.log('🔍 Debug checkAgentProjectAccess - projet trouvé:', project);
+      
+      if (!project) {
+        console.log('❌ Debug checkAgentProjectAccess - projet non trouvé');
+        return false;
+      }
+      
+      // Vérifier si l'agent est assigné à ce projet directement
+      if (project.agent_id === agentId) {
+        console.log('✅ Debug checkAgentProjectAccess - accès accordé (agent assigné au projet)');
+        return true;
+      }
+      
+      // Vérifier si l'agent est assigné au client du projet
+      if (project.client_id) {
+        const hasClientAccess = await this.checkAgentClientAccess(agentId, project.client_id);
+        console.log('🔍 Debug checkAgentProjectAccess - accès via client:', hasClientAccess);
+        return hasClientAccess;
+      }
+      
+      console.log('❌ Debug checkAgentProjectAccess - aucun accès trouvé');
+      return false;
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la vérification d\'accès au projet:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Synchronise les assignations agent-client entre users.agent_id et agent_clients
+   * Cette méthode doit être appelée après chaque modification d'assignation
+   * @param {number} agentId - ID de l'agent (optionnel, pour synchroniser un agent spécifique)
+   * @returns {Object} - Résultat de la synchronisation
+   */
+  async syncAgentClientAssignments(agentId = null) {
+    try {
+      console.log('🔄 Synchronisation des assignations agent-client...');
+      
+      let whereClause = '';
+      let params = [];
+      
+      if (agentId) {
+        whereClause = 'WHERE u.agent_id = ?';
+        params = [agentId];
+        
+        // Supprimer les anciennes assignations pour cet agent
+        await databaseService.run(
+          'DELETE FROM agent_clients WHERE agent_id = ?',
+          [agentId]
+        );
+      } else {
+        // Vider complètement la table pour une synchronisation complète
+        await databaseService.run('DELETE FROM agent_clients');
+      }
+      
+      // Insérer les assignations basées sur users.agent_id
+      const insertQuery = `
+        INSERT INTO agent_clients (agent_id, client_id, status, assigned_at, created_at, updated_at)
+        SELECT 
+          u.agent_id,
+          u.id as client_id,
+          'active' as status,
+          NOW() as assigned_at,
+          NOW() as created_at,
+          NOW() as updated_at
+        FROM users u
+        ${whereClause}
+        AND u.agent_id IS NOT NULL 
+        AND u.role IN ('user', 'client')
+        AND u.agent_id IN (SELECT id FROM users WHERE role IN ('agent', 'admin', 'super_admin'))
+      `;
+      
+      const result = await databaseService.run(insertQuery, params);
+      
+      console.log(`✅ ${result.changes || 0} assignations synchronisées dans agent_clients`);
+      
+      return {
+        success: true,
+        message: 'Assignations synchronisées avec succès',
+        assignmentsSynced: result.changes || 0
+      };
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la synchronisation des assignations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assigne un agent à un client et synchronise les tables
+   * @param {number} agentId - ID de l'agent
+   * @param {number} clientId - ID du client
+   * @returns {Object} - Résultat de l'assignation
+   */
+  async assignAgentToClientWithSync(agentId, clientId) {
+    try {
+      // Vérifier que l'agent existe
+      const agent = await this.getAgentById(agentId);
+      if (!agent) {
+        throw new Error('Agent non trouvé');
+      }
+      
+      // Vérifier que le client existe
+      const client = await databaseService.get(
+        'SELECT id, first_name, last_name, email FROM users WHERE id = ? AND role IN ("user", "client")',
+        [clientId]
+      );
+      
+      if (!client) {
+        throw new Error('Client non trouvé');
+      }
+      
+      // Mettre à jour users.agent_id
+      await databaseService.run(
+        'UPDATE users SET agent_id = ?, updated_at = NOW() WHERE id = ?',
+        [agentId, clientId]
+      );
+      
+      // Synchroniser agent_clients pour cet agent
+      await this.syncAgentClientAssignments(agentId);
+      
+      console.log(`✅ Agent ${agentId} assigné au client ${clientId} avec synchronisation`);
+      
+      return {
+        success: true,
+        message: 'Agent assigné au client avec succès',
+        agentId: agentId,
+        clientId: clientId,
+        agentName: `${agent.first_name} ${agent.last_name}`,
+        clientName: `${client.first_name} ${client.last_name}`
+      };
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'assignation avec synchronisation:', error);
       throw error;
     }
   }

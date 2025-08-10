@@ -269,21 +269,27 @@ class ProjectTemplateService {
    */
   async createProjectFromTemplate(templateId, projectData, agentId) {
     try {
+      console.log('🔍 Début createProjectFromTemplate:', { templateId, projectData, agentId });
+      
       // Récupérer le modèle
+      console.log('📋 Récupération du modèle...');
       const templateResult = await this.getTemplateById(templateId);
       if (!templateResult.success) {
+        console.log('❌ Échec récupération modèle:', templateResult);
         return templateResult;
       }
       
       const template = templateResult.data;
+      console.log('✅ Modèle récupéré:', template.name);
       
       // Créer le projet
+      console.log('💾 Création du projet en base...');
       const projectInsertQuery = `
         INSERT INTO projects (client_id, agent_id, template_id, title, name, description, status, created_by)
         VALUES (?, ?, ?, ?, ?, ?, 'en_cours', ?)
       `;
       
-      const projectResult = await mariadbService.query(projectInsertQuery, [
+      const projectParams = [
         projectData.client_id,
         agentId,
         templateId,
@@ -291,30 +297,45 @@ class ProjectTemplateService {
         projectData.name || projectData.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'),
         projectData.description || template.description,
         agentId
-      ]);
+      ];
+      
+      console.log('📝 Paramètres du projet:', projectParams);
+      const projectResult = await mariadbService.query(projectInsertQuery, projectParams);
+      console.log('✅ Projet créé avec ID:', projectResult.insertId);
       
       const projectId = projectResult.insertId;
       
       // Créer les instances de widgets pour le projet
+      console.log('🔧 Création des widgets, nombre:', template.widgets.length);
       for (const widget of template.widgets) {
+        console.log('🔧 Traitement widget:', { id: widget.id, name: widget.name, position: widget.position });
         const widgetInsertQuery = `
           INSERT INTO project_widgets (project_id, widget_id, position, is_enabled, widget_config)
           VALUES (?, ?, ?, ?, ?)
         `;
         
-        await mariadbService.query(widgetInsertQuery, [
+        const widgetParams = [
           projectId,
           widget.id,
           widget.position,
           widget.is_enabled,
           JSON.stringify(widget.default_config || {})
-        ]);
+        ];
+        
+        console.log('🔧 Paramètres widget:', widgetParams);
+        await mariadbService.query(widgetInsertQuery, widgetParams);
+        console.log('✅ Widget créé avec succès');
       }
       
+      console.log('📝 Enregistrement du log système...');
       systemLogsService.info('Projet créé à partir du modèle', 'projects', agentId, null, { projectId, templateId });
+      console.log('✅ Log système enregistré');
       
+      console.log('🎉 Retour du résultat final...');
       return { success: true, data: { id: projectId, ...projectData, template } };
     } catch (error) {
+      console.log('❌ ERREUR dans createProjectFromTemplate:', error);
+      console.log('📊 Stack trace:', error.stack);
       systemLogsService.error('Erreur lors de la création du projet à partir du modèle', 'projects', agentId, null, { templateId, error: error.message });
       return { success: false, error: error.message };
     }

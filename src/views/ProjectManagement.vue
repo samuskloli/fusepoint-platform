@@ -308,7 +308,7 @@ export default {
       try {
         const response = await projectManagementService.createProject(clientId, projectData)
         if (response.success) {
-          projects.value.push(response.data)
+          projects.value.unshift(response.data)
           showCreateProjectModal.value = false
         }
       } catch (error) {
@@ -345,7 +345,7 @@ export default {
       try {
         const response = await projectManagementService.duplicateProject(project.id)
         if (response.success) {
-          projects.value.push(response.data)
+          projects.value.unshift(response.data)
         }
       } catch (error) {
         console.error('Erreur lors de la duplication du projet:', error)

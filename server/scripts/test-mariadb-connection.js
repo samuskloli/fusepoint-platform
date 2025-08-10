@@ -3,7 +3,7 @@
  * Teste la connexion et affiche les paramètres de configuration
  */
 
-require('dotenv').config();
+require('dotenv').config({ path: '../.env.mariadb' });
 const MariaDBConfig = require('../config/mariadb.config');
 
 async function testConnection() {
