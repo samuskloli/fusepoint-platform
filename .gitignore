@@ -65,6 +65,10 @@ fix-*.cjs
 # Temporary files
 *.tmp
 *.temp
+# Added project temp directories
+/tmp/
+tmp/
+server/uploads/
 
 # Editor directories and files
 .vscode/*
