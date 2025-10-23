@@ -643,12 +643,22 @@ export default {
     const loadFiles = async () => {
       try {
         loading.value = true
-        const response = await projectManagementService.getFiles(props.projectId, currentFolderId.value)
-        files.value = response.data.files || []
-        folders.value = response.data.folders || []
-        breadcrumb.value = response.data.breadcrumb || []
+        const response = await projectManagementService.getProjectFiles(props.projectId)
+        if (response.success) {
+          files.value = response.data || []
+          folders.value = [] // Pour l'instant, pas de gestion des dossiers
+          breadcrumb.value = []
+        } else {
+          console.error('Erreur lors du chargement des fichiers:', response.error)
+          files.value = []
+          folders.value = []
+          breadcrumb.value = []
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des fichiers:', error)
+        files.value = []
+        folders.value = []
+        breadcrumb.value = []
       } finally {
         loading.value = false
       }

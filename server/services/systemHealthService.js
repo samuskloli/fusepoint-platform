@@ -1,11 +1,11 @@
 const os = require('os');
 const fs = require('fs').promises;
 const path = require('path');
-const MariaDBService = require('./mariadbService');
+const databaseService = require('./databaseService');
 
 class SystemHealthService {
   constructor() {
-    this.mariadb = new MariaDBService();
+    this.db = databaseService;
   }
 
   // Obtenir les métriques système
@@ -291,7 +291,7 @@ class SystemHealthService {
   // Vérifier le statut de la base de données
   async checkDatabaseStatus() {
     try {
-      await this.mariadb.get('SELECT 1 as test');
+      await this.db.get('SELECT 1 as test');
       return { status: 'healthy', message: 'Database connection successful' };
     } catch (err) {
       return { status: 'error', message: err.message };

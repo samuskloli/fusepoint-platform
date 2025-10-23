@@ -31,6 +31,11 @@ import brand from './brand.js';
 import admin from './admin.js';
 import agentAssignment from './agentAssignment.js';
 import dashboard from './dashboard.js';
+import customizableProjects from './customizableProjects.js';
+import multiTenant from './multiTenant.js';
+import roles from './roles.js';
+import categories from './categories.js'
+import priorities from './priorities.js'
 
 export default {
   common,
@@ -58,7 +63,12 @@ export default {
   sorting,
   time,
   brand,
+  customizableProjects,
   admin,
   agentAssignment,
   dashboard,
+  multiTenant,
+  roles,
+  categories,
+  priorities,
 };

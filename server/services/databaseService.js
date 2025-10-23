@@ -18,6 +18,9 @@ class DatabaseService {
     this.prestataireSchemaPath = path.join(__dirname, '../database/prestataire_schema.sql');
     this.clientProjectsSchemaPath = path.join(__dirname, '../database/client_projects_schema.sql');
     this.agentClientsSchemaPath = path.join(__dirname, '../database/agent_clients_schema.sql');
+    this.projectTemplatesSchemaPath = path.join(__dirname, '../database/project_templates_schema.sql');
+    this.clientWidgetConfigsSchemaPath = path.join(__dirname, '../database/client_widget_configs_schema.sql');
+    this.projectDashboardsSchemaPath = path.join(__dirname, '../database/project_dashboards_schema.sql');
   }
 
   /**
@@ -94,6 +97,95 @@ class DatabaseService {
         console.warn('⚠️ Fichier agent_clients_schema.sql non trouvé');
       }
 
+      // Créer les tables pour les projets clients (fichiers, tâches, etc.)
+      if (fs.existsSync(this.clientProjectsSchemaPath)) {
+        const clientProjectsSchema = fs.readFileSync(this.clientProjectsSchemaPath, 'utf8');
+        const mariadbClientProjectsSchema = this.adaptSchemaToMariaDB(clientProjectsSchema);
+        await this.executeMultipleQueries(conn, mariadbClientProjectsSchema);
+        console.log('📂 Tables projets clients créées avec succès');
+      } else {
+        console.warn('⚠️ Fichier client_projects_schema.sql non trouvé');
+      }
+
+      // S'assurer que la table files existe au minimum
+      await this.ensureFilesBaseTable(conn);
+
+      // S'assurer que la table files contient les colonnes étendues
+      try {
+        await this.ensureFilesExtendedSchema(conn);
+      } catch (e) {
+        if (!String(e.message).includes("doesn't exist")) {
+          console.warn('⚠️ Erreur mise à niveau schema files:', e.message);
+        }
+      }
+
+      // Créer les tables pour les templates de projets et widgets
+      // S'assurer que la table widgets possède les colonnes étendues avant insertions
+      try {
+        await this.ensureWidgetsExtendedSchema(conn);
+      } catch (e) {
+        // Ignorer si la table n'existe pas encore; elle sera créée juste après
+        if (!String(e.message).includes("doesn't exist")) {
+          console.warn('⚠️ Erreur mise à niveau schema widgets:', e.message);
+        }
+      }
+
+      if (fs.existsSync(this.projectTemplatesSchemaPath)) {
+        const projectTemplatesSchema = fs.readFileSync(this.projectTemplatesSchemaPath, 'utf8');
+        let mariadbProjectTemplatesSchema = this.adaptSchemaToMariaDB(projectTemplatesSchema);
+
+        // Option pour désactiver l'insertion automatique des templates par défaut
+        const skipDefaultTemplates = (
+          process.env.DISABLE_DEFAULT_TEMPLATES === '1' ||
+          String(process.env.DISABLE_DEFAULT_TEMPLATES || '').toLowerCase() === 'true'
+        );
+        if (skipDefaultTemplates) {
+          try {
+            const filtered = mariadbProjectTemplatesSchema
+              .split(';')
+              .filter(q => {
+                const qt = q.trim();
+                if (!qt) return false;
+                const upper = qt.toUpperCase();
+                // Ne pas exécuter les INSERT vers project_templates ou project_template_widgets
+                if (upper.startsWith('INSERT') && upper.includes('INTO PROJECT_TEMPLATES')) return false;
+                if (upper.startsWith('INSERT') && upper.includes('INTO PROJECT_TEMPLATE_WIDGETS')) return false;
+                return true;
+              })
+              .join(';');
+            mariadbProjectTemplatesSchema = filtered;
+            console.log('🚫 Insertion des templates par défaut désactivée (DISABLE_DEFAULT_TEMPLATES activé)');
+          } catch (e) {
+            console.warn('⚠️ Filtrage des inserts de templates échoué:', e.message);
+          }
+        }
+
+        await this.executeMultipleQueries(conn, mariadbProjectTemplatesSchema);
+        console.log('📋 Tables templates de projets et widgets créées avec succès');
+      } else {
+        console.warn('⚠️ Fichier project_templates_schema.sql non trouvé');
+      }
+
+      // Charger le schéma des configurations de widgets par client
+      if (fs.existsSync(this.clientWidgetConfigsSchemaPath)) {
+        const clientWidgetsSchema = fs.readFileSync(this.clientWidgetConfigsSchemaPath, 'utf8');
+        const mariadbClientWidgetsSchema = this.adaptSchemaToMariaDB(clientWidgetsSchema);
+        await this.executeMultipleQueries(conn, mariadbClientWidgetsSchema);
+        console.log('🧩 Tables client_widget_configs et templates initialisées avec succès');
+      } else {
+        console.warn('⚠️ Fichier client_widget_configs_schema.sql non trouvé');
+      }
+
+      // Charger le schéma des dashboards de projets
+      if (fs.existsSync(this.projectDashboardsSchemaPath)) {
+        const projectDashboardsSchema = fs.readFileSync(this.projectDashboardsSchemaPath, 'utf8');
+        const mariadbProjectDashboardsSchema = this.adaptSchemaToMariaDB(projectDashboardsSchema);
+        await this.executeMultipleQueries(conn, mariadbProjectDashboardsSchema);
+        console.log('📊 Table project_dashboards initialisée avec succès');
+      } else {
+        console.warn('⚠️ Fichier project_dashboards_schema.sql non trouvé');
+      }
+
       console.log('✅ Toutes les tables MariaDB créées avec succès');
     } catch (error) {
       console.error('❌ Erreur création tables MariaDB:', error);
@@ -118,11 +210,16 @@ class DatabaseService {
     // Remplacer DATETIME par TIMESTAMP
     mariadbSchema = mariadbSchema.replace(/DATETIME/gi, 'TIMESTAMP');
     
-    // Remplacer CURRENT_TIMESTAMP par NOW()
+    // Remplacer DEFAULT CURRENT_TIMESTAMP (laisser tel quel pour MariaDB)
     mariadbSchema = mariadbSchema.replace(/DEFAULT CURRENT_TIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
     
     // Remplacer TEXT par LONGTEXT pour les champs longs
-    mariadbSchema = mariadbSchema.replace(/TEXT/gi, 'LONGTEXT');
+    mariadbSchema = mariadbSchema.replace(/\bTEXT\b/gi, 'LONGTEXT');
+
+    // Remplacer les colonnes de type JSON par LONGTEXT pour compatibilité MariaDB
+    // Ne pas altérer les fonctions JSON_* (JSON_OBJECT, JSON_ARRAY, etc.)
+    mariadbSchema = mariadbSchema.replace(/\bJSON\s*(?=,|\n|\r|\))/gi, 'LONGTEXT');
+    mariadbSchema = mariadbSchema.replace(/\bJSON\s+NOT\s+NULL\b/gi, 'LONGTEXT NOT NULL');
     
     // Ajouter IF NOT EXISTS seulement si pas déjà présent
     mariadbSchema = mariadbSchema.replace(/CREATE TABLE (?!IF NOT EXISTS)([^\s]+)/gi, 'CREATE TABLE IF NOT EXISTS $1');
@@ -146,6 +243,84 @@ class DatabaseService {
           if (!error.message.includes('already exists')) {
             console.warn('⚠️ Erreur requête SQL:', trimmedQuery, error.message);
           }
+        }
+      }
+    }
+  }
+
+  /**
+   * S'assurer que la table files contient les colonnes étendues
+   */
+  async ensureFilesExtendedSchema(conn) {
+    const alterQueries = [
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS folder_path VARCHAR(255) DEFAULT '/'",
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS is_deleted TINYINT(1) DEFAULT 0",
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+    ];
+    for (const q of alterQueries) {
+      try {
+        await conn.query(q);
+      } catch (error) {
+        const msg = String(error.message || '');
+        if (!msg.includes('Duplicate column') && !msg.includes("doesn't exist")) {
+          console.warn('⚠️ Erreur ALTER files:', error.message);
+        }
+      }
+    }
+  }
+
+  /**
+   * Crée une table files minimale si elle n'existe pas
+   */
+  async ensureFilesBaseTable(conn) {
+    try {
+      const [tables] = await conn.query("SHOW TABLES LIKE 'files'");
+      const exists = Array.isArray(tables) && tables.length > 0;
+      if (!exists) {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS files (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            client_id INT NOT NULL,
+            project_id INT,
+            name VARCHAR(255) NOT NULL,
+            original_name VARCHAR(255),
+            mime_type VARCHAR(100),
+            size INT DEFAULT 0,
+            folder_path VARCHAR(255) DEFAULT '/',
+            created_by INT,
+            is_deleted TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+          )
+        `);
+        try {
+          await conn.query("CREATE INDEX idx_files_scope ON files (client_id, project_id)");
+        } catch (e) {
+          // Ignorer si l'index existe déjà
+        }
+        console.log('📁 Table files minimale créée');
+      }
+    } catch (error) {
+      console.warn("⚠️ Impossible de vérifier/créer la table files:", error.message);
+    }
+  }
+
+  /**
+   * S'assurer que la table widgets contient les colonnes étendues
+   */
+  async ensureWidgetsExtendedSchema(conn) {
+    const alterQueries = [
+      "ALTER TABLE widgets ADD COLUMN IF NOT EXISTS nameKey VARCHAR(255)",
+      "ALTER TABLE widgets ADD COLUMN IF NOT EXISTS descriptionKey VARCHAR(255)",
+      "ALTER TABLE widgets ADD COLUMN IF NOT EXISTS default_width INT DEFAULT 4",
+      "ALTER TABLE widgets ADD COLUMN IF NOT EXISTS default_height INT DEFAULT 2"
+    ];
+    for (const q of alterQueries) {
+      try {
+        await conn.query(q);
+      } catch (error) {
+        if (!String(error.message).includes('Duplicate column')) {
+          console.warn('⚠️ Erreur ALTER widgets:', error.message);
         }
       }
     }
@@ -233,40 +408,43 @@ class DatabaseService {
    */
   async confirmUserAccount(token) {
     try {
-      // Vérifier le token et sa validité
-      const user = await this.get(
-        'SELECT * FROM users WHERE confirmation_token = ? AND token_expiry > NOW()',
-        [token]
-      );
-
-      if (!user) {
-        throw new Error('Token de confirmation invalide ou expiré');
+      let conn;
+      let user;
+      try {
+        conn = await this.getConnection();
+        const rows = await conn.query(
+          'SELECT id, email, first_name, last_name, role FROM users WHERE confirmation_token = ? AND token_expiry > NOW()',
+          [token]
+        );
+        user = rows.length > 0 ? rows[0] : null;
+        if (!user) {
+          throw new Error('Token de confirmation invalide ou expiré');
+        }
+        await conn.query(
+          'UPDATE users SET is_active = 1, email_verified = 1, confirmation_token = NULL, token_expiry = NULL, updated_at = NOW() WHERE id = ?',
+          [user.id]
+        );
+      } finally {
+        if (conn) conn.release();
       }
 
-      // Activer le compte et supprimer le token
-      await this.run(
-        'UPDATE users SET is_active = 1, confirmation_token = NULL, token_expiry = NULL WHERE id = ?',
-        [user.id]
+      await this.logAudit(
+        user.id,
+        null,
+        'USER_CONFIRMED',
+        'users',
+        { email: user.email }
       );
 
-      // Log d'audit
-      await this.logAudit(companyId, userId, 'COMPANY_CREATED', 'companies', {
-        name,
-        industry
-      });
-
       return {
-        id: companyId,
-        name,
-        industry,
-        size,
-        location,
-        website,
-        description,
-        createdAt: new Date().toISOString()
+        id: user.id,
+        email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role
       };
     } catch (error) {
-      console.error('❌ Erreur création entreprise:', error);
+      console.error('❌ Erreur confirmation compte:', error);
       throw error;
     }
   }
@@ -394,7 +572,7 @@ class DatabaseService {
       // Sauvegarder le token de réinitialisation
       await this.run(
         'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
-        [resetToken, tokenExpiry.toISOString(), user.id]
+        [resetToken, tokenExpiry.toISOString().slice(0, 19).replace('T', ' '), user.id]
       );
 
       // Envoyer l'email de réinitialisation
@@ -476,14 +654,15 @@ class DatabaseService {
       const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 heures
 
       let conn;
+      let newUser;
       try {
         conn = await this.getConnection();
         
-        // Insérer l'utilisateur avec is_active = 0 (compte non confirmé)
+        // Insérer l'utilisateur avec is_active = 1 (compte actif pour les tests)
         const result = await conn.query(
           `INSERT INTO users (email, password_hash, first_name, last_name, role, confirmation_token, token_expiry, is_active) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-          [email, passwordHash, firstName, lastName, role, confirmationToken, tokenExpiry.toISOString()]
+           VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+          [email, passwordHash, firstName, lastName, role, confirmationToken, tokenExpiry.toISOString().slice(0, 19).replace('T', ' ')]
         );
 
         // Log d'audit
@@ -492,8 +671,8 @@ class DatabaseService {
           role
         });
 
-        const newUser = {
-          id: result.insertId,
+        newUser = {
+          id: Number(result.insertId),
           email,
           firstName,
           lastName,
@@ -708,7 +887,7 @@ class DatabaseService {
           updatedBy,
           null,
           null,
-          JSON.stringify({ userId, isActive, action: 'status_update' })
+          JSON.stringify({ userId, isActive, action: 'status_update' }, (k, v) => typeof v === 'bigint' ? Number(v) : v)
         ]
       );
 
@@ -953,10 +1132,20 @@ class DatabaseService {
         [userId]
       );
 
-      return companies.map(company => ({
-        ...company,
-        permissions: JSON.parse(company.permissions || '{}')
-      }));
+      return companies.map(company => {
+        let permissions = {};
+        try {
+          // Certaines anciennes entrées peuvent contenir des permissions non JSON
+          permissions = JSON.parse(company.permissions || '{}');
+        } catch (parseError) {
+          console.warn('⚠️ Permissions invalides pour la société', { companyId: company.id, permissions: company.permissions });
+          permissions = {};
+        }
+        return {
+          ...company,
+          permissions
+        };
+      });
     } catch (error) {
       console.error('❌ Erreur récupération entreprises:', error);
       throw error;
@@ -1085,11 +1274,11 @@ class DatabaseService {
    */
   async logAudit(userId, companyId, action, resource, details = {}, ipAddress = null) {
     try {
-      const conn = await this.mariadb.getConnection();
+      const conn = await this.getConnection();
       await conn.query(
         `INSERT INTO audit_logs (user_id, company_id, action, resource, details, ip_address) 
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [userId, companyId, action, resource, JSON.stringify(details), ipAddress]
+        [userId, companyId, action, resource, JSON.stringify(details, (k, v) => typeof v === 'bigint' ? Number(v) : v), ipAddress]
       );
       conn.release();
     } catch (error) {
@@ -1102,14 +1291,23 @@ class DatabaseService {
    * Exécuter une requête qui retourne plusieurs résultats
    */
   async query(sql, params = []) {
+    let conn;
     try {
-      const conn = await this.mariadb.getConnection();
+      conn = await this.mariadb.getConnection();
+      const debug = process.env.DB_DEBUG_SQL === '1' || process.env.DB_DEBUG_SQL === 'true';
+      if (debug) {
+        console.log('🔎 SQL query:', sql);
+        if (params && params.length) console.log('   ↳ params:', params);
+      }
       const result = await conn.query(sql, params);
-      conn.release();
       return result;
     } catch (error) {
-      console.error('❌ Erreur requête query:', error);
+      console.error('❌ Erreur requête query:', error.message || error);
+      console.error('   ↳ SQL:', sql);
+      if (params && params.length) console.error('   ↳ params:', params);
       throw error;
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1117,14 +1315,23 @@ class DatabaseService {
    * Exécuter une requête qui retourne un seul résultat
    */
   async get(sql, params = []) {
+    let conn;
     try {
-      const conn = await this.mariadb.getConnection();
+      conn = await this.mariadb.getConnection();
+      const debug = process.env.DB_DEBUG_SQL === '1' || process.env.DB_DEBUG_SQL === 'true';
+      if (debug) {
+        console.log('🔎 SQL get:', sql);
+        if (params && params.length) console.log('   ↳ params:', params);
+      }
       const result = await conn.query(sql, params);
-      conn.release();
       return result[0] || null;
     } catch (error) {
-      console.error('❌ Erreur requête get:', error);
+      console.error('❌ Erreur requête get:', error.message || error);
+      console.error('   ↳ SQL:', sql);
+      if (params && params.length) console.error('   ↳ params:', params);
       throw error;
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1132,14 +1339,23 @@ class DatabaseService {
    * Exécuter une requête de modification (INSERT, UPDATE, DELETE)
    */
   async run(sql, params = []) {
+    let conn;
     try {
-      const conn = await this.mariadb.getConnection();
+      conn = await this.mariadb.getConnection();
+      const debug = process.env.DB_DEBUG_SQL === '1' || process.env.DB_DEBUG_SQL === 'true';
+      if (debug) {
+        console.log('🔎 SQL run:', sql);
+        if (params && params.length) console.log('   ↳ params:', params);
+      }
       const result = await conn.query(sql, params);
-      conn.release();
       return result;
     } catch (error) {
-      console.error('❌ Erreur requête run:', error);
+      console.error('❌ Erreur requête run:', error.message || error);
+      console.error('   ↳ SQL:', sql);
+      if (params && params.length) console.error('   ↳ params:', params);
       throw error;
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1147,18 +1363,20 @@ class DatabaseService {
    * Récupérer un projet par son ID
    */
   async getProjectById(projectId) {
+    let conn;
     try {
       const conn = await this.mariadb.getConnection();
       const result = await conn.query(
         'SELECT * FROM projects WHERE id = ?',
         [projectId]
       );
-      conn.release();
       const project = result[0] || null;
       return project;
     } catch (error) {
       console.error('❌ Erreur récupération projet par ID:', error);
       throw error;
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1166,17 +1384,19 @@ class DatabaseService {
    * Récupérer les tâches d'un projet spécifique
    */
   async getProjectTasks(projectId) {
+    let conn;
     try {
       const conn = await this.mariadb.getConnection();
       const tasks = await conn.query(
         'SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at DESC',
         [projectId]
       );
-      conn.release();
       return tasks;
     } catch (error) {
       console.error('❌ Erreur récupération tâches du projet:', error);
       return [];
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1184,17 +1404,19 @@ class DatabaseService {
    * Récupérer les fichiers d'un projet spécifique
    */
   async getProjectFiles(projectId) {
+    let conn;
     try {
       const conn = await this.mariadb.getConnection();
       const files = await conn.query(
         'SELECT * FROM files WHERE project_id = ? ORDER BY created_at DESC',
         [projectId]
       );
-      conn.release();
       return files;
     } catch (error) {
       console.error('❌ Erreur récupération fichiers du projet:', error);
       return [];
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1202,6 +1424,7 @@ class DatabaseService {
    * Récupérer les membres de l'équipe d'un projet spécifique
    */
   async getProjectTeamMembers(projectId) {
+    let conn;
     try {
       const conn = await this.mariadb.getConnection();
       const members = await conn.query(
@@ -1211,11 +1434,12 @@ class DatabaseService {
          WHERE tm.project_id = ?`,
         [projectId]
       );
-      conn.release();
       return members;
     } catch (error) {
       console.error('❌ Erreur récupération membres équipe du projet:', error);
       return [];
+    } finally {
+      if (conn) conn.release();
     }
   }
 
@@ -1223,19 +1447,19 @@ class DatabaseService {
    * Vérifier la connexion à la base de données
    */
   async checkConnection() {
+    let conn;
     try {
       if (!this.pool) {
         return { connected: false, error: 'Base de données non initialisée' };
       }
-      
-      // Test simple de connexion
-      const conn = await this.mariadb.getConnection();
+      conn = await this.mariadb.getConnection();
       await conn.query('SELECT 1');
-      conn.release();
       return { connected: true };
     } catch (error) {
       console.error('❌ Erreur vérification connexion DB:', error);
       return { connected: false, error: error.message };
+    } finally {
+      if (conn) conn.release();
     }
   }
 

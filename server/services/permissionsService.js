@@ -1,8 +1,8 @@
-const MariaDBService = require('./mariadbService');
+const databaseService = require('./databaseService');
 
 class PermissionsService {
   constructor() {
-    this.mariadb = new MariaDBService();
+    this.db = databaseService;
     this.initializePermissionsTables();
   }
 
@@ -58,10 +58,10 @@ class PermissionsService {
 
     // Créer les tables
     try {
-      await this.mariadb.run(createRolesTable);
-      await this.mariadb.run(createPermissionsTable);
-      await this.mariadb.run(createRolePermissionsTable);
-      await this.mariadb.run(createUserRolesTable);
+      await this.db.run(createRolesTable);
+      await this.db.run(createPermissionsTable);
+      await this.db.run(createRolePermissionsTable);
+      await this.db.run(createUserRolesTable);
       console.log('Tables de permissions initialisées avec succès');
       await this.insertDefaultData();
     } catch (err) {
@@ -100,31 +100,41 @@ class PermissionsService {
       { name: 'roles.update', description: 'Modifier les rôles', category: 'roles', resource: 'roles', action: 'update' },
       { name: 'roles.delete', description: 'Supprimer les rôles', category: 'roles', resource: 'roles', action: 'delete' },
       
-      // Permissions paramètres
-      { name: 'settings.read', description: 'Voir les paramètres', category: 'settings', resource: 'settings', action: 'read' },
-      { name: 'settings.update', description: 'Modifier les paramètres', category: 'settings', resource: 'settings', action: 'update' },
-      { name: 'platform.settings.write', description: 'Écrire les paramètres de plateforme', category: 'platform', resource: 'platform', action: 'settings_write' },
-      { name: 'platform.logs.read', description: 'Lire les logs de plateforme', category: 'platform', resource: 'platform', action: 'logs_read' },
-      { name: 'system_backup', description: 'Créer des sauvegardes système', category: 'system', resource: 'system', action: 'backup' },
+      // Permissions projets
+      { name: 'projects.create', description: 'Créer des projets', category: 'projects', resource: 'projects', action: 'create' },
+      { name: 'projects.read', description: 'Voir les projets', category: 'projects', resource: 'projects', action: 'read' },
+      { name: 'projects.update', description: 'Modifier les projets', category: 'projects', resource: 'projects', action: 'update' },
+      { name: 'projects.delete', description: 'Supprimer les projets', category: 'projects', resource: 'projects', action: 'delete' },
+      { name: 'project_management', description: 'Gestion complète des projets', category: 'projects', resource: 'projects', action: 'management' },
       
-      // Permissions agents
-      { name: 'agents.manage', description: 'Gérer les agents', category: 'agents', resource: 'agents', action: 'manage' },
-      { name: 'agents.view', description: 'Voir les agents', category: 'agents', resource: 'agents', action: 'view' },
+      // Permissions clients
+      { name: 'clients.create', description: 'Créer des clients', category: 'clients', resource: 'clients', action: 'create' },
+      { name: 'clients.read', description: 'Voir les clients', category: 'clients', resource: 'clients', action: 'read' },
+      { name: 'clients.update', description: 'Modifier les clients', category: 'clients', resource: 'clients', action: 'update' },
+      { name: 'clients.delete', description: 'Supprimer les clients', category: 'clients', resource: 'clients', action: 'delete' },
       
-      // Permissions accompagnement
-      { name: 'accompagnement.create', description: 'Créer des accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'create' },
-      { name: 'accompagnement.read', description: 'Voir les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'read' },
-      { name: 'accompagnement.update', description: 'Modifier les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'update' },
-      { name: 'accompagnement.delete', description: 'Supprimer les accompagnements', category: 'accompagnement', resource: 'accompagnement', action: 'delete' }
+      // Permissions fichiers
+      { name: 'files.upload', description: 'Télécharger des fichiers', category: 'files', resource: 'files', action: 'upload' },
+      { name: 'files.download', description: 'Télécharger des fichiers', category: 'files', resource: 'files', action: 'download' },
+      { name: 'files.delete', description: 'Supprimer des fichiers', category: 'files', resource: 'files', action: 'delete' },
+      { name: 'files.manage', description: 'Gérer les fichiers', category: 'files', resource: 'files', action: 'manage' },
+      
+      // Permissions widgets
+      { name: 'widgets.view', description: 'Voir les widgets', category: 'widgets', resource: 'widgets', action: 'view' },
+      { name: 'widgets.configure', description: 'Configurer les widgets', category: 'widgets', resource: 'widgets', action: 'configure' },
+      { name: 'widgets.manage', description: 'Gérer les widgets', category: 'widgets', resource: 'widgets', action: 'manage' }
     ];
 
     // Insérer les rôles
     for (const role of defaultRoles) {
       try {
-        await this.mariadb.run(
-          'INSERT IGNORE INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
-          [role.name, role.description, role.is_system_role]
-        );
+        const existing = await this.db.get('SELECT id FROM roles WHERE name = ?', [role.name]);
+        if (!existing) {
+          await this.db.run(
+            'INSERT INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
+            [role.name, role.description, role.is_system_role]
+          );
+        }
       } catch (err) {
         console.error(`Erreur lors de l'insertion du rôle ${role.name}:`, err);
       }
@@ -133,303 +143,272 @@ class PermissionsService {
     // Insérer les permissions
     for (const permission of defaultPermissions) {
       try {
-        await this.mariadb.run(
-          'INSERT IGNORE INTO permissions (name, description, category, resource, action) VALUES (?, ?, ?, ?, ?)',
-          [permission.name, permission.description, permission.category, permission.resource, permission.action]
-        );
+        const existing = await this.db.get('SELECT id FROM permissions WHERE name = ?', [permission.name]);
+        if (!existing) {
+          await this.db.run(
+            'INSERT INTO permissions (name, description, category, resource, action) VALUES (?, ?, ?, ?, ?)',
+            [permission.name, permission.description, permission.category, permission.resource, permission.action]
+          );
+        }
       } catch (err) {
         console.error(`Erreur lors de l'insertion de la permission ${permission.name}:`, err);
       }
     }
 
-    // Attribuer toutes les permissions au super_admin
+    // Assigner toutes les permissions au super_admin
     await this.assignAllPermissionsToSuperAdmin();
   }
 
-  // Attribuer toutes les permissions au super_admin
+  // Assigner toutes les permissions au rôle super_admin
   async assignAllPermissionsToSuperAdmin() {
     try {
-      const role = await this.mariadb.get('SELECT id FROM roles WHERE name = ?', ['super_admin']);
-      if (!role) {
-        console.error('Rôle super_admin non trouvé');
-        return;
-      }
-
-      const permissions = await this.mariadb.all('SELECT id FROM permissions');
-      
-      for (const permission of permissions) {
-        try {
-          await this.mariadb.run(
-            'INSERT IGNORE INTO role_permissions (role_id, permission_id, granted) VALUES (?, ?, 1)',
-            [role.id, permission.id]
-          );
-        } catch (err) {
-          console.error('Erreur lors de l\'attribution des permissions:', err);
+      const superAdminRole = await this.db.get('SELECT id FROM roles WHERE name = ?', ['super_admin']);
+      if (superAdminRole) {
+        const permissions = await this.db.query('SELECT id FROM permissions');
+        for (const permission of permissions) {
+          try {
+            await this.db.run(
+              'INSERT IGNORE INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+              [superAdminRole.id, permission.id]
+            );
+          } catch (err) {
+            // Ignorer les erreurs de doublons
+          }
         }
       }
     } catch (err) {
-      console.error('Erreur lors de l\'attribution des permissions au super_admin:', err);
+      console.error('Erreur lors de l\'assignation des permissions au super_admin:', err);
     }
   }
 
   // Récupérer tous les rôles
   async getAllRoles() {
     try {
-      const rows = await this.mariadb.all('SELECT * FROM roles ORDER BY name');
-      return rows.map(role => ({
-        ...role,
-        is_system_role: Boolean(role.is_system_role)
-      }));
+      const roles = await this.db.query('SELECT * FROM roles ORDER BY name');
+      return { success: true, data: roles };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération des rôles:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Récupérer les permissions d'un rôle
   async getRolePermissions(roleId) {
     try {
-      const query = `
-        SELECT p.*, rp.granted, p.category
+      const permissions = await this.db.query(`
+        SELECT p.*, rp.granted
         FROM permissions p
-        LEFT JOIN role_permissions rp ON p.id = rp.permission_id AND rp.role_id = ?
+        INNER JOIN role_permissions rp ON p.id = rp.permission_id
+        WHERE rp.role_id = ?
         ORDER BY p.category, p.name
-      `;
+      `, [roleId]);
 
-      const rows = await this.mariadb.all(query, [roleId]);
-      
-      // Organiser par catégorie
-      const permissionsByCategory = {};
-      
-      rows.forEach(permission => {
-        const category = permission.category || 'general';
-        if (!permissionsByCategory[category]) {
-          permissionsByCategory[category] = {
-            granted: [],
-            denied: []
-          };
+      const categories = {};
+      permissions.forEach(permission => {
+        if (!categories[permission.category]) {
+          categories[permission.category] = [];
         }
-
-        const permissionData = {
+        categories[permission.category].push({
           id: permission.id,
           name: permission.name,
           description: permission.description,
           resource: permission.resource,
-          action: permission.action
-        };
-
-        if (permission.granted) {
-          permissionsByCategory[category].granted.push(permissionData);
-        } else {
-          permissionsByCategory[category].denied.push(permissionData);
-        }
+          action: permission.action,
+          granted: permission.granted === 1
+        });
       });
 
-      return permissionsByCategory;
+      return { success: true, data: { permissions, categories } };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération des permissions du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Créer un nouveau rôle
   async createRole(name, description, isSystemRole = false) {
     try {
-      const result = await this.mariadb.run(
+      const result = await this.db.run(
         'INSERT INTO roles (name, description, is_system_role) VALUES (?, ?, ?)',
-        [name, description, isSystemRole ? 1 : 0]
+        [name, description, isSystemRole]
       );
-      return { id: result.insertId, affectedRows: result.affectedRows };
+      return { success: true, data: { id: result.insertId, name, description, isSystemRole } };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la création du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Supprimer un rôle
   async deleteRole(roleId) {
     try {
-      // Vérifier si c'est un rôle système
-      const role = await this.mariadb.get(
-        'SELECT is_system_role FROM roles WHERE id = ?',
-        [roleId]
-      );
-
-      if (!role) {
-        throw new Error('Rôle non trouvé');
+      // Vérifier que ce n'est pas un rôle système
+      const role = await this.db.get('SELECT is_system_role FROM roles WHERE id = ?', [roleId]);
+      if (role && role.is_system_role) {
+        return { success: false, error: 'Impossible de supprimer un rôle système' };
       }
 
-      if (role.is_system_role) {
-        throw new Error('Impossible de supprimer un rôle système');
-      }
-
-      // Supprimer les permissions associées
-      await this.mariadb.run(
-        'DELETE FROM role_permissions WHERE role_id = ?',
-        [roleId]
-      );
-
-      // Supprimer le rôle
-      const result = await this.mariadb.run(
-        'DELETE FROM roles WHERE id = ?',
-        [roleId]
-      );
-
-      return { affectedRows: result.affectedRows };
+      await this.db.run('DELETE FROM roles WHERE id = ?', [roleId]);
+      return { success: true };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la suppression du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Mettre à jour les permissions d'un rôle
   async updateRolePermissions(roleId, permissions) {
     try {
-      // Supprimer toutes les permissions existantes pour ce rôle
-      await this.mariadb.run(
-        'DELETE FROM role_permissions WHERE role_id = ?',
-        [roleId]
-      );
+      // Supprimer toutes les permissions existantes du rôle
+      await this.db.run('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
 
       // Ajouter les nouvelles permissions
-      if (permissions.length === 0) {
-        return { affectedRows: 0 };
-      }
-
-      let affectedRows = 0;
-      for (const permission of permissions) {
-        const result = await this.mariadb.run(
-          'INSERT INTO role_permissions (role_id, permission_id, granted) VALUES (?, ?, ?)',
-          [roleId, permission.permission_id, permission.granted ? 1 : 0]
+      for (const permissionId of permissions) {
+        await this.db.run(
+          'INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)',
+          [roleId, permissionId]
         );
-        affectedRows += result.affectedRows;
       }
 
-      return { affectedRows };
+      return { success: true };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la mise à jour des permissions du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Récupérer un rôle par nom
   async getRoleByName(roleName) {
     try {
-      const row = await this.mariadb.get(
-        'SELECT * FROM roles WHERE name = ?',
-        [roleName]
-      );
-      return row ? { ...row, is_system_role: Boolean(row.is_system_role) } : null;
+      const role = await this.db.get('SELECT * FROM roles WHERE name = ?', [roleName]);
+      return role;
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération du rôle par nom:', err);
+      return null;
     }
   }
 
-  // Vérifier si un utilisateur a une permission
+  // Vérifier si un utilisateur a une permission spécifique
   async userHasPermission(userId, permissionName) {
     try {
-      const query = `
+      const result = await this.db.get(`
         SELECT COUNT(*) as count
         FROM user_roles ur
-        JOIN role_permissions rp ON ur.role_id = rp.role_id
-        JOIN permissions p ON rp.permission_id = p.id
+        INNER JOIN role_permissions rp ON ur.role_id = rp.role_id
+        INNER JOIN permissions p ON rp.permission_id = p.id
         WHERE ur.user_id = ? AND p.name = ? AND rp.granted = 1
-      `;
+      `, [userId, permissionName]);
 
-      const row = await this.mariadb.get(query, [userId, permissionName]);
-      return row.count > 0;
+      return result.count > 0;
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la vérification des permissions:', err);
+      return false;
     }
   }
 
-  // Attribuer un rôle à un utilisateur
+  // Assigner un rôle à un utilisateur
   async assignRoleToUser(userId, roleId, assignedBy = null) {
     try {
-      const result = await this.mariadb.run(
+      await this.db.run(
         'INSERT IGNORE INTO user_roles (user_id, role_id, assigned_by) VALUES (?, ?, ?)',
         [userId, roleId, assignedBy]
       );
-      return { success: result.affectedRows > 0 };
+      return { success: true };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de l\'assignation du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Retirer un rôle d'un utilisateur
   async removeRoleFromUser(userId, roleId) {
     try {
-      const result = await this.mariadb.run(
-        'DELETE FROM user_roles WHERE user_id = ? AND role_id = ?',
-        [userId, roleId]
-      );
-      return { success: result.affectedRows > 0 };
+      await this.db.run('DELETE FROM user_roles WHERE user_id = ? AND role_id = ?', [userId, roleId]);
+      return { success: true };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors du retrait du rôle:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Récupérer les rôles d'un utilisateur
   async getUserRoles(userId) {
     try {
-      const query = `
-        SELECT r.*, ur.assigned_at
+      const roles = await this.db.query(`
+        SELECT r.*, ur.assigned_at, ur.assigned_by
         FROM roles r
-        JOIN user_roles ur ON r.id = ur.role_id
+        INNER JOIN user_roles ur ON r.id = ur.role_id
         WHERE ur.user_id = ?
         ORDER BY r.name
-      `;
+      `, [userId]);
 
-      const rows = await this.mariadb.all(query, [userId]);
-      return rows.map(role => ({
-        ...role,
-        is_system_role: Boolean(role.is_system_role)
-      }));
+      return { success: true, data: roles };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération des rôles utilisateur:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Récupérer toutes les permissions
   async getAllPermissions() {
     try {
-      const rows = await this.mariadb.all(
-        'SELECT * FROM permissions ORDER BY category, name'
-      );
-      return rows;
+      const permissions = await this.db.query('SELECT * FROM permissions ORDER BY category, name');
+      return { success: true, data: permissions };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération des permissions:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Récupérer les catégories de permissions
   async getPermissionCategories() {
     try {
-      const rows = await this.mariadb.all(
-        'SELECT DISTINCT category FROM permissions ORDER BY category'
-      );
-      return rows.map(row => row.category);
+      const categories = await this.db.query('SELECT DISTINCT category FROM permissions ORDER BY category');
+      return { success: true, data: categories.map(c => c.category) };
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la récupération des catégories:', err);
+      return { success: false, error: err.message };
     }
   }
 
   // Vérifier si un utilisateur est super admin
   async isSuperAdmin(userId) {
     try {
-      const query = `
+      const result = await this.db.get(`
         SELECT COUNT(*) as count
         FROM user_roles ur
-        JOIN roles r ON ur.role_id = r.id
+        INNER JOIN roles r ON ur.role_id = r.id
         WHERE ur.user_id = ? AND r.name = 'super_admin'
-      `;
+      `, [userId]);
 
-      const row = await this.mariadb.get(query, [userId]);
-      return row.count > 0;
+      return result.count > 0;
     } catch (err) {
-      throw err;
+      console.error('Erreur lors de la vérification super admin:', err);
+      return false;
+    }
+  }
+
+  // Vérifier si un utilisateur est admin (admin ou super_admin)
+  async isAdmin(userId) {
+    try {
+      const result = await this.db.get(`
+        SELECT COUNT(*) as count
+        FROM user_roles ur
+        INNER JOIN roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ? AND r.name IN ('admin', 'super_admin')
+      `, [userId]);
+
+      return result.count > 0;
+    } catch (err) {
+      console.error('Erreur lors de la vérification admin:', err);
+      return false;
     }
   }
 
   // Fermer la connexion
   close() {
-    if (this.mariadb && this.mariadb.close) {
-      this.mariadb.close();
+    if (this.db && this.db.close) {
+      this.db.close();
     }
   }
 }

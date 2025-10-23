@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "message": "Connexion réussie",
+  "user": {
+    "id": 47,
+    "email": "agent.test.final@example.local",
+    "firstName": "Test",
+    "lastName": "Agent",
+    "role": "agent",
+    "onboarding_completed": 0
+  },
+  "companies": [],
+  "tokens": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ3LCJlbWFpbCI6ImFnZW50LnRlc3QuZmluYWxAZXhhbXBsZS5sb2NhbCIsInJvbGUiOiJhZ2VudCIsImNvbXBhbnlfaWQiOm51bGwsImlhdCI6MTc2MTA2OTUyOSwiZXhwIjoxNzYxMTU1OTI5fQ.hmpxt6qmessbGSyFLHxDBhXxGoq-2-iFKBOz8n9pABI",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjQ3LCJ0eXBlIjoicmVmcmVzaCIsImlhdCI6MTc2MTA2OTUyOSwiZXhwIjoxNzYxNjc0MzI5fQ.Z_gHuGmpsxaLHQR1sHA6p2yHzL_NVIBCkoKAXNXATNc",
+    "sessionToken": "6094ed2261350e8c3318f698671b2e22a8fc295f2a242decf3cf1c04d33b8715"
+  },
+  "expiresAt": "2025-10-22T17:58:49.667Z"
+}

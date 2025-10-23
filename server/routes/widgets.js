@@ -10,7 +10,7 @@ const responseService = require('../services/responseService');
  * @desc Récupérer tous les widgets disponibles
  * @access Agent
  */
-router.get('/', authenticateToken, requireRole(['agent', 'admin']), async (req, res) => {
+router.get('/', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), async (req, res) => {
   try {
     const filters = {
       category: req.query.category
@@ -19,7 +19,7 @@ router.get('/', authenticateToken, requireRole(['agent', 'admin']), async (req, 
     const result = await projectTemplateService.getAllWidgets(filters);
     
     if (result.success) {
-      responseService.success(res, result.data, 'Widgets récupérés avec succès');
+      responseService.success(res, 'widgets.retrieved', result.data);
     } else {
       responseService.error(res, result.error, 400);
     }
@@ -33,12 +33,12 @@ router.get('/', authenticateToken, requireRole(['agent', 'admin']), async (req, 
  * @desc Récupérer les catégories de widgets
  * @access Agent
  */
-router.get('/categories', authenticateToken, requireRole(['agent', 'admin']), async (req, res) => {
+router.get('/categories', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), async (req, res) => {
   try {
     const result = await projectTemplateService.getWidgetCategories();
     
     if (result.success) {
-      responseService.success(res, result.data, 'Catégories de widgets récupérées avec succès');
+      responseService.success(res, 'widgets.categoriesRetrieved', result.data);
     } else {
       responseService.error(res, result.error, 400);
     }

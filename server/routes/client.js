@@ -4,6 +4,7 @@ const authMiddleware = require('../middleware/auth');
 const databaseService = require('../services/databaseService');
 const ClientManagementService = require('../services/clientManagementService');
 const projectTemplateService = require('../services/projectTemplateService');
+const { requireProjectView, requireProjectEdit } = require('../middleware/projectAccess');
 
 // Middleware pour toutes les routes client
 router.use(authMiddleware);
@@ -232,9 +233,13 @@ router.get('/projects/:id', async (req, res) => {
       return res.status(404).json({ error: 'Projet non trouvé' });
     }
 
-    // Formater les données pour le frontend
+    // Formater les données pour le frontend (inclure client_id pour contexte multi-tenant)
     const formattedProject = {
       id: project.id,
+      client_id: project.client_id,
+      client: {
+        id: project.client_id
+      },
       name: project.title,
       description: project.description,
       status: project.status,
@@ -363,16 +368,21 @@ router.get('/:id/stats', async (req, res) => {
       [clientId]
     );
     
-    const upcomingDeadlines = await databaseService.get(
-      'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > NOW()',
-      [clientId]
-    );
+    let upcomingDeadlines = { count: 0 };
+    try {
+      upcomingDeadlines = await databaseService.get(
+        'SELECT COUNT(*) as count FROM deadlines WHERE project_id IN (SELECT id FROM projects WHERE client_id = ?) AND due_date > NOW()',
+        [clientId]
+      );
+    } catch (e) {
+      console.warn('deadlines table missing or query failed, defaulting upcomingDeadlines to 0:', e?.message);
+    }
 
     const stats = {
-      completedProjects: completedProjects?.count || 0,
-      activeActions: activeActions?.count || 0,
-      pendingTasks: pendingTasks?.count || 0,
-      upcomingDeadlines: upcomingDeadlines?.count || 0
+      completedProjects: Number(completedProjects?.count || 0),
+      activeActions: Number(activeActions?.count || 0),
+      pendingTasks: Number(pendingTasks?.count || 0),
+      upcomingDeadlines: Number(upcomingDeadlines?.count || 0)
     };
 
     res.json(stats);
@@ -660,6 +670,195 @@ router.get('/:id', async (req, res) => {
       success: false,
       error: 'Erreur serveur' 
     });
+  }
+});
+
+// === Partage de projet avec un agent (team_members) ===
+// POST /api/client/:clientId/projects/:projectId/team
+router.post('/:clientId/projects/:projectId/team', requireProjectEdit, async (req, res) => {
+  try {
+    const { clientId, projectId } = req.params;
+    const requesterId = req.user.id;
+    const requesterRole = req.user.role;
+    const { userId, role = 'member', permissions = null } = req.body || {};
+
+    // Autorisations: le client propriétaire (par id ou company), ou admin/super_admin
+    const requesterCompanyId = req.user.client_id ?? req.user.company_id ?? null;
+    let targetClientCompanyId = null;
+    try {
+      const targetClient = await databaseService.get('SELECT id, company_id FROM users WHERE id = ?', [clientId]);
+      targetClientCompanyId = targetClient ? targetClient.company_id : null;
+    } catch (e) {
+      console.warn('⚠️ Impossible de récupérer company_id pour le client cible:', e?.message);
+    }
+    const isOwnerById = String(requesterId) === String(clientId);
+    const isOwnerByCompany = requesterCompanyId && targetClientCompanyId && String(requesterCompanyId) === String(targetClientCompanyId);
+    if (!isOwnerById && !isOwnerByCompany && !['admin', 'super_admin'].includes(requesterRole)) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Vérifier que le projet appartient bien au client
+    const project = await databaseService.get(
+      'SELECT id FROM projects WHERE id = ? AND client_id = ?',
+      [projectId, clientId]
+    );
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Projet non trouvé pour ce client' });
+    }
+
+    // Vérifier que l'utilisateur cible est un agent/admin/super_admin
+    const targetUser = await databaseService.get(
+      'SELECT id, role FROM users WHERE id = ? AND role IN ("agent", "admin", "super_admin")',
+      [userId]
+    );
+    if (!targetUser) {
+      return res.status(400).json({ success: false, message: "Le userId doit correspondre à un agent ou admin" });
+    }
+
+    // Insérer ou mettre à jour l'entrée team_members
+    const permsJson = permissions ? (typeof permissions === 'string' ? permissions : JSON.stringify(permissions)) : null;
+    await databaseService.run(
+      `INSERT INTO team_members (project_id, user_id, role, permissions, added_by, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())
+       ON DUPLICATE KEY UPDATE role = VALUES(role), permissions = VALUES(permissions)`,
+      [projectId, userId, role, permsJson, requesterId]
+    );
+
+    return res.json({ success: true, message: 'Projet partagé avec succès avec cet utilisateur' });
+  } catch (error) {
+    console.error('Erreur lors du partage du projet:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors du partage du projet' });
+  }
+});
+
+// DELETE /api/client/:clientId/projects/:projectId/team/:userId
+router.delete('/:clientId/projects/:projectId/team/:userId', requireProjectEdit, async (req, res) => {
+  try {
+    const { clientId, projectId, userId } = req.params;
+    const requesterId = req.user.id;
+    const requesterRole = req.user.role;
+
+    // Autorisations: le client propriétaire (id ou company), ou admin/super_admin
+    const requesterCompanyId = req.user.client_id ?? req.user.company_id ?? null;
+    let targetClientCompanyId = null;
+    try {
+      const targetClient = await databaseService.get('SELECT id, company_id FROM users WHERE id = ?', [clientId]);
+      targetClientCompanyId = targetClient ? targetClient.company_id : null;
+    } catch (e) {
+      console.warn('⚠️ Impossible de récupérer company_id pour le client cible:', e?.message);
+    }
+    const isOwnerById = String(requesterId) === String(clientId);
+    const isOwnerByCompany = requesterCompanyId && targetClientCompanyId && String(requesterCompanyId) === String(targetClientCompanyId);
+    if (!isOwnerById && !isOwnerByCompany && !['admin', 'super_admin'].includes(requesterRole)) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Vérifier que le projet appartient bien au client
+    const project = await databaseService.get(
+      'SELECT id FROM projects WHERE id = ? AND client_id = ?',
+      [projectId, clientId]
+    );
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Projet non trouvé pour ce client' });
+    }
+
+    const result = await databaseService.run(
+      'DELETE FROM team_members WHERE project_id = ? AND user_id = ?',
+      [projectId, userId]
+    );
+
+    if (!result || (result.affectedRows !== undefined && result.affectedRows === 0)) {
+      return res.status(404).json({ success: false, message: 'Membre non trouvé dans ce projet' });
+    }
+
+    return res.json({ success: true, message: 'Partage retiré avec succès' });
+  } catch (error) {
+    console.error('Erreur lors du retrait du partage du projet:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors du retrait du partage' });
+  }
+});
+
+// GET /api/client/:clientId/projects/:projectId/team
+router.get('/:clientId/projects/:projectId/team', requireProjectView, async (req, res) => {
+  try {
+    const { clientId, projectId } = req.params;
+    const requesterId = req.user.id;
+    const requesterRole = req.user.role;
+
+    // Autorisations: le client propriétaire, ou admin/super_admin
+    if (String(requesterId) !== String(clientId) && !['admin', 'super_admin'].includes(requesterRole)) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Vérifier que le projet appartient bien au client
+    const project = await databaseService.get(
+      'SELECT id FROM projects WHERE id = ? AND client_id = ?',
+      [projectId, clientId]
+    );
+    if (!project) {
+      return res.status(404).json({ success: false, message: 'Projet non trouvé pour ce client' });
+    }
+
+    // Récupérer les membres de l'équipe du projet
+    const teamMembers = await databaseService.query(
+      `SELECT 
+        tm.user_id,
+        tm.role as team_role,
+        tm.permissions,
+        tm.created_at as added_at,
+        TRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, ''))) AS name,
+        u.email,
+        u.role as user_role
+      FROM team_members tm
+      JOIN users u ON tm.user_id = u.id
+      WHERE tm.project_id = ?
+      ORDER BY tm.created_at DESC`,
+      [projectId]
+    );
+
+    return res.json({ 
+      success: true, 
+      data: teamMembers 
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des membres de l\'équipe:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors de la récupération des membres de l\'équipe' });
+  }
+});
+
+// GET /api/client/widgets
+router.get('/widgets', async (req, res) => {
+  try {
+    const requesterId = req.user.id;
+    const requesterRole = req.user.role;
+
+    // Autorisations: clients, admins et super_admins
+    if (!['user', 'client', 'admin', 'super_admin'].includes(requesterRole)) {
+      return res.status(403).json({ success: false, message: 'Accès non autorisé' });
+    }
+
+    // Récupérer tous les widgets disponibles (version simplifiée pour les clients)
+    const widgets = await databaseService.all(
+      `SELECT 
+        id,
+        name,
+        description,
+        category,
+        icon,
+        is_active
+      FROM widgets 
+      WHERE is_active = 1
+      ORDER BY category, name`,
+      []
+    );
+
+    return res.json({ 
+      success: true, 
+      data: widgets 
+    });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des widgets:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur lors de la récupération des widgets' });
   }
 });
 

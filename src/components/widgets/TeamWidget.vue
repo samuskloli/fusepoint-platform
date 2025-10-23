@@ -1,140 +1,526 @@
 <template>
   <BaseWidget 
-    :widget="widgetConfig=loading=error='showConfigModal = true=toggleWidget="loadTeamData="team-widget=team-header='team-stats="stats-grid=stat-card="stat-icon='fas fa-users text-blue-500></i>
-              </div>
-              <div  class="stat-content=stat-value stat-label='stat-card=stat-icon="fas fa-user-check text-green-500></i>
-              </div>
-              <div  class="stat-content=stat-value stat-label='stat-card=stat-icon="fas fa-tasks text-purple-500></i>
-              </div>
-              <div  class="stat-content=stat-value stat-label='stat-card=stat-icon="fas fa-chart-line text-orange-500></i>
-              </div>
-              <div  class="stat-content=stat-value stat-label='team-actions=view-controlsview-btn="t('widgets.team.listView=viewMode = 'workload='{ active: viewMode === 'workload="view-btn=t('widgets.team.workloadView="showInviteModal = true='invite-btn=t('widgets.team.inviteMember="team-filters="teamMembers.length &gt; 0'>
-        <div  class="filters-left=search-box fas fa-search search-icon=searchQuery=text='t('widgets.team.searchPlaceholder="role-filter=roleFilter="filter-select='all=admin="manager="developer=designer='client="status-filter=statusFilter="filter-select='all=active="busy="away=offline='filters-right="sort-control=sortBy="sort-select='name=role="workload="last_activity=sortOrder = sortOrder === 'asc='sort-order-btn="t('widgets.team.toggleSortOrder')sortOrder === 'asc="viewMode === 'grid=team-grid='member in filteredMembers"showMemberDetails(member)"
-        >
-          <div  class="member-avatar=member.avatar member.avatar='member.name=avatar-img="avatar-placeholder class="status-indicator=`status-${member.status}`'></div>
-          </div>
-          
-          <div class="member-info=member-name member-role=member-meta=workload-info='workload-label="workload-bar=workload-fill="{ width: member.workload + '%' }'
-                    :class="{ 'workload-low': member.workload &lt; 50, 'workload-medium': member.workload >= 50 && member.workload &lt; 80, 'workload-high': member.workload &gt;= 80 }"
-                  ></div>
-                </div>
-                <span class="workload-percentage=task-count='fas fa-tasks mr-1"></i>
-                {{ member.active_tasks }} {{ t('widgets.team.activeTasks === last-activity=fas fa-clock mr-1'></i>
-                {{ formatLastActivity(member.last_activity) }}
-              </div>
+    :widget="widgetConfig"
+    :loading="loading"
+    :error="error"
+    @configure="showConfigModal = true"
+    @toggle="toggleWidget"
+    @refresh="loadTeamData"
+    class="team-widget"
+  >
+    <div class="team-header">
+      <div v-if="widgetConfig.showStats" class="team-stats">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-users text-blue-500"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ teamMembers.length }}</div>
+              <div class="stat-label">{{ t('widgets.team.totalMembers') }}</div>
             </div>
           </div>
           
-          <div  class="member-actions=sendMessage(member)"
-              class="action-btn message-btn=t('widgets.team.sendMessage='assignTask(member)"
-              class="action-btn assign-btn=t('widgets.team.assignTask='canManageMembers="editMember(member)"
-              class="action-btn edit-btn=t('widgets.team.editMember='filteredMembers.length === 0" class="no-members=fas fa-users text-gray-400 text-4xl mb-3'></i>
-          <h5 class="text-gray-600 mb-2>{{ t('widgets.team.noMembers="text-gray-500 text-sm mb-4'>{{ t('widgets.team.noMembersDescription="showInviteModal = true=invite-first-btn="fas fa-user-plus mr-2'></i>
-            {{ t('widgets.team.inviteFirst="viewMode === 'list=team-list="list-header='header-cell member-col=header-cell role-col="header-cell status-col="header-cell workload-col=header-cell tasks-col='header-cell activity-col="header-cell actions-col=list-body="member in filteredMembers='member.id=list-row="showMemberDetails(member)"
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-user-check text-green-500"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ activeMembers }}</div>
+              <div class="stat-label">{{ t('widgets.team.activeMembers') }}</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-tasks text-purple-500"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ totalTasks }}</div>
+              <div class="stat-label">{{ t('widgets.team.totalTasks') }}</div>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon">
+              <i class="fas fa-chart-line text-orange-500"></i>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ Math.round(averageWorkload) }}%</div>
+              <div class="stat-label">{{ t('widgets.team.averageWorkload') }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="team-actions">
+        <div class="view-controls">
+          <button 
+            @click="viewMode = 'grid'"
+            :class="['view-btn', { active: viewMode === 'grid' }]"
           >
-            <div  class="list-cell member-col=member-info-compact member-avatar-small='member.avatar=member.avatar="member.name="avatar-img-small=avatar-placeholder-small='status-indicator-small class="`status-${member.status}`></div>
+            {{ t('widgets.team.gridView') }}
+          </button>
+          <button 
+            @click="viewMode = 'list'"
+            :class="['view-btn', { active: viewMode === 'list' }]"
+          >
+            {{ t('widgets.team.listView') }}
+          </button>
+          <button 
+            @click="viewMode = 'workload'"
+            :class="['view-btn', { active: viewMode === 'workload' }]"
+          >
+            {{ t('widgets.team.workloadView') }}
+          </button>
+        </div>
+        
+        <button 
+          v-if="canManageMembers && widgetConfig.allowInvitations"
+          @click="showInviteModal = true"
+          class="invite-btn"
+        >
+          <i class="fas fa-user-plus mr-2"></i>
+          {{ t('widgets.team.inviteMember') }}
+        </button>
+      </div>
+    </div>
+    
+    <div v-if="teamMembers.length > 0" class="team-filters">
+      <div class="filters-left">
+        <div class="search-box">
+          <i class="fas fa-search search-icon"></i>
+          <input 
+            v-model="searchQuery"
+            type="text"
+            :placeholder="t('widgets.team.searchPlaceholder')"
+            class="search-input"
+          >
+        </div>
+        
+        <select v-model="roleFilter" class="filter-select">
+          <option value="all">{{ t('widgets.team.allRoles') }}</option>
+          <option value="admin">{{ t('widgets.team.admin') }}</option>
+          <option value="manager">{{ t('widgets.team.manager') }}</option>
+          <option value="developer">{{ t('widgets.team.developer') }}</option>
+          <option value="designer">{{ t('widgets.team.designer') }}</option>
+          <option value="client">{{ t('widgets.team.client') }}</option>
+        </select>
+        
+        <select v-model="statusFilter" class="filter-select">
+          <option value="all">{{ t('widgets.team.allStatuses') }}</option>
+          <option value="active">{{ t('widgets.team.active') }}</option>
+          <option value="busy">{{ t('widgets.team.busy') }}</option>
+          <option value="away">{{ t('widgets.team.away') }}</option>
+          <option value="offline">{{ t('widgets.team.offline') }}</option>
+        </select>
+      </div>
+      
+      <div class="filters-right">
+        <div class="sort-control">
+          <select v-model="sortBy" class="sort-select">
+            <option value="name">{{ t('widgets.team.sortByName') }}</option>
+            <option value="role">{{ t('widgets.team.sortByRole') }}</option>
+            <option value="workload">{{ t('widgets.team.sortByWorkload') }}</option>
+            <option value="last_activity">{{ t('widgets.team.sortByActivity') }}</option>
+          </select>
+          
+          <button 
+            @click="sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'"
+            class="sort-order-btn"
+            :title="t('widgets.team.toggleSortOrder')"
+          >
+            <i :class="sortOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down'"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Vue Grille -->
+    <div v-if="viewMode === 'grid'" class="team-grid">
+      <div 
+        v-for="member in filteredMembers" 
+        :key="member.id"
+        class="member-card"
+        @click="showMemberDetails(member)"
+      >
+        <div class="member-avatar">
+          <img 
+            v-if="member.avatar" 
+            :src="member.avatar" 
+            :alt="member.name"
+            class="avatar-img"
+          >
+          <div v-else class="avatar-placeholder">
+            {{ member.name.charAt(0).toUpperCase() }}
+          </div>
+          <div :class="['status-indicator', `status-${member.status}`]"></div>
+        </div>
+        
+        <div class="member-info">
+          <h4 class="member-name">{{ member.name }}</h4>
+          <p class="member-role">{{ t(`widgets.team.${member.role}`) }}</p>
+          
+          <div class="member-meta">
+            <div v-if="widgetConfig.showWorkload" class="workload-info">
+              <span class="workload-label">{{ t('widgets.team.workload') }}</span>
+              <div class="workload-bar">
+                <div 
+                  class="workload-fill"
+                  :style="{ width: member.workload + '%' }"
+                  :class="{ 'workload-low': member.workload < 50, 'workload-medium': member.workload >= 50 && member.workload < 80, 'workload-high': member.workload >= 80 }"
+                ></div>
+              </div>
+              <span class="workload-percentage">{{ member.workload }}%</span>
+            </div>
+            
+            <div class="task-count">
+              <i class="fas fa-tasks mr-1"></i>
+              {{ member.active_tasks }} {{ t('widgets.team.activeTasks') }}
+            </div>
+            
+            <div class="last-activity">
+              <i class="fas fa-clock mr-1"></i>
+              {{ formatLastActivity(member.last_activity) }}
+            </div>
+          </div>
+        </div>
+        
+        <div class="member-actions">
+          <button 
+            @click.stop="sendMessage(member)"
+            class="action-btn message-btn"
+            :title="t('widgets.team.sendMessage')"
+          >
+            <i class="fas fa-envelope"></i>
+          </button>
+          
+          <button 
+            @click.stop="assignTask(member)"
+            class="action-btn assign-btn"
+            :title="t('widgets.team.assignTask')"
+          >
+            <i class="fas fa-plus"></i>
+          </button>
+          
+          <button 
+            v-if="canManageMembers"
+            @click.stop="editMember(member)"
+            class="action-btn edit-btn"
+            :title="t('widgets.team.editMember')"
+          >
+            <i class="fas fa-edit"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div v-if="filteredMembers.length === 0" class="no-members">
+        <i class="fas fa-users text-gray-400 text-4xl mb-3"></i>
+        <h5 class="text-gray-600 mb-2">{{ t('widgets.team.noMembers') }}</h5>
+        <p class="text-gray-500 text-sm mb-4">{{ t('widgets.team.noMembersDescription') }}</p>
+        <button 
+          v-if="canManageMembers"
+          @click="showInviteModal = true"
+          class="invite-first-btn"
+        >
+          <i class="fas fa-user-plus mr-2"></i>
+          {{ t('widgets.team.inviteFirst') }}
+        </button>
+      </div>
+    </div>
+    
+    <!-- Vue Liste -->
+    <div v-if="viewMode === 'list'" class="team-list">
+      <div class="list-header">
+        <div class="header-cell member-col">{{ t('widgets.team.member') }}</div>
+        <div class="header-cell role-col">{{ t('widgets.team.role') }}</div>
+        <div class="header-cell status-col">{{ t('widgets.team.status') }}</div>
+        <div class="header-cell workload-col">{{ t('widgets.team.workload') }}</div>
+        <div class="header-cell tasks-col">{{ t('widgets.team.tasks') }}</div>
+        <div class="header-cell activity-col">{{ t('widgets.team.lastActivity') }}</div>
+        <div class="header-cell actions-col">{{ t('widgets.team.actions') }}</div>
+      </div>
+      
+      <div class="list-body">
+        <div 
+          v-for="member in filteredMembers" 
+          :key="member.id"
+          class="list-row"
+          @click="showMemberDetails(member)"
+        >
+          <div class="list-cell member-col">
+            <div class="member-info-compact">
+              <div class="member-avatar-small">
+                <img 
+                  v-if="member.avatar" 
+                  :src="member.avatar" 
+                  :alt="member.name"
+                  class="avatar-img-small"
+                >
+                <div v-else class="avatar-placeholder-small">
+                  {{ member.name.charAt(0).toUpperCase() }}
                 </div>
-                
-                <div  class="member-details=member-name-small member-email='list-cell role-col=role-badge class="`role-${member.role}`>
-                {{ t(`widgets.team.${member.role}`) }}
+                <div :class="['status-indicator-small', `status-${member.status}`]"></div>
+              </div>
+              
+              <div class="member-details">
+                <div class="member-name-small">{{ member.name }}</div>
+                <div class="member-email">{{ member.email }}</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="list-cell role-col">
+            <span :class="['role-badge', `role-${member.role}`]">
+              {{ t(`widgets.team.${member.role}`) }}
+            </span>
+          </div>
+          
+          <div class="list-cell status-col">
+            <span :class="['status-badge', `status-${member.status}`]">
+              <i :class="[getStatusIcon(member.status), 'mr-1']"></i>
+              {{ t(`widgets.team.${member.status}`) }}
+            </span>
+          </div>
+          
+          <div class="list-cell workload-col">
+            <div class="workload-display">
+              <div class="workload-bar-small">
+                <div 
+                  class="workload-fill-small"
+                  :style="{ width: member.workload + '%' }"
+                  :class="{ 'workload-low': member.workload < 50, 'workload-medium': member.workload >= 50 && member.workload < 80, 'workload-high': member.workload >= 80 }"
+                ></div>
+              </div>
+              <span class="workload-text">{{ member.workload }}%</span>
+            </div>
+          </div>
+          
+          <div class="list-cell tasks-col">
+            <div class="task-info">
+              <span class="task-count-text">{{ member.active_tasks }}</span>
+              <span class="task-label">{{ t('widgets.team.tasks') }}</span>
+            </div>
+          </div>
+          
+          <div class="list-cell activity-col">
+            <span class="activity-text">{{ formatLastActivity(member.last_activity) }}</span>
+          </div>
+          
+          <div class="list-cell actions-col">
+            <div class="action-buttons">
+              <button 
+                @click.stop="sendMessage(member)"
+                class="action-btn-small message-btn"
+                :title="t('widgets.team.sendMessage')"
+              >
+                <i class="fas fa-envelope"></i>
+              </button>
+              
+              <button 
+                @click.stop="assignTask(member)"
+                class="action-btn-small assign-btn"
+                :title="t('widgets.team.assignTask')"
+              >
+                <i class="fas fa-plus"></i>
+              </button>
+              
+              <button 
+                v-if="canManageMembers"
+                @click.stop="editMember(member)"
+                class="action-btn-small edit-btn"
+                :title="t('widgets.team.editMember')"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Vue Charge de travail -->
+    <div v-if="viewMode === 'workload'" class="workload-view">
+      <div class="workload-chart">
+        <h4 class="chart-title">{{ t('widgets.team.workloadDistribution') }}</h4>
+        
+        <div class="workload-bars">
+          <div 
+            v-for="member in filteredMembers" 
+            :key="member.id"
+            class="workload-item"
+          >
+            <div class="member-info-tiny">
+              <div class="member-avatar-tiny">
+                <img 
+                  v-if="member.avatar" 
+                  :src="member.avatar" 
+                  :alt="member.name"
+                  class="avatar-img-tiny"
+                >
+                <div v-else class="avatar-placeholder-tiny">
+                  {{ member.name.charAt(0).toUpperCase() }}
+                </div>
+              </div>
+              <span class="member-name-tiny">{{ member.name }}</span>
+            </div>
+            
+            <div class="workload-chart-bar">
+              <div class="workload-bar-chart">
+                <div 
+                  class="workload-fill-chart"
+                  :style="{ width: member.workload + '%' }"
+                  :class="{ 'workload-low': member.workload < 50, 'workload-medium': member.workload >= 50 && member.workload < 80, 'workload-high': member.workload >= 80 }"
+                ></div>
               </div>
             </div>
             
-            <div  class="list-cell status-col=status-badge `status-${member.status}`'>
-                <i :class="getStatusIcon(member.status) class: mr-1'></i>
-                {{ t(`widgets.team.${member.status}`) }}
-              </span>
+            <div class="workload-details">
+              <span class="workload-percentage-chart">{{ member.workload }}%</span>
+              <span class="task-count-chart">{{ member.active_tasks }} {{ t('widgets.team.tasks') }}</span>
             </div>
-            
-            <div  class="list-cell workload-col=workload-display workload-bar-small="workload-fill-small={ width: member.workload + '%' }'
-                    :class="{ 'workload-low': member.workload &lt; 50, 'workload-medium': member.workload >= 50 && member.workload &lt; 80, 'workload-high': member.workload &gt;= 80 }
-                  ></div>
-                </div>
-                <span  class: workload-text=list-cell tasks-col='task-info="task-count-text=task-label="list-cell activity-col='activity-text=list-cell actions-col="action-buttons="sendMessage(member)'
-                  class="action-btn-small message-btn=t('widgets.team.sendMessage="assignTask(member)'
-                  class="action-btn-small assign-btn=t('widgets.team.assignTask="canManageMembers='editMember(member)"
-                  class="action-btn-small edit-btn=t('widgets.team.editMember='viewMode === 'workload="workload-view=workload-chart="chart-title='workload-bars=member in filteredMembers="member.id="workload-item'member.avatar=member.avatar="member.name="avatar-img-tiny=avatar-placeholder-tiny='member-name-tiny="workload-chart-bar=workload-bar-chart="workload-fill-chart='{ width: member.workload + '%' }"
-                    :class="{ 'workload-low': member.workload &lt; 50, 'workload-medium': member.workload >= 50 && member.workload &lt; 80, 'workload-high': member.workload &gt;= 80 }'
-                  ></div>
-                </div>
-                
-                <div class: workload-details=workload-percentage-chart task-count-chart=workload-legend=legend-item='legend-color workload-low="legend-text=legend-item="legend-color workload-medium='legend-text=legend-item="legend-color workload-high="legend-text=showInviteModal='projectId="showInviteModal = false=onMemberInvited="showMemberModal='selectedMember=projectId="showMemberModal = false="onMemberUpdated=showEditModal='editingMember="projectId=showEditModal = false="onMemberSaved='showAssignModal=assigningMember="projectId="showAssignModal = false=onTaskAssigned='showConfigModal="widgetConfig=configOptions="showConfigModal = false='updateConfig"
-     >
+          </div>
+        </div>
+        
+        <div class="workload-legend">
+          <div class="legend-item">
+            <div class="legend-color workload-low"></div>
+            <span class="legend-text">{{ t('widgets.team.lowWorkload') }}</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color workload-medium"></div>
+            <span class="legend-text">{{ t('widgets.team.mediumWorkload') }}</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color workload-high"></div>
+            <span class="legend-text">{{ t('widgets.team.highWorkload') }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modales -->
+    <InviteMemberModal 
+      v-if="showInviteModal"
+      :project-id="projectId"
+      @close="showInviteModal = false"
+      @member-invited="onMemberInvited"
+    />
+    
+    <MemberDetailsModal 
+      v-if="showMemberModal"
+      :member="selectedMember"
+      :project-id="projectId"
+      @close="showMemberModal = false"
+      @member-updated="onMemberUpdated"
+    />
+    
+    <EditMemberModal 
+      v-if="showEditModal"
+      :member="editingMember"
+      :project-id="projectId"
+      @close="showEditModal = false"
+      @member-saved="onMemberSaved"
+    />
+    
+    <AssignTaskModal 
+      v-if="showAssignModal"
+      :member="assigningMember"
+      :project-id="projectId"
+      @close="showAssignModal = false"
+      @task-assigned="onTaskAssigned"
+    />
+    
+    <WidgetConfigModal 
+      v-if="showConfigModal"
+      :widget="widgetConfig"
+      :options="configOptions"
+      @close="showConfigModal = false"
+      @save="updateConfig"
+    />
   </BaseWidget>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import BaseWidget from './BaseWidget.vue'
-import InviteMemberModal from '../modals/InviteMemberModal.vue'
-import MemberDetailsModal from '../modals/MemberDetailsModal.vue'
-import EditMemberModal from '../modals/EditMemberModal.vue'
-import AssignTaskModal from '../modals/AssignTaskModal.vue'
-import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
-import projectManagementService from '@/services/projectManagementService'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
+import projectManagementService from '@/services/projectManagementService'
+import BaseWidget from './shared/components/BaseWidget.vue'
+import MemberModal from '@/components/modals/MemberModal.vue'
+import WidgetConfigModal from '@/components/modals/WidgetConfigModal.vue'
+import type { TeamMember } from './types'
+import type { Widget } from '@/types/widgets'
 
-export default {
-  name: 'TeamWidget',
-  components: {
-    BaseWidget,
-    InviteMemberModal,
-    MemberDetailsModal,
-    EditMemberModal,
-    AssignTaskModal,
-    WidgetConfigModal
-  },
-  props: {
-    projectId: {
-      type: [String, Number],
-      required: true
-    },
-    widgetData: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  emits: ['update-widget'],
-  setup(props, { emit }) {
-    const { success, error: showError } = useNotifications()
-    const { user } = useAuth()
-    const { t } = useTranslation()
+// Props
+interface Props {
+  projectId: string | number
+  widgetData?: any
+  widget?: any
+}
+
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  'widget-updated': [widget: any]
+}>()
+
+const { success, error: showError } = useNotifications()
+const { t } = useTranslation()
+const { user } = useAuth()
     
     // État réactif
     const loading = ref(false)
-    const error = ref(null)
-    const teamMembers = ref([])
+    const error = ref<string | null>(null)
+    const teamMembers = ref<TeamMember[]>([])
     const searchQuery = ref('')
     const roleFilter = ref('all')
     const statusFilter = ref('all')
-    const sortBy = ref('name')
-    const sortOrder = ref('asc')
+    type MemberSortKey = 'name' | 'email' | 'role' | 'status' | 'workload' | 'active_tasks' | 'last_activity'
+    const sortBy = ref<MemberSortKey>('name')
+    const sortOrder = ref<'asc' | 'desc'>('asc')
     const viewMode = ref('grid')
     const showInviteModal = ref(false)
     const showMemberModal = ref(false)
     const showEditModal = ref(false)
     const showAssignModal = ref(false)
     const showConfigModal = ref(false)
-    const selectedMember = ref(null)
-    const editingMember = ref(null)
-    const assigningMember = ref(null)
+    const selectedMember = ref<TeamMember | null>(null)
+    const editingMember = ref<TeamMember | null>(null)
+    const assigningMember = ref<TeamMember | null>(null)
+    
+    interface TeamWidgetOptions {
+      showRoles: boolean
+      showStatus: boolean
+      showAvatar: boolean
+      maxMembers: number
+      defaultView: 'grid' | 'list' | 'workload'
+      showStats: boolean
+      allowInvitations: boolean
+      showWorkload: boolean
+      autoRefresh: boolean
+      refreshInterval: number
+    }
     
     // Configuration du widget
-    const widgetConfig = ref({
-      id: 'team',
-      name: 'Équipe',
+    const widgetConfig = ref<Widget & TeamWidgetOptions>({
+      id: props.widget?.id ?? null,
+      name: 'team',
       icon: 'fas fa-users',
+      isEnabled: props.widget?.is_enabled ?? true,
       titleKey: 'widgets.team.title',
-      isEnabled: true,
-      showStats: true,
-      defaultView: 'grid',
-      allowInvitations: true,
-      showWorkload: true,
-      autoRefresh: true,
-      refreshInterval: 300000, // 5 minutes
-      ...props.widgetData
+      showRoles: props.widget?.show_roles ?? true,
+      showStatus: props.widget?.show_status ?? true,
+      showAvatar: props.widget?.show_avatar ?? true,
+      maxMembers: props.widget?.max_members ?? 10,
+      defaultView: props.widget?.defaultView ?? 'grid',
+      showStats: props.widget?.show_stats ?? true,
+      allowInvitations: props.widget?.allow_invitations ?? true,
+      showWorkload: props.widget?.show_workload ?? true,
+      autoRefresh: props.widget?.auto_refresh ?? true,
+      refreshInterval: props.widget?.refresh_interval ?? 300000
     })
     
     // Options de configuration
@@ -190,23 +576,22 @@ export default {
     })
     
     const activeMembers = computed(() => {
-      return teamMembers.value.filter(member => member.status === 'active').length
+      return teamMembers.value.filter((member: TeamMember) => member.status === 'active').length
     })
     
     const totalTasks = computed(() => {
-      return teamMembers.value.reduce((total, member) => total + member.active_tasks, 0)
+      return teamMembers.value.reduce((total: number, member: TeamMember) => total + (member.active_tasks || 0), 0)
     })
     
     const averageWorkload = computed(() => {
       if (teamMembers.value.length === 0) return 0
-      const totalWorkload = teamMembers.value.reduce((total, member) => total + member.workload, 0)
-      return Math.round(totalWorkload / teamMembers.value.length)
+      const totalWorkload = teamMembers.value.reduce((total: number, member: TeamMember) => total + (member.workload || 0), 0)
+      return totalWorkload / teamMembers.value.length
     })
     
     const filteredMembers = computed(() => {
-      let filtered = [...teamMembers.value]
-      
-      // Filtrer par recherche
+      let filtered: TeamMember[] = teamMembers.value
+      // Filtrage par recherche
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
         filtered = filtered.filter(member => 
@@ -216,47 +601,31 @@ export default {
         )
       }
       
-      // Filtrer par rôle
+      // Filtrage par rôle
       if (roleFilter.value !== 'all') {
         filtered = filtered.filter(member => member.role === roleFilter.value)
       }
       
-      // Filtrer par statut
+      // Filtrage par statut
       if (statusFilter.value !== 'all') {
         filtered = filtered.filter(member => member.status === statusFilter.value)
       }
       
-      // Trier
+      // Tri
+      const key: keyof TeamMember = sortBy.value as keyof TeamMember
       filtered.sort((a, b) => {
-        let aValue, bValue
+        let aValue = a[key] as any
+        let bValue = b[key] as any
         
-        switch (sortBy.value) {
-          case 'name':
-            aValue = a.name.toLowerCase()
-            bValue = b.name.toLowerCase()
-            break
-          case 'role':
-            aValue = a.role
-            bValue = b.role
-            break
-          case 'workload':
-            aValue = a.workload
-            bValue = b.workload
-            break
-          case 'last_activity':
-            aValue = new Date(a.last_activity)
-            bValue = new Date(b.last_activity)
-            break
-          default:
-            aValue = a.name.toLowerCase()
-            bValue = b.name.toLowerCase()
-            break
+        if (typeof aValue === 'string') {
+          aValue = aValue.toLowerCase()
+          bValue = (bValue as string).toLowerCase()
         }
         
         if (sortOrder.value === 'asc') {
-          return aValue > bValue ? 1 : -1
+          return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
         } else {
-          return aValue < bValue ? 1 : -1
+          return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
         }
       })
       
@@ -269,698 +638,752 @@ export default {
       error.value = null
       
       try {
-        // Simuler le chargement des données d'équipe
-        const result = await projectManagementService.getProjectTeam?.(props.projectId) || {
-          success: true,
-          data: [
-            {
-              id: 1,
-              name: 'Jean Dupont',
-              email: 'jean.dupont@example.com',
-              role: 'manager',
-              status: 'active',
-              avatar: null,
-              workload: 75,
-              active_tasks: 8,
-              completed_tasks: 24,
-              last_activity: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-              joined_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 2,
-              name: 'Marie Martin',
-              email: 'marie.martin@example.com',
-              role: 'developer',
-              status: 'active',
-              avatar: null,
-              workload: 90,
-              active_tasks: 12,
-              completed_tasks: 18,
-              last_activity: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-              joined_at: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 3,
-              name: 'Pierre Durand',
-              email: 'pierre.durand@example.com',
-              role: 'designer',
-              status: 'busy',
-              avatar: null,
-              workload: 60,
-              active_tasks: 5,
-              completed_tasks: 15,
-              last_activity: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-              joined_at: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 4,
-              name: 'Sophie Leroy',
-              email: 'sophie.leroy@client.com',
-              role: 'client',
-              status: 'away',
-              avatar: null,
-              workload: 30,
-              active_tasks: 2,
-              completed_tasks: 8,
-              last_activity: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-              joined_at: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: 5,
-              name: 'Thomas Bernard',
-              email: 'thomas.bernard@example.com',
-              role: 'developer',
-              status: 'offline',
-              avatar: null,
-              workload: 45,
-              active_tasks: 3,
-              completed_tasks: 12,
-              last_activity: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-              joined_at: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ]
-        }
-        
-        if (result.success) {
-          teamMembers.value = result.data
+        const response = await projectManagementService.getProjectTeamMembers(props.projectId)
+        if (response.success) {
+          teamMembers.value = response.data
+        } else {
+          error.value = t('widgets.team.loadError')
         }
       } catch (err) {
-        error.value = t('errors.loadingFailed')
+        error.value = t('widgets.team.loadError')
+        console.error('Erreur chargement équipe:', err)
       } finally {
         loading.value = false
       }
     }
     
-    const showMemberDetails = (member) => {
+    const toggleWidget = () => {
+      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
+      // Émettre avec la structure attendue par le backend
+      const updatedWidget = {
+        ...props.widget,
+        is_enabled: widgetConfig.value.isEnabled
+      }
+      emit('widget-updated', updatedWidget)
+    }
+    
+    const updateConfig = (newConfig: Partial<TeamWidgetOptions>) => {
+      widgetConfig.value = { ...widgetConfig.value, ...newConfig }
+      viewMode.value = widgetConfig.value.defaultView
+      emit('widget-updated', widgetConfig.value)
+    }
+    
+    const showMemberDetails = (member: TeamMember) => {
       selectedMember.value = member
       showMemberModal.value = true
     }
     
-    const editMember = (member) => {
+    const editMember = (member: TeamMember) => {
       editingMember.value = member
       showEditModal.value = true
     }
     
-    const assignTask = (member) => {
+    const assignTask = (member: TeamMember) => {
       assigningMember.value = member
       showAssignModal.value = true
     }
     
-    const sendMessage = async (member) => {
-      try {
-        // Ouvrir une conversation ou rediriger vers le système de messagerie
-        const result = await projectManagementService.startConversation?.(member.id)
-        
-        if (result?.success) {
-          success(t('widgets.team.messageStarted', { name: member.name }))
-        }
-      } catch (err) {
-        showError(t('widgets.team.messageFailed'))
-      }
+    const sendMessage = (member: TeamMember) => {
+      // Logique d'envoi de message
+      console.log('Envoyer message à:', member.name)
     }
     
-    const onMemberInvited = (newMember) => {
-      teamMembers.value.push(newMember)
-      success(t('widgets.team.memberInvited', { name: newMember.name }))
-      showInviteModal.value = false
+    const formatLastActivity = (timestamp: string | undefined) => {
+      if (!timestamp) return t('widgets.team.never')
+      const now = new Date()
+      const activity = new Date(timestamp)
+      const diffMs = now.getTime() - activity.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      const diffHours = Math.floor(diffMs / 3600000)
+      const diffDays = Math.floor(diffMs / 86400000)
+      if (diffMins < 1) return t('widgets.team.justNow')
+      if (diffMins < 60) return t('widgets.team.minutesAgo', { minutes: diffMins })
+      if (diffHours < 24) return t('widgets.team.hoursAgo', { hours: diffHours })
+      return t('widgets.team.daysAgo', { days: diffDays })
     }
     
-    const onMemberUpdated = (updatedMember) => {
-      const index = teamMembers.value.findIndex(m => m.id === updatedMember.id)
-      if (index > -1) {
-        teamMembers.value[index] = updatedMember
-      }
-      showMemberModal.value = false
-    }
-    
-    const onMemberSaved = (savedMember) => {
-      const index = teamMembers.value.findIndex(m => m.id === savedMember.id)
-      if (index > -1) {
-        teamMembers.value[index] = savedMember
-      }
-      success(t('widgets.team.memberUpdated'))
-      showEditModal.value = false
-    }
-    
-    const onTaskAssigned = (taskData) => {
-      // Mettre à jour la charge de travail du membre
-      const member = teamMembers.value.find(m => m.id === taskData.assignee_id)
-      if (member) {
-        member.active_tasks += 1
-        member.workload = Math.min(100, member.workload + 10) // Estimation
-      }
-      
-      success(t('widgets.team.taskAssigned'))
-      showAssignModal.value = false
-    }
-    
-    const getInitials = (name) => {
-      if (!name) return '?'
-      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-    }
-    
-    const getStatusIcon = (status) => {
+    const getStatusIcon = (status: 'active' | 'busy' | 'away' | 'offline') => {
       const icons = {
         active: 'fas fa-circle text-green-500',
         busy: 'fas fa-circle text-yellow-500',
         away: 'fas fa-circle text-orange-500',
         offline: 'fas fa-circle text-gray-400'
       }
-      return icons[status] || 'fas fa-circle text-gray-400'
+      return icons[status]
     }
     
-    const formatLastActivity = (dateString) => {
-      if (!dateString) return t('widgets.team.never')
-      
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffMs = now - date
-      const diffMinutes = Math.floor(diffMs / 60000)
-      const diffHours = Math.floor(diffMs / 3600000)
-      const diffDays = Math.floor(diffMs / 86400000)
-      
-      if (diffMinutes < 1) return t('widgets.team.justNow')
-      if (diffMinutes < 60) return t('widgets.team.minutesAgo', { count: diffMinutes })
-      if (diffHours < 24) return t('widgets.team.hoursAgo', { count: diffHours })
-      return t('widgets.team.daysAgo', { count: diffDays })
+    // Gestionnaires d'événements
+    const onMemberInvited = () => {
+      loadTeamData()
+      success(t('widgets.team.memberInvited'))
     }
     
-    const toggleWidget = () => {
-      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
-      emit('update-widget', widgetConfig.value)
+    const onMemberUpdated = () => {
+      loadTeamData()
+      success(t('widgets.team.memberUpdated'))
     }
     
-    const updateConfig = (newConfig) => {
-      widgetConfig.value = { ...widgetConfig.value, ...newConfig }
-      emit('update-widget', widgetConfig.value)
-      showConfigModal.value = false
-      
-      // Appliquer la vue par défaut
-      if (newConfig.defaultView) {
-        viewMode.value = newConfig.defaultView
-      }
+    const onMemberSaved = () => {
+      loadTeamData()
+      success(t('widgets.team.memberSaved'))
+    }
+    
+    const onTaskAssigned = () => {
+      loadTeamData()
+      success(t('widgets.team.taskAssigned'))
     }
     
     // Watchers
-    watch(() => props.projectId, () => loadTeamData(), { immediate: true })
+    watch(() => props.widgetData, (newData: Partial<TeamWidgetOptions>) => {
+      widgetConfig.value = { ...widgetConfig.value, ...newData }
+    }, { deep: true })
     
-    // Auto-refresh
-    let refreshInterval
-    watch(() => widgetConfig.value.autoRefresh, (enabled) => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
-      
-      if (enabled) {
-        refreshInterval = setInterval(() => {
-          loadTeamData()
-        }, widgetConfig.value.refreshInterval)
-      }
-    }, { immediate: true })
-    
+    // Cycle de vie
     onMounted(() => {
-      viewMode.value = widgetConfig.value.defaultView || 'grid'
+      viewMode.value = widgetConfig.value.defaultView
       loadTeamData()
     })
     
-    return {
-      loading,
-      error,
-      teamMembers,
-      searchQuery,
-      roleFilter,
-      statusFilter,
-      sortBy,
-      sortOrder,
-      viewMode,
-      showInviteModal,
-      showMemberModal,
-      showEditModal,
-      showAssignModal,
-      showConfigModal,
-      selectedMember,
-      editingMember,
-      assigningMember,
-      widgetConfig,
-      configOptions,
-      canManageMembers,
-      activeMembers,
-      totalTasks,
-      averageWorkload,
-      filteredMembers,
-      loadTeamData,
-      showMemberDetails,
-      editMember,
-      assignTask,
-      sendMessage,
-      onMemberInvited,
-      onMemberUpdated,
-      onMemberSaved,
-      onTaskAssigned,
-      getInitials,
-      getStatusIcon,
-      formatLastActivity,
-      toggleWidget,
-      updateConfig,
-      t
-    }
-  }
-}
+
 </script>
 
 <style scoped>
 .team-widget {
-  @apply space-y-6;
+  min-height: 400px;
 }
 
 .team-header {
-  @apply space-y-4;
+  margin-bottom: 1.5rem;
 }
 
 .team-stats {
-  @apply bg-gray-50 rounded-lg p-4;
+  margin-bottom: 1.5rem;
 }
 
 .stats-grid {
-  @apply grid grid-cols-4 gap-4;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
 
 .stat-card {
-  @apply flex items-center space-x-3;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .stat-icon {
-  @apply w-10 h-10 rounded-lg bg-white flex items-center justify-center text-lg;
+  font-size: 1.5rem;
 }
 
 .stat-content {
-  @apply flex-1;
+  flex: 1;
 }
 
 .stat-value {
-  @apply text-lg font-bold text-gray-900;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
 }
 
 .stat-label {
-  @apply text-xs text-gray-600;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 .team-actions {
-  @apply flex items-center justify-between;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
 }
 
 .view-controls {
-  @apply flex items-center bg-gray-100 rounded-lg p-1;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .view-btn {
-  @apply px-3 py-2 text-gray-600 hover:text-gray-900 rounded-md transition-colors;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.view-btn:hover {
+  background: var(--bg-secondary);
 }
 
 .view-btn.active {
-  @apply bg-white text-blue-600 shadow-sm;
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
 }
 
 .invite-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center transition-colors;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.invite-btn:hover {
+  background: var(--primary-dark);
 }
 
 .team-filters {
-  @apply flex items-center justify-between flex-wrap gap-3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
 }
 
 .filters-left {
-  @apply flex items-center space-x-3;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
 }
 
 .search-box {
-  @apply relative;
+  position: relative;
 }
 
 .search-icon {
-  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400;
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
 }
 
 .search-input {
-  @apply pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm;
+  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-width: 200px;
 }
 
-.filter-select {
-  @apply px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm;
-}
-
-.filters-right {
-  @apply flex items-center space-x-2;
+.filter-select, .sort-select {
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .sort-control {
-  @apply flex items-center space-x-1;
-}
-
-.sort-select {
-  @apply px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
 }
 
 .sort-order-btn {
-  @apply p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Vue grille */
+.sort-order-btn:hover {
+  background: var(--bg-secondary);
+}
+
+/* Vue Grille */
 .team-grid {
-  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
 }
 
 .member-card {
-  @apply bg-white border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.member-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .member-avatar {
-  @apply relative w-16 h-16 mx-auto mb-3;
+  position: relative;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1rem;
 }
 
 .avatar-img {
-  @apply w-full h-full rounded-full object-cover;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .avatar-placeholder {
-  @apply w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-lg font-medium text-gray-700;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 600;
 }
 
 .status-indicator {
-  @apply absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white;
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
 }
 
-.status-active {
-  @apply bg-green-500;
-}
-
-.status-busy {
-  @apply bg-yellow-500;
-}
-
-.status-away {
-  @apply bg-orange-500;
-}
-
-.status-offline {
-  @apply bg-gray-400;
-}
+.status-active { background: #10b981; }
+.status-busy { background: #f59e0b; }
+.status-away { background: #f97316; }
+.status-offline { background: #6b7280; }
 
 .member-info {
-  @apply text-center space-y-2;
+  text-align: center;
+  margin-bottom: 1rem;
 }
 
 .member-name {
-  @apply text-lg font-semibold text-gray-900;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
 }
 
 .member-role {
-  @apply text-sm text-gray-600;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
 }
 
 .member-meta {
-  @apply space-y-2 text-xs text-gray-500;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .workload-info {
-  @apply flex items-center space-x-2;
+  margin-bottom: 0.5rem;
 }
 
 .workload-label {
-  @apply text-xs;
+  display: block;
+  margin-bottom: 0.25rem;
 }
 
 .workload-bar {
-  @apply flex-1 bg-gray-200 rounded-full h-2;
+  width: 100%;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
 }
 
 .workload-fill {
-  @apply h-2 rounded-full transition-all duration-300;
+  height: 100%;
+  transition: width 0.3s;
 }
 
-.workload-low {
-  @apply bg-green-500;
-}
-
-.workload-medium {
-  @apply bg-yellow-500;
-}
-
-.workload-high {
-  @apply bg-red-500;
-}
+.workload-low { background: #10b981; }
+.workload-medium { background: #f59e0b; }
+.workload-high { background: #ef4444; }
 
 .workload-percentage {
-  @apply text-xs font-medium;
+  font-weight: 600;
+}
+
+.task-count, .last-activity {
+  margin-bottom: 0.25rem;
 }
 
 .member-actions {
-  @apply flex items-center justify-center space-x-2 mt-4;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .action-btn {
-  @apply w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.message-btn:hover {
-  @apply text-blue-600;
+.action-btn:hover {
+  background: var(--bg-secondary);
 }
 
-.assign-btn:hover {
-  @apply text-green-600;
-}
-
-.edit-btn:hover {
-  @apply text-purple-600;
-}
+.message-btn:hover { color: #3b82f6; }
+.assign-btn:hover { color: #10b981; }
+.edit-btn:hover { color: #f59e0b; }
 
 .no-members {
-  @apply col-span-full text-center py-12;
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
 }
 
 .invite-first-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center mx-auto transition-colors;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-/* Vue liste */
+.invite-first-btn:hover {
+  background: var(--primary-dark);
+}
+
+/* Vue Liste */
 .team-list {
-  @apply bg-white border rounded-lg overflow-hidden;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  overflow: hidden;
 }
 
 .list-header {
-  @apply grid grid-cols-7 gap-4 p-4 bg-gray-50 border-b font-medium text-sm text-gray-700;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .list-body {
-  @apply divide-y divide-gray-200;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
 .list-row {
-  @apply grid grid-cols-7 gap-4 p-4 hover:bg-gray-50 cursor-pointer transition-colors;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.list-row:hover {
+  background: var(--bg-tertiary);
+}
+
+.list-row:last-child {
+  border-bottom: none;
 }
 
 .list-cell {
-  @apply flex items-center;
-}
-
-.member-col {
-  @apply col-span-2;
+  display: flex;
+  align-items: center;
 }
 
 .member-info-compact {
-  @apply flex items-center space-x-3;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .member-avatar-small {
-  @apply relative w-10 h-10;
+  position: relative;
+  width: 40px;
+  height: 40px;
 }
 
 .avatar-img-small {
-  @apply w-full h-full rounded-full object-cover;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .avatar-placeholder-small {
-  @apply w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-700;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .status-indicator-small {
-  @apply absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border border-white;
-}
-
-.member-details {
-  @apply flex flex-col;
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
 }
 
 .member-name-small {
-  @apply text-sm font-medium text-gray-900;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .member-email {
-  @apply text-xs text-gray-500;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
-.role-badge {
-  @apply px-2 py-1 text-xs rounded-full font-medium;
+.role-badge, .status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
-.role-admin {
-  @apply bg-red-100 text-red-800;
-}
-
-.role-manager {
-  @apply bg-blue-100 text-blue-800;
-}
-
-.role-developer {
-  @apply bg-green-100 text-green-800;
-}
-
-.role-designer {
-  @apply bg-purple-100 text-purple-800;
-}
-
-.role-client {
-  @apply bg-gray-100 text-gray-800;
-}
-
-.status-badge {
-  @apply px-2 py-1 text-xs rounded-full font-medium flex items-center;
-}
-
-.status-badge.status-active {
-  @apply bg-green-100 text-green-800;
-}
-
-.status-badge.status-busy {
-  @apply bg-yellow-100 text-yellow-800;
-}
-
-.status-badge.status-away {
-  @apply bg-orange-100 text-orange-800;
-}
-
-.status-badge.status-offline {
-  @apply bg-gray-100 text-gray-800;
-}
+.role-admin { background: #fef3c7; color: #92400e; }
+.role-manager { background: #dbeafe; color: #1e40af; }
+.role-developer { background: #d1fae5; color: #065f46; }
+.role-designer { background: #fce7f3; color: #9d174d; }
+.role-client { background: #f3f4f6; color: #374151; }
 
 .workload-display {
-  @apply flex items-center space-x-2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .workload-bar-small {
-  @apply w-16 bg-gray-200 rounded-full h-2;
+  width: 60px;
+  height: 4px;
+  background: var(--bg-tertiary);
+  border-radius: 2px;
+  overflow: hidden;
 }
 
 .workload-fill-small {
-  @apply h-2 rounded-full transition-all duration-300;
+  height: 100%;
+  transition: width 0.3s;
 }
 
 .workload-text {
-  @apply text-xs font-medium;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .task-info {
-  @apply flex flex-col items-center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .task-count-text {
-  @apply text-sm font-medium text-gray-900;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .task-label {
-  @apply text-xs text-gray-500;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .activity-text {
-  @apply text-sm text-gray-600;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 
 .action-buttons {
-  @apply flex items-center space-x-1;
+  display: flex;
+  gap: 0.25rem;
 }
 
 .action-btn-small {
-  @apply w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-600 rounded transition-colors;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
 }
 
-/* Vue charge de travail */
+.action-btn-small:hover {
+  background: var(--bg-secondary);
+}
+
+/* Vue Charge de travail */
 .workload-view {
-  @apply space-y-6;
+  padding: 1rem;
 }
 
 .workload-chart {
-  @apply bg-white border rounded-lg p-6;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
 }
 
 .chart-title {
-  @apply text-lg font-semibold text-gray-900 mb-4;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 1.5rem;
+  text-align: center;
 }
 
 .workload-bars {
-  @apply space-y-4;
+  margin-bottom: 2rem;
 }
 
 .workload-item {
-  @apply flex items-center space-x-4;
+  display: grid;
+  grid-template-columns: 200px 1fr 150px;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 0.375rem;
 }
 
-.workload-member {
-  @apply flex items-center space-x-3 w-48;
+.member-info-tiny {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .member-avatar-tiny {
-  @apply w-8 h-8;
+  width: 32px;
+  height: 32px;
 }
 
 .avatar-img-tiny {
-  @apply w-full h-full rounded-full object-cover;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .avatar-placeholder-tiny {
-  @apply w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .member-name-tiny {
-  @apply text-sm font-medium text-gray-900;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
 }
 
 .workload-chart-bar {
-  @apply flex-1 flex items-center space-x-4;
+  flex: 1;
 }
 
 .workload-bar-chart {
-  @apply flex-1 bg-gray-200 rounded-full h-4;
+  width: 100%;
+  height: 20px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  overflow: hidden;
 }
 
 .workload-fill-chart {
-  @apply h-4 rounded-full transition-all duration-300;
+  height: 100%;
+  transition: width 0.3s;
 }
 
 .workload-details {
-  @apply flex items-center space-x-3 text-sm;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .workload-percentage-chart {
-  @apply font-medium text-gray-900;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .task-count-chart {
-  @apply text-gray-600;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .workload-legend {
-  @apply flex items-center justify-center space-x-6 bg-gray-50 rounded-lg p-4;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
 }
 
 .legend-item {
-  @apply flex items-center space-x-2;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .legend-color {
-  @apply w-3 h-3 rounded-full;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
 }
 
 .legend-text {
-  @apply text-sm text-gray-700;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
 }
 </style>

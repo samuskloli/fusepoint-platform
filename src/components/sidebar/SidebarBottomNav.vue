@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 border-t border-gray-700" v-if="!isCollapsed">
+  <div class="p-4 border-t border-gray-700">
     <SidebarNavItem
       to="/settings"
       label="Paramètres"

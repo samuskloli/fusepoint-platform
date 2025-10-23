@@ -67,7 +67,8 @@ class AuthService {
         userId: user.id,
         email: user.email,
         role: user.role,
-        company_id: primaryCompanyId
+        company_id: primaryCompanyId,
+        tenantId: primaryCompanyId // Pour la compatibilité multi-tenant
       });
 
       const refreshToken = this.generateToken({
@@ -134,7 +135,7 @@ class AuthService {
    */
   async register(userData, ipAddress) {
     try {
-      const { email, password, firstName, lastName } = userData;
+      const { email, password, firstName, lastName, role } = userData;
 
       // Validation des données
       if (!email || !password || !firstName || !lastName) {
@@ -150,7 +151,8 @@ class AuthService {
         email,
         password,
         firstName,
-        lastName
+        lastName,
+        role
       });
 
       // Log d'audit
@@ -275,7 +277,8 @@ class AuthService {
         userId: user.id,
         email: user.email,
         role: user.role,
-        company_id: primaryCompanyId
+        company_id: primaryCompanyId,
+        tenantId: primaryCompanyId // Pour la compatibilité multi-tenant
       });
 
       // Calculer la nouvelle expiration du token

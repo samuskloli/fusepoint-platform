@@ -1,23 +1,9 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <div
-      class="fixed inset-y-0 left-0 z-50 bg-gray-900 transform transition-all duration-300 ease-in-out md:translate-x-0 md:static md:inset-0"
-      :class="{ 
-        '-translate-x-full': !sidebarOpen, 
-        'translate-x-0': sidebarOpen,
-        'w-16': sidebarCollapsed,
-        'w-64': !sidebarCollapsed
-      }"
-    >
-      <Sidebar @close-sidebar="sidebarOpen = false" @toggle-collapse="handleSidebarCollapse" />
-    </div>
+  <RoleLayout>
+
     
     <!-- Main content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Header -->
-      <Header @toggle-sidebar="sidebarOpen = !sidebarOpen" />
-      
       <!-- Dashboard content -->
       <main class="flex-1 overflow-y-auto">
         <!-- Header personnalisé client -->
@@ -379,12 +365,11 @@
         </div>
       </div>
     </div>
-  </div>
+  </RoleLayout>
 </template>
 
 <script>
-import Header from '@/components/Header.vue';
-import Sidebar from '@/components/Sidebar.vue';
+import RoleLayout from '@/components/RoleLayout.vue';
 import AgentAssignment from '@/components/AgentAssignment.vue';
 import authService from '@/services/authService';
 import aiChatService from '@/services/aiChatService';
@@ -395,8 +380,7 @@ import { useAuthStore } from '@/stores/auth';
 export default {
   name: 'ClientDashboard',
   components: {
-    Header,
-    Sidebar,
+    RoleLayout,
     AgentAssignment
   },
   setup() {
@@ -406,8 +390,7 @@ export default {
   },
   data() {
     return {
-      sidebarOpen: false,
-      sidebarCollapsed: false,
+
       showContactModal: false,
       user: null,
       assignedAgent: null,
@@ -457,9 +440,7 @@ export default {
     }
   },
   methods: {
-    handleSidebarCollapse(isCollapsed) {
-      this.sidebarCollapsed = isCollapsed
-    },
+
     contactAgent() {
       if (this.hasAssignedAgent && this.assignedAgent) {
         this.showContactModal = true;

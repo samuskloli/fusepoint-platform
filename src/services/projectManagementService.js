@@ -6,7 +6,7 @@ class ProjectManagementService {
     this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     this.api = axios.create({
       baseURL: this.baseURL,
-      timeout: 10000,
+      timeout: 20000,
       headers: {
         'Content-Type': 'application/json'
       }
@@ -81,17 +81,60 @@ class ProjectManagementService {
 
   async getProjectDetails(projectId) {
     try {
-      console.log('🔍 Debug - Appel API getProjectDetails pour projectId:', projectId)
-      const response = await this.api.get(`/api/agent/projects/${projectId}`)
-      console.log('🔍 Debug - Réponse API getProjectDetails:', response)
+      console.log('🔍 Récupération des détails du projet:', projectId);
       
-      // L'API retourne { success: true, data: {...} }, donc on accède à response.data.data
-      if (response.data && response.data.success && response.data.data) {
-        return { success: true, data: response.data.data }
+      // Récupérer les informations de l'utilisateur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      let response;
+      
+      // Si l'utilisateur est un client, utiliser la route client
+      if (user && (user.role === 'user' || user.role === 'client')) {
+        console.log('🔍 Utilisation de la route client pour récupérer les détails du projet');
+        response = await this.api.get(`/api/client/projects/${projectId}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          params: {
+            _t: Date.now()
+          }
+        });
       } else {
-        console.error('❌ Structure de réponse inattendue:', response.data)
-        return { success: false, error: 'Structure de réponse inattendue' }
+        // Pour les agents, admins et super_admins, utiliser la route agent
+        console.log('🔍 Utilisation de la route agent pour récupérer les détails du projet');
+        response = await this.api.get(`/api/agent/projects/${projectId}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          params: {
+            _t: Date.now()
+          }
+        });
       }
+      
+      console.log('✅ Détails du projet récupérés:', response.data);
+      
+      // Pour les routes client, l'API retourne directement l'objet projet
+      // Pour les routes agent, l'API retourne { success: true, data: {...} }
+      if (user && (user.role === 'user' || user.role === 'client')) {
+        // Route client : réponse directe
+        if (response.data && response.data.id) {
+          return { success: true, data: response.data }
+        }
+      } else {
+        // Route agent : structure avec success et data
+        if (response.data && response.data.success && response.data.data) {
+          return { success: true, data: response.data.data }
+        }
+      }
+      
+      console.error('❌ Structure de réponse inattendue:', response.data)
+      return { success: false, error: 'Structure de réponse inattendue' }
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des détails du projet:', {
         message: error.message,
@@ -107,17 +150,41 @@ class ProjectManagementService {
   // Méthodes spécifiques aux projets individuels
   async getProjectTasks(projectId) {
     try {
-      console.log('🔍 Debug - Appel API getProjectTasks pour projectId:', projectId)
-      const response = await this.api.get(`/api/agent/projects/${projectId}/tasks`)
-      console.log('🔍 Debug - Réponse API getProjectTasks:', response)
+      console.log('🔍 Récupération des tâches du projet:', projectId);
       
-      // L'API retourne { success: true, data: [...] }, donc on accède à response.data.data
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
-        return { success: true, data: response.data.data }
+      // Récupérer les informations de l'utilisateur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      let response;
+      
+      // Si l'utilisateur est un client, utiliser la route client avec company_id/client_id/id
+      if (user && (user.role === 'user' || user.role === 'client')) {
+        const clientParam = user.company_id ?? user.client_id ?? user.id
+        console.log('🔍 Utilisation de la route client pour récupérer les tâches du projet', { clientParam })
+        response = await this.api.get(`/api/clients/${clientParam}/projects/${projectId}/widgets/tasks`);
       } else {
-        console.error('❌ Structure de réponse inattendue pour les tâches:', response.data)
-        return { success: true, data: [] } // Retourner un tableau vide si pas de tâches
+        // Pour les agents, admins et super_admins, utiliser la route agent
+        console.log('🔍 Utilisation de la route agent pour récupérer les tâches du projet');
+        response = await this.api.get(`/api/agent/projects/${projectId}/tasks`);
       }
+      
+      console.log('✅ Tâches du projet récupérées:', response.data);
+      
+      // L'API retourne { success: true, data: { tasks: [...], stats: {...}, pagination: {...} } }
+      if (response.data && response.data.success) {
+        // Pour les routes client widgets, les tâches sont dans data.tasks
+        if (response.data.data && response.data.data.tasks) {
+          return { success: true, data: response.data.data.tasks }
+        }
+        // Pour les routes agent, les tâches sont directement dans data
+        else if (Array.isArray(response.data.data)) {
+          return { success: true, data: response.data.data }
+        }
+      }
+      
+      console.error('❌ Structure de réponse inattendue pour les tâches:', response.data)
+      return { success: true, data: [] } // Retourner un tableau vide si pas de tâches
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des tâches du projet:', {
         message: error.message,
@@ -132,23 +199,66 @@ class ProjectManagementService {
 
   async getProjectFiles(projectId) {
     try {
-      const response = await this.api.get(`/api/agent/projects/${projectId}/files`)
+      console.log('🔍 Récupération des fichiers du projet:', projectId);
       
-      // L'API retourne { success: true, data: [...] }, donc on accède à response.data.data
+      // Récupérer les informations de l'utilisateur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      let response;
+      
+      // Si l'utilisateur est un client, utiliser la route client avec company_id/client_id/id
+      if (user && (user.role === 'user' || user.role === 'client')) {
+        const clientParam = user.company_id ?? user.client_id ?? user.id
+        console.log('🔍 Utilisation de la route client pour récupérer les fichiers du projet', { clientParam })
+        response = await this.api.get(`/api/clients/${clientParam}/projects/${projectId}/widgets/files`);
+      } else {
+        // Pour les agents, admins et super_admins, utiliser la route agent
+        console.log('🔍 Utilisation de la route agent pour récupérer les fichiers du projet');
+        response = await this.api.get(`/api/agent/projects/${projectId}/files`);
+      }
+      
+      console.log('✅ Fichiers du projet récupérés:', response.data);
+      
+      // L'API retourne { success: true, data: [...] }
       if (response.data && response.data.success && Array.isArray(response.data.data)) {
         return { success: true, data: response.data.data }
       } else {
         return { success: true, data: [] } // Retourner un tableau vide si pas de fichiers
       }
     } catch (error) {
-      console.error('Erreur lors de la récupération des fichiers du projet:', error)
+      console.error('Erreur lors de la récupération des fichiers du projet:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        url: error.config?.url
+      })
       return { success: false, error: error.response?.data?.message || 'Erreur lors de la récupération des fichiers du projet' }
     }
   }
 
   async getProjectTeamMembers(projectId) {
     try {
-      const response = await this.api.get(`/api/agent/projects/${projectId}/team`)
+      console.log('🔍 Récupération des membres de l\'équipe du projet:', projectId);
+      
+      // Récupérer les informations de l'utilisateur connecté
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      
+      let response;
+      
+      // Si l'utilisateur est un client, utiliser la route client
+       if (user && (user.role === 'user' || user.role === 'client')) {
+         console.log('🔍 Utilisation de la route client pour récupérer les membres de l\'équipe du projet');
+         response = await this.api.get(`/api/client/${user.id}/projects/${projectId}/team`);
+       } else {
+        // Pour les agents, admins et super_admins, utiliser la route agent
+        console.log('🔍 Utilisation de la route agent pour récupérer les membres de l\'équipe du projet');
+        response = await this.api.get(`/api/agent/projects/${projectId}/team`);
+      }
+      
+      console.log('✅ Membres de l\'équipe du projet récupérés:', response.data);
       
       // L'API retourne { success: true, data: [...] }, donc on accède à response.data.data
       if (response.data && response.data.success && Array.isArray(response.data.data)) {

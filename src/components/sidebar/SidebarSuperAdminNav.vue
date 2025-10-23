@@ -9,6 +9,15 @@
       badgeClass="ml-auto px-2 py-1 text-xs bg-red-600 text-white rounded-full"
       :isCollapsed="isCollapsed"
     />
+
+    <!-- Librairie de Widgets (accessible aux Super Admins et Admins via la route Agent) -->
+    <SidebarNavItem
+      to="/agent/widgets-library"
+      label="Librairie de Widgets"
+      iconPath="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z"
+      :isCollapsed="isCollapsed"
+      exactMatch
+    />
   </SidebarNavSection>
 </template>
 

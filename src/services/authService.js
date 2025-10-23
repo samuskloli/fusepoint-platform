@@ -6,11 +6,11 @@ import axios from 'axios';
  */
 class AuthService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
     console.log('🔍 Base URL utilisée:', this.baseURL);
     this.api = axios.create({
       baseURL: this.baseURL,
-      timeout: 10000,
+      timeout: 20000,
       headers: {
         'Content-Type': 'application/json'
       }
@@ -49,17 +49,14 @@ class AuthService {
               this.clearTokens();
               this.clearUser();
               this.clearCompanies();
-              // Ne pas rediriger automatiquement, laisser le routeur gérer
+              throw refreshError;
             }
           }
-          // Ne pas nettoyer automatiquement les tokens pour chaque 401
-          // Laisser l'application gérer les erreurs d'authentification
         }
         return Promise.reject(error);
       }
     );
   }
-
   /**
    * Connexion utilisateur
    */
@@ -248,19 +245,7 @@ class AuthService {
   isAuthenticated() {
     const token = this.getAccessToken();
     const user = this.getUser();
-    
-    if (!token || !user) {
-      console.log('🔍 Authentification échouée: token ou utilisateur manquant', { hasToken: !!token, hasUser: !!user });
-      return false;
-    }
-    
-    if (this.isTokenExpired()) {
-      console.log('🔍 Authentification échouée: token expiré');
-      return false;
-    }
-    
-    console.log('✅ Utilisateur authentifié:', user.email);
-    return true;
+    return !!token && !!user;
   }
 
   /**
@@ -268,23 +253,14 @@ class AuthService {
    */
   isTokenExpired() {
     const expiresAt = localStorage.getItem('tokenExpiresAt');
-    // Si pas d'expiration définie, considérer le token comme valide
-    // (pour compatibilité avec les anciens tokens)
-    if (!expiresAt) {
-      console.warn('⚠️ Pas d\'expiration définie pour le token, considéré comme valide');
-      return false;
+    if (!expiresAt) return true;
+    // Utiliser correctement l'horodatage ISO renvoyé par le backend
+    const expiryMs = new Date(expiresAt).getTime();
+    if (Number.isNaN(expiryMs)) {
+      // Si le format est invalide, considérer expiré et nettoyer plus tard
+      return true;
     }
-    
-    // Ajouter une marge de 30 secondes pour éviter les déconnexions prématurées
-    const now = new Date();
-    const expiration = new Date(expiresAt);
-    const marginMs = 30 * 1000; // 30 secondes
-    const isExpired = now >= new Date(expiration.getTime() - marginMs);
-    
-    if (isExpired) {
-      console.log('🕐 Token expiré:', { expiresAt, now: now.toISOString(), margin: '30s' });
-    }
-    return isExpired;
+    return Date.now() > expiryMs;
   }
 
   /**
@@ -299,9 +275,8 @@ class AuthService {
    * Validation mot de passe fort
    */
   isStrongPassword(password) {
-    // Au moins 8 caractères, 1 majuscule, 1 minuscule, 1 chiffre, 1 caractère spécial
-    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    return strongPasswordRegex.test(password);
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{8,}$/;
+    return strongRegex.test(password);
   }
 
   /**
@@ -326,7 +301,9 @@ class AuthService {
   }
 
   setTokenExpiration(expiresAt) {
-    localStorage.setItem('tokenExpiresAt', expiresAt);
+    if (expiresAt) {
+      localStorage.setItem('tokenExpiresAt', expiresAt.toString());
+    }
   }
 
   clearTokens() {
@@ -334,42 +311,34 @@ class AuthService {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('sessionToken');
     localStorage.removeItem('tokenExpiresAt');
-    // Nettoyer les anciens tokens de l'authentification mock
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('isAuthenticated');
   }
 
   /**
-   * Gestion des données utilisateur
+   * Gestion de l'utilisateur
    */
   setUser(user) {
     localStorage.setItem('user', JSON.stringify(user));
-    // Maintenir la compatibilité avec l'ancien système
-    localStorage.setItem('userEmail', user.email);
-    localStorage.setItem('userName', user.firstName || user.email.split('@')[0]);
   }
 
   getUser() {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   }
 
   clearUser() {
     localStorage.removeItem('user');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
   }
 
   /**
-   * Gestion des entreprises
+   * Gestion des sociétés
    */
   setCompanies(companies) {
     localStorage.setItem('companies', JSON.stringify(companies || []));
   }
 
   getCompanies() {
-    const companiesStr = localStorage.getItem('companies');
-    return companiesStr ? JSON.parse(companiesStr) : [];
+    const companies = localStorage.getItem('companies');
+    return companies ? JSON.parse(companies) : [];
   }
 
   clearCompanies() {
@@ -377,12 +346,11 @@ class AuthService {
   }
 
   /**
-   * Obtenir l'instance API configurée
+   * Exposer l'instance Axios si nécessaire
    */
   getApiInstance() {
     return this.api;
   }
 }
 
-// Export d'une instance singleton
 export default new AuthService();

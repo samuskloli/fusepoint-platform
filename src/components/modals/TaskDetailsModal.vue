@@ -12,21 +12,29 @@
               <span  class="flex items-center=fas fa-calendar mr-1'></i>
                 {{ t('tasks.createdOn="flex items-center space-x-2>
           <button  
-            v-if="canEdit=editTask=p-2 text-gray-400 hover:text-gray-600'
-            :title="t('common.edit=closeModal=p-2 text-gray-400 hover:text-gray-600>
-            <i  class=""fas fa-times text-xl=mt-6'>
-        <!-- Onglets -->
-        <div class="mb-6>
-          <nav  class="flex space-x-8' aria-label="Tabs=tab in tabs="tab.id='button{
-                'border-blue-500 text-blue-600': activeTab === tab.id,
-                'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== tab.id
-              }"
-            >
-              <i  :class="tab.icon=mr-2'></i>
-              {{ t(tab.label) }}
-            </button>
-          </nav>
+            v-if="canEdit"
+            @click="editTask"
+            class="p-2 text-gray-400 hover:text-gray-600"
+            :title="t('common.edit')"
+          >
+            <i class="fas fa-edit"></i>
+          </button>
+          <button
+            @click="closeModal"
+            class="p-2 text-gray-400 hover:text-gray-600"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
         </div>
+      </div>
+
+      <div class="mt-6">
+        <!-- Onglets -->
+        <TabsComponent
+          :tabs="tabs"
+          :active-tab="activeTab"
+          @tab-change="activeTab = $event"
+        />
 
         <!-- Contenu des onglets -->
         <div class: tab-content=activeTab === 'details grid grid-cols-1 lg:grid-cols-3 gap-6>
@@ -202,9 +210,13 @@ import projectManagementService from '@/services/projectManagementService'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
+import TabsComponent from '@/components/ui/TabsComponent.vue'
 
 export default {
   name: 'TaskDetailsModal',
+  components: {
+    TabsComponent
+  },
   props: {
     taskId: {
       type: String,

@@ -58,16 +58,17 @@ export default {
       return projectTemplateService.getWidgetCategories()
     })
     
-    // Widgets filtrés
+    // Widgets filtrés (tolérant les champs name/nom)
     const filteredAvailableWidgets = computed(() => {
       let filtered = availableWidgets.value
       
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
-        filtered = filtered.filter(widget => 
-          widget.nom.toLowerCase().includes(query) ||
-          widget.description.toLowerCase().includes(query)
-        )
+        filtered = filtered.filter(widget => {
+          const name = (widget.nom || widget.name || '').toLowerCase()
+          const descText = (widget.description || '').toLowerCase()
+          return name.includes(query) || descText.includes(query)
+        })
       }
       
       if (selectedCategory.value) {
@@ -100,7 +101,7 @@ export default {
     
     const getCategoryLabel = (categoryValue) => {
       const category = widgetCategories.value.find(cat => cat.value === categoryValue)
-      return category ? category.label : categoryValue
+      return category ? t(category.labelKey || category.label || category.value) : categoryValue
     }
     
     const isWidgetSelected = (widgetId) => {
@@ -157,10 +158,15 @@ export default {
     const saveWidgets = async () => {
       loading.value = true
       try {
-        const widgetIds = selectedWidgets.value.map(widget => widget.id)
+        const payload = selectedWidgets.value.map((widget, index) => ({
+          widget_id: widget.id,
+          position: index,
+          is_enabled: true,
+          default_config: widget.default_config || {}
+        }))
         const result = await projectTemplateService.updateTemplateWidgets(
-          props.template.id, 
-          widgetIds
+          props.template.id,
+          payload
         )
         
         if (result.success) {
@@ -174,6 +180,7 @@ export default {
         loading.value = false
       }
     }
+
     
     const closeModal = () => {
       emit('close')

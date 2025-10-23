@@ -145,6 +145,18 @@
             <span>Rapports & Analytics</span>
           </router-link>
 
+          <!-- Lien ajouté: Librairie de Widgets -->
+          <router-link
+            to="/agent/widgets-library"
+            class="nav-item"
+            :class="{ 'nav-item-active': $route.path === '/agent/widgets-library' }"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1V5zM4 14a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5zm9 0a1 1 0 011-1h5a1 1 0 011 1v5a1 1 0 01-1 1h-5a1 1 0 01-1-1v-5z" />
+            </svg>
+            <span>Librairie de Widgets</span>
+          </router-link>
+
           <router-link
             to="/analytics"
             class="nav-item"

@@ -206,7 +206,7 @@ class ValidationService {
 
     // Validation du statut (optionnel, mais doit être valide si fourni)
     if (status) {
-      const validStatuses = ['pending', 'in_progress', 'completed', 'cancelled', 'on_hold'];
+      const validStatuses = ['en_cours', 'en_validation', 'en_pause', 'termine', 'annule', 'active', 'completed'];
       if (!validStatuses.includes(status)) {
         errors.push('Statut de projet invalide');
       }

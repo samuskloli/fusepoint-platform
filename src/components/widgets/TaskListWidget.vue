@@ -1,115 +1,269 @@
 <template>
   <BaseWidget 
-    :widget="widgetConfig=loading=error='showConfigModal = true=toggleWidget="loadTasks="task-list-widget=task-actions='!readonly class === empty-state=fas fa-tasks text-gray-400 text-3xl mb-3'></i>
-          <p class === text-gray-500">{{ t('widgets.taskList.noTasks === !readonly=showAddTaskModal = true='empty-action-btn === tasks-list=task in filteredTasks === task.id='task-item"checkbox=task.status === 'completed === toggleTaskStatus(task)'
-                :disabled === readonly=task-check=task-content === selectTask(task)'>
-              <h 4 class === task-title=task-description === task.description='task-meta=task-priority === `priority-${task.priority}`>
+    :widget="widgetConfig"
+    :loading="loading"
+    :error="error"
+    @show-config="showConfigModal = true"
+    @toggle="toggleWidget"
+    @refresh="loadTasks"
+  >
+    <div class="task-list-widget">
+      <!-- Actions et filtres -->
+      <div class="task-actions">
+        <div class="filter-tabs">
+          <button 
+            v-for="filter in filterOptions" 
+            :key="filter.value"
+            :class="['filter-tab', { active: statusFilter === filter.value }]"
+            @click="statusFilter = filter.value"
+          >
+            {{ t(filter.label) }}
+            <span v-if="filter.count !== undefined" class="filter-count">
+              {{ filter.count }}
+            </span>
+          </button>
+        </div>
+        
+        <button 
+          v-if="!readonly" 
+          class="add-task-btn"
+          @click="showAddTaskModal = true"
+        >
+          <i class="fas fa-plus mr-2"></i>
+          {{ t('widgets.taskList.addTask') }}
+        </button>
+      </div>
+      
+      <!-- État vide -->
+      <div v-if="filteredTasks.length === 0" class="empty-state">
+        <i class="fas fa-tasks text-gray-400 text-3xl mb-3"></i>
+        <p class="text-gray-500">{{ t('widgets.taskList.noTasks') }}</p>
+        <button 
+          v-if="!readonly" 
+          @click="showAddTaskModal = true" 
+          class="empty-action-btn"
+        >
+          {{ t('widgets.taskList.addFirstTask') }}
+        </button>
+      </div>
+      
+      <!-- Liste des tâches -->
+      <div v-else class="tasks-list">
+        <div 
+          v-for="task in filteredTasks" 
+          :key="task.id" 
+          class="task-item"
+        >
+          <div class="task-main">
+            <input 
+              type="checkbox" 
+              :checked="task.status === 'completed'" 
+              @change="toggleTaskStatus(task)"
+              :disabled="readonly"
+              class="task-check"
+            >
+            
+            <div class="task-content" @click="selectTask(task)">
+              <h4 class="task-title">{{ task.title }}</h4>
+              <p v-if="task.description" class="task-description">
+                {{ task.description }}
+              </p>
+              
+              <div class="task-meta">
+                <span 
+                  v-if="task.priority" 
+                  :class="['task-priority', `priority-${task.priority}`]"
+                >
                   {{ t(`customProjects.priorities.${task.priority}`) }}
                 </span>
                 
-                <span class="task-due-date=task.due_date='fas fa-calendar-alt mr-1"></i>
+                <span v-if="task.due_date" class="task-due-date">
+                  <i class="fas fa-calendar-alt mr-1"></i>
                   {{ formatDate(task.due_date) }}
                 </span>
                 
-                <span class="task-assignee=task.assignee='fas fa-user mr-1"></i>
+                <span v-if="task.assignee" class="task-assignee">
+                  <i class="fas fa-user mr-1"></i>
                   {{ task.assignee.name }}
                 </span>
               </div>
             </div>
             
-            <div  class="task-actions-menu=!readonly editTask(task)'
-                class="task-action-btn=t('widgets.taskList.editTask="deleteTask(task)'
-                class="task-action-btn task-action-danger=t('widgets.taskList.deleteTask="task-stats='tasks.length &gt; 0>
-        <div  class="stat-item=stat-value stat-label='stat-item=stat-value="stat-label="stat-item=stat-value='stat-label="showAddTaskModal || showEditTaskModal=selectedTask="projectId='closeTaskModal=saveTask="showConfigModal="widgetConfig=showConfigModal = false='updateConfig
-     >
+            <div v-if="!readonly" class="task-actions-menu">
+              <button 
+                @click="editTask(task)"
+                class="task-action-btn"
+                :title="t('widgets.taskList.editTask')"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              <button 
+                @click="deleteTask(task)"
+                class="task-action-btn task-action-danger"
+                :title="t('widgets.taskList.deleteTask')"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Statistiques -->
+      <div v-if="tasks.length > 0" class="task-stats">
+        <div class="stat-item">
+          <span class="stat-value">{{ tasks.length }}</span>
+          <span class="stat-label">{{ t('widgets.taskList.total') }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ completedTasks.length }}</span>
+          <span class="stat-label">{{ t('widgets.taskList.completed') }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">{{ pendingTasks.length }}</span>
+          <span class="stat-label">{{ t('widgets.taskList.pending') }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Modals -->
+    <TaskModal
+      v-if="showAddTaskModal || showEditTaskModal"
+      :task="selectedTask"
+      :project-id="projectId"
+      @close="closeTaskModal"
+      @save="saveTask"
+    />
+    
+    <WidgetConfigModal
+      v-if="showConfigModal"
+      :widget="widgetConfig"
+      @close="showConfigModal = false"
+      @save="updateConfig"
+    />
   </BaseWidget>
 </template>
 
-<script>
+<script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import BaseWidget from './BaseWidget.vue'
+import BaseWidget from './shared/components/BaseWidget.vue'
 import TaskModal from '../modals/TaskModal.vue'
 import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
 import projectManagementService from '@/services/projectManagementService'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 
-export default {
-  name: 'TaskListWidget',
-  components: {
-    BaseWidget,
-    TaskModal,
-    WidgetConfigModal
-  },
-  props: {
-    projectId: {
-      type: [String, Number],
-      required: true
-    },
-    widgetData: {
-      type: Object,
-      default: () => ({})
-    },
-    readonly: {
-      type: Boolean,
-      default: false
+// Props
+interface Props {
+  projectId: string
+  widgetData?: any
+  widget?: any
+}
+
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  'widget-updated': [widget: any]
+}>()
+
+// Composables
+const { success, error: showError } = useNotifications()
+const { t } = useTranslation()
+
+// État réactif
+const loading = ref(false)
+const error = ref(null)
+const tasks = ref([])
+const statusFilter = ref('all')
+const selectedTask = ref(null)
+const showAddTaskModal = ref(false)
+const showEditTaskModal = ref(false)
+const showConfigModal = ref(false)
+
+// Configuration du widget
+const widgetConfig = ref({
+  id: 'task-list',
+  name: 'Liste de Tâches',
+  icon: 'fas fa-tasks',
+  titleKey: 'widgets.taskList.title',
+  isEnabled: props.widget?.is_enabled ?? true,
+  showCompleted: props.widget?.show_completed ?? true,
+  showPriority: props.widget?.show_priority ?? true,
+  showDueDate: props.widget?.show_due_date ?? true,
+  maxTasks: props.widget?.max_tasks ?? 10
+})
+    
+// Tâches filtrées
+const filteredTasks = computed(() => {
+  if (statusFilter.value === 'all') return tasks.value
+  
+  return tasks.value.filter(task => {
+    switch (statusFilter.value) {
+      case 'completed':
+        return task.status === 'completed'
+      case 'pending':
+        return task.status !== 'completed'
+      case 'overdue':
+        return isOverdue(task) && task.status !== 'completed'
+      default:
+        return true
     }
+  })
+})
+
+// Statistiques
+const completedTasks = computed(() => 
+  tasks.value.filter(task => task.status === 'completed')
+)
+
+const pendingTasks = computed(() => 
+  tasks.value.filter(task => task.status !== 'completed')
+)
+
+const overdueTasks = computed(() => 
+  tasks.value.filter(task => isOverdue(task) && task.status !== 'completed')
+)
+    
+// Options de filtre
+const filterOptions = computed(() => [
+  {
+    value: 'all',
+    label: 'widgets.taskList.filters.all',
+    count: tasks.value.length
   },
-  emits: ['update-widget'],
-  setup(props, { emit }) {
-    const { success, error: showError } = useNotifications()
-    const { t } = useTranslation()
-    
-    // État réactif
-    const loading = ref(false)
-    const error = ref(null)
-    const tasks = ref([])
-    const statusFilter = ref('all')
-    const selectedTask = ref(null)
-    const showAddTaskModal = ref(false)
-    const showEditTaskModal = ref(false)
-    const showConfigModal = ref(false)
-    
-    // Configuration du widget
-    const widgetConfig = ref({
-      id: 'task-list',
-      name: 'Liste de Tâches',
-      icon: 'fas fa-tasks',
-      titleKey: 'widgets.taskList.title',
-      isEnabled: true,
-      ...props.widgetData
-    })
-    
-    // Tâches filtrées
-    const filteredTasks = computed(() => {
-      if (statusFilter.value === 'all') return tasks.value
-      
-      return tasks.value.filter(task => {
-        switch (statusFilter.value) {
-          case 'completed':
-            return task.status === 'completed'
-          case 'pending':
-            return task.status !== 'completed'
-          case 'overdue':
-            return isOverdue(task) && task.status !== 'completed'
-          default:
-            return true
-        }
-      })
-    })
-    
-    // Statistiques
-    const completedTasks = computed(() => 
-      tasks.value.filter(task => task.status === 'completed')
-    )
-    
-    const pendingTasks = computed(() => 
-      tasks.value.filter(task => task.status !== 'completed')
-    )
-    
-    const overdueTasks = computed(() => 
-      tasks.value.filter(task => isOverdue(task) && task.status !== 'completed')
-    )
+  {
+    value: 'pending',
+    label: 'widgets.taskList.filters.pending',
+    count: pendingTasks.value.length
+  },
+  {
+    value: 'completed',
+    label: 'widgets.taskList.filters.completed',
+    count: completedTasks.value.length
+  },
+  {
+    value: 'overdue',
+    label: 'widgets.taskList.filters.overdue',
+    count: overdueTasks.value.length
+  }
+])
+
+// Méthodes utilitaires
+const isOverdue = (task) => {
+  if (!task.due_date || task.status === 'completed') return false
+  return new Date(task.due_date) < new Date()
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
     
     // Méthodes
     const loadTasks = async () => {
@@ -119,12 +273,14 @@ export default {
       try {
         const result = await projectManagementService.getProjectTasks(props.projectId)
         if (result.success) {
-          tasks.value = result.data
+          tasks.value = result.data || []
         } else {
           error.value = result.error
         }
       } catch (err) {
+        console.error('Erreur lors du chargement des tâches:', err)
         error.value = t('errors.loadingFailed')
+        showError('Erreur lors du chargement des tâches')
       } finally {
         loading.value = false
       }
@@ -148,11 +304,13 @@ export default {
           showError(result.error)
         }
       } catch (err) {
+        console.error('Erreur lors de la mise à jour de la tâche:', err)
         showError(t('errors.updateFailed'))
       }
     }
     
     const selectTask = (task) => {
+      if (props.readonly) return
       selectedTask.value = task
       showEditTaskModal.value = true
     }
@@ -174,6 +332,7 @@ export default {
           showError(result.error)
         }
       } catch (err) {
+        console.error('Erreur lors de la suppression de la tâche:', err)
         showError(t('errors.deleteFailed'))
       }
     }
@@ -200,12 +359,13 @@ export default {
         }
         
         if (result.success) {
-          success(t('widgets.taskList.taskSaved'))
+          success(taskData.id ? t('widgets.taskList.taskUpdated') : t('widgets.taskList.taskCreated'))
           closeTaskModal()
         } else {
           showError(result.error)
         }
       } catch (err) {
+        console.error('Erreur lors de la sauvegarde de la tâche:', err)
         showError(t('errors.saveFailed'))
       }
     }
@@ -216,198 +376,299 @@ export default {
       selectedTask.value = null
     }
     
-    const toggleWidget = () => {
-      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
-      emit('update-widget', widgetConfig.value)
-    }
+const toggleWidget = () => {
+  widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
+  const updatedWidget = {
+    ...props.widget,
+    is_enabled: widgetConfig.value.isEnabled
+  }
+  emit('widget-updated', updatedWidget)
+}
     
     const updateConfig = (newConfig) => {
       widgetConfig.value = { ...widgetConfig.value, ...newConfig }
-      emit('update-widget', widgetConfig.value)
+      emit('widget-updated', widgetConfig.value)
       showConfigModal.value = false
     }
     
-    const isOverdue = (task) => {
-      if (!task.due_date) return false
-      return new Date(task.due_date) < new Date() && task.status !== 'completed'
-    }
-    
-    const formatDate = (date) => {
-      return new Date(date).toLocaleDateString('fr-FR')
-    }
-    
     // Watchers
-    watch(() => props.projectId, loadTasks, { immediate: true })
+    watch(() => props.projectId, () => {
+      if (props.projectId) {
+        loadTasks()
+      }
+    }, { immediate: true })
     
+    // Lifecycle
     onMounted(() => {
-      loadTasks()
+      if (props.projectId) {
+        loadTasks()
+      }
     })
     
-    return {
-      loading,
-      error,
-      tasks,
-      statusFilter,
-      selectedTask,
-      showAddTaskModal,
-      showEditTaskModal,
-      showConfigModal,
-      widgetConfig,
-      filteredTasks,
-      completedTasks,
-      pendingTasks,
-      overdueTasks,
-      loadTasks,
-      toggleTaskStatus,
-      selectTask,
-      editTask,
-      deleteTask,
-      saveTask,
-      closeTaskModal,
-      toggleWidget,
-      updateConfig,
-      isOverdue,
-      formatDate,
-      t
-    }
-  }
-}
+
 </script>
 
 <style scoped>
 .task-list-widget {
-  @apply space-y-4;
+  padding: 1rem;
 }
 
 .task-actions {
-  @apply flex items-center justify-between mb-4;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filter-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-tab:hover {
+  background: #e5e7eb;
+}
+
+.filter-tab.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.filter-count {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.filter-tab.active .filter-count {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .add-task-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center;
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: #10b981;
+  border: none;
+  border-radius: 0.375rem;
+  color: white;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
-.task-filters {
-  @apply flex items-center space-x-2;
-}
-
-.filter-select {
-  @apply px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
-}
-
-.tasks-container {
-  @apply min-h-48;
+.add-task-btn:hover {
+  background: #059669;
 }
 
 .empty-state {
-  @apply text-center py-8;
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
 }
 
 .empty-action-btn {
-  @apply mt-3 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: #3b82f6;
+  border: none;
+  border-radius: 0.375rem;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.empty-action-btn:hover {
+  background: #2563eb;
 }
 
 .tasks-list {
-  @apply space-y-2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .task-item {
-  @apply flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  transition: all 0.2s;
 }
 
-.task-completed {
-  @apply bg-green-50 border-green-200;
+.task-item:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.task-overdue {
-  @apply bg-red-50 border-red-200;
-}
-
-.task-checkbox {
-  @apply flex-shrink-0 pt-1;
+.task-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
 }
 
 .task-check {
-  @apply w-4 h-4 text-blue-600 rounded focus:ring-blue-500;
+  margin-top: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
 }
 
 .task-content {
-  @apply flex-1 cursor-pointer;
+  flex: 1;
+  cursor: pointer;
 }
 
 .task-title {
-  @apply font-medium text-gray-900 mb-1;
-}
-
-.task-completed .task-title {
-  @apply line-through text-gray-500;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
 }
 
 .task-description {
-  @apply text-sm text-gray-600 mb-2;
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
 }
 
 .task-meta {
-  @apply flex items-center space-x-3 text-xs;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .task-priority {
-  @apply px-2 py-1 rounded-full text-xs font-medium;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .priority-low {
-  @apply bg-gray-100 text-gray-800;
+  background: #d1fae5;
+  color: #065f46;
 }
 
 .priority-medium {
-  @apply bg-yellow-100 text-yellow-800;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .priority-high {
-  @apply bg-orange-100 text-orange-800;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
-.priority-urgent {
-  @apply bg-red-100 text-red-800;
-}
-
-.task-due-date {
-  @apply text-gray-500;
-}
-
+.task-due-date,
 .task-assignee {
-  @apply text-gray-500;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .task-actions-menu {
-  @apply flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity;
-}
-
-.task-item:hover .task-actions-menu {
-  @apply opacity-100;
+  display: flex;
+  gap: 0.5rem;
 }
 
 .task-action-btn {
-  @apply p-1 rounded text-gray-400 hover:text-gray-600 transition-colors;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.task-action-danger {
-  @apply hover:text-red-600;
+.task-action-btn:hover {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.task-action-danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
 .task-stats {
-  @apply flex items-center justify-around pt-4 border-t border-gray-200 mt-4;
+  display: flex;
+  justify-content: space-around;
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
 }
 
 .stat-item {
-  @apply text-center;
+  text-align: center;
 }
 
 .stat-value {
-  @apply block text-2xl font-bold text-gray-900;
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #1f2937;
 }
 
 .stat-label {
-  @apply text-sm text-gray-500;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mr-1 {
+  margin-right: 0.25rem;
+}
+
+.mr-2 {
+  margin-right: 0.5rem;
+}
+
+.text-gray-400 {
+  color: #9ca3af;
+}
+
+.text-gray-500 {
+  color: #6b7280;
+}
+
+.text-3xl {
+  font-size: 1.875rem;
+}
+
+.mb-3 {
+  margin-bottom: 0.75rem;
 }
 </style>

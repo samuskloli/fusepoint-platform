@@ -722,7 +722,7 @@ class AgentService {
       
       // Vérifier si le client existe
       const client = await databaseService.get(
-        'SELECT id FROM users WHERE id = ? AND role IN ("user", "client")',
+        'SELECT id, agent_id FROM users WHERE id = ? AND role IN ("user", "client")',
         [clientId]
       );
       
@@ -735,13 +735,19 @@ class AgentService {
       
       // Vérifier si l'agent est assigné à ce client via la table agent_clients
       const assignment = await databaseService.get(
-        'SELECT id FROM agent_clients WHERE agent_id = ? AND client_id = ? AND is_active = 1',
-        [agentId, clientId]
+        'SELECT id FROM agent_clients WHERE agent_id = ? AND client_id = ? AND status = ?',
+        [agentId, clientId, 'active']
       );
       
-      const hasAccess = !!assignment;
-      console.log('🔍 Debug checkAgentClientAccess - accès par assignation via agent_clients:', hasAccess);
-      return hasAccess;
+      if (assignment) {
+        console.log('✅ Debug checkAgentClientAccess - accès via agent_clients (actif)');
+        return true;
+      }
+      
+      // Fallback: vérifier l'assignation directe via users.agent_id
+      const directAssignment = client.agent_id === agentId;
+      console.log('🔍 Debug checkAgentClientAccess - accès via users.agent_id:', directAssignment);
+      return directAssignment;
       
     } catch (error) {
       console.error('❌ Erreur lors de la vérification d\'accès:', error);
@@ -872,7 +878,7 @@ class AgentService {
         return true;
       }
       
-      // Vérifier si le projet existe et si l'agent y a accès
+      // Charger le projet
       const project = await databaseService.get(
         'SELECT id, agent_id, client_id FROM projects WHERE id = ?',
         [projectId]
@@ -885,17 +891,45 @@ class AgentService {
         return false;
       }
       
-      // Vérifier si l'agent est assigné à ce projet directement
+      // 1) Agent directement assigné au projet
       if (project.agent_id === agentId) {
         console.log('✅ Debug checkAgentProjectAccess - accès accordé (agent assigné au projet)');
         return true;
       }
       
-      // Vérifier si l'agent est assigné au client du projet
+      // 2) Partage explicite via project_members (si table disponible)
+      try {
+        const pm = await databaseService.get(
+          'SELECT id FROM project_members WHERE project_id = ? AND user_id = ? AND is_active = 1',
+          [projectId, agentId]
+        );
+        if (pm) {
+          console.log('✅ Debug checkAgentProjectAccess - accès via project_members');
+          return true;
+        }
+      } catch (e) {
+        console.log('ℹ️ Debug checkAgentProjectAccess - table project_members indisponible, on continue');
+      }
+      
+      // 3) Partage explicite via team_members (schéma alternatif)
+      try {
+        const tm = await databaseService.get(
+          'SELECT id FROM team_members WHERE project_id = ? AND user_id = ?',
+          [projectId, agentId]
+        );
+        if (tm) {
+          console.log('✅ Debug checkAgentProjectAccess - accès via team_members');
+          return true;
+        }
+      } catch (e) {
+        console.log('ℹ️ Debug checkAgentProjectAccess - table team_members indisponible, on continue');
+      }
+      
+      // 4) Accès via relation agent↔client active (si le projet appartient à ce client)
       if (project.client_id) {
         const hasClientAccess = await this.checkAgentClientAccess(agentId, project.client_id);
-        console.log('🔍 Debug checkAgentProjectAccess - accès via client:', hasClientAccess);
-        return hasClientAccess;
+        console.log('🔍 Debug checkAgentProjectAccess - accès via agent_clients/users.agent_id:', hasClientAccess);
+        if (hasClientAccess) return true;
       }
       
       console.log('❌ Debug checkAgentProjectAccess - aucun accès trouvé');

@@ -1,0 +1,10 @@
+const crypto = require('crypto');
+const secret = process.env.FILES_SIGNING_SECRET || 'dev-secret-change-me';
+const fileId = Number(process.argv[2] || 1);
+const intent = process.argv[3] || 'thumbnail';
+const ttlMs = 5 * 60 * 1000;
+const payload = { fileId, intent, exp: Date.now() + ttlMs };
+const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+const sig = crypto.createHmac('sha256', secret).update(data).digest('hex');
+const token = `${data}.${sig}`;
+console.log(token);

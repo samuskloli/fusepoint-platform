@@ -1,10 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <AgentSidebar />
-    
+<RoleLayout>
     <!-- Main Content -->
-    <div class="ml-64 p-8">
+    <div class="p-8">
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-center justify-between mb-6">
@@ -181,20 +178,20 @@
         </p>
       </div>
     </div>
-  </div>
+</RoleLayout>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import AgentSidebar from '../components/AgentSidebar.vue'
+import RoleLayout from '../components/RoleLayout.vue'
 import projectManagementService, { clientProjectService } from '../services/projectManagementService'
 import { useProjectsStore } from '@/stores/projects'
 
 export default {
   name: 'AgentProjects',
   components: {
-    AgentSidebar
+    RoleLayout
   },
   setup() {
     const router = useRouter()

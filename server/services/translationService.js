@@ -52,6 +52,12 @@ class TranslationService {
       return key; // Retourne la clé si la traduction n'existe pas
     }
 
+    // Vérifier que la traduction est une chaîne et non un objet
+    if (typeof translation !== 'string') {
+      console.warn(`⚠️ Traduction invalide (objet au lieu de chaîne) pour la clé: ${key}`);
+      return key; // Retourne la clé si la traduction n'est pas une chaîne
+    }
+
     // Interpolation des paramètres
     return this.interpolate(translation, params);
   }

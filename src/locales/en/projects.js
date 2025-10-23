@@ -4,6 +4,23 @@ export default {
   "progressUpdated": "Progress updated successfully",
   "progressUpdateFailed": "Failed to update progress",
   "projectUpdated": "Project updated successfully",
+  "progressDetails": "Progress Details",
+  "status": {
+    "planning": "Planning",
+    "in_progress": "In Progress",
+    "en_cours": "In Progress",
+    "review": "Under Review",
+    "completed": "Completed",
+    "on_hold": "On Hold",
+    "undefined": "Undefined"
+  },
+  "priority": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "urgent": "Urgent",
+    "undefined": "Undefined"
+  },
   "dashboard": {
     "title": "Dashboard",
     "backToClients": "Back to Clients",
@@ -37,13 +54,15 @@ export default {
       "en_cours": "In Progress",
       "review": "Under Review",
       "completed": "Completed",
-      "on_hold": "On Hold"
+      "on_hold": "On Hold",
+      "undefined": "Undefined"
     },
     "priorities": {
       "low": "Low",
       "medium": "Medium",
       "high": "High",
-      "urgent": "Urgent"
+      "urgent": "Urgent",
+      "undefined": "Undefined"
     },
     "dateNotDefined": "Date not defined",
     "allStatuses": "All statuses",
@@ -92,6 +111,7 @@ export default {
   "noWidgetsDescription": "No widgets configured for this project.",
   "loadWidgetsError": "Error loading widgets",
   "refreshSuccess": "Refresh successful",
+  "progressDetails": "{completed} of {total} completed",
   "projectDetails": "Project details",
   "selectClient": "Select client",
   "titlePlaceholder": "Project title",

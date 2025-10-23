@@ -78,6 +78,6 @@ export default {
 }
 
 .nav-item.justify-center svg {
-  @apply h-6 w-6 mx-auto;
+  @apply h-5 w-5 mx-auto;
 }
 </style>

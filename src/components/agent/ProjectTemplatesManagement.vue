@@ -30,7 +30,7 @@
           :key="category.value" 
           :value="category.value"
         >
-          {{ category.label }}
+          {{ t(category.labelKey || category.label || category.value) }}
         </option>
       </select>
     </div>
@@ -84,7 +84,7 @@
         <div class="template-meta">
           <div class="duration" v-if="template.duration_estimate">
             <i class="fas fa-clock"></i>
-            {{ template.duration_estimate }} {{ t('common.days') }}
+            {{ template.duration_estimate }} {{ t('time.days') }}
           </div>
           <div class="widgets-count" v-if="template.widgets_count">
             <i class="fas fa-puzzle-piece"></i>

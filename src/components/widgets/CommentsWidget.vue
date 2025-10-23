@@ -1,117 +1,318 @@
 <template>
   <BaseWidget 
-    :widget="widgetConfig=loading=error='showConfigModal = true=toggleWidget="loadComments="comments-widget=add-comment-form='canAddComments="comment-input-container=user-avatar="currentUser.avatar || '/default-avatar.png='currentUser.name=avatar-img="comment-input-wrapper="newComment=t('widgets.comments.placeholder='3"
-              @keydown.ctrl.enter="addComment=addComment='input-actions="input-options=toggleMentions="option-btn='{ active: showMentions }"
-                  :title="t('widgets.comments.mentions=toggleEmojis=option-btn='{ active: showEmojis }"
-                  :title="t('widgets.comments.emojis=fileInput=file='image *,.pdf,.doc,.docx=handleFileUpload=":hidden="$refs.fileInput.click()'
-                  class === option-btn=t('widgets.comments.attachFile="addComment='!newComment.trim() || isSubmitting=submit-btn="fas fa-paper-plane="!isSubmitting=fas fa-spinner fa-spin='attached-files="attachedFiles.length &gt; 0>
-          <div  
-            v-for="(file, index) in attachedFiles=index=attached-file='fas fa-file=file-name="removeAttachedFile(index)"
-              class="remove-file-btn=fas fa-times='mentions-dropdown="showMentions=mentions-header="showMentions = false='close-btn=fas fa-times="mentions-list="user in projectUsers=user.id='mention-item
-            >
-              <img  :src="user.avatar || ' default-avatar.png=user.name=mention-avatar='mention-name=mention-role="emojis-dropdown="showEmojis=emojis-header='showEmojis = false="close-btn=fas fa-times="emojis-grid='emoji in commonEmojis"
-              class="emoji-btn=comments-filters='filter-options="sortOrder=sort-select="newest='oldest=showOnlyUnread = !showOnlyUnread="filter-btn="{ active: showOnlyUnread }'
+    :widget="widgetConfig"
+    :loading="loading"
+    :error="error"
+    @configure="showConfigModal = true"
+    @toggle="toggleWidget"
+    @retry="loadComments"
+  >
+    <div class="comments-widget">
+      <!-- En-tête des commentaires -->
+      <div class="comments-header">
+        <div class="header-left">
+          <h3 class="comments-title">{{ t('widgets.comments.title') }}</h3>
+          <div class="comments-stats">
+            <span class="stat-item">
+              <i class="fas fa-comments mr-1"></i>
+              {{ totalComments }} {{ t('widgets.comments.totalComments') }}
+            </span>
+            <span class="stat-item">
+              <i class="fas fa-clock mr-1"></i>
+              {{ recentComments.length }} {{ t('widgets.comments.recentComments') }}
+            </span>
+          </div>
+        </div>
+        
+        <div class="header-right">
+          <div class="filter-controls">
+            <select v-model="filterType" class="filter-select">
+              <option value="all">{{ t('widgets.comments.allComments') }}</option>
+              <option value="unread">{{ t('widgets.comments.unreadComments') }}</option>
+              <option value="mentions">{{ t('widgets.comments.mentions') }}</option>
+              <option value="my-comments">{{ t('widgets.comments.myComments') }}</option>
+            </select>
+            
+            <select v-model="sortBy" class="filter-select">
+              <option value="newest">{{ t('widgets.comments.newest') }}</option>
+              <option value="oldest">{{ t('widgets.comments.oldest') }}</option>
+              <option value="most-replies">{{ t('widgets.comments.mostReplies') }}</option>
+            </select>
+          </div>
+          
+          <button @click="showAddCommentModal = true" class="add-comment-btn">
+            <i class="fas fa-plus mr-2"></i>
+            {{ t('widgets.comments.addComment') }}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Barre de recherche -->
+      <div class="search-bar">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search search-icon"></i>
+          <input 
+            v-model="searchQuery"
+            type="text"
+            :placeholder="t('widgets.comments.searchComments')"
+            class="search-input"
           >
-            <i class="fas fa-eye=comments-count=comments-list='comment in paginatedComments=comment.id="comment-item"
+          <button 
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="clear-search-btn"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Liste des commentaires -->
+      <div class="comments-list">
+        <div 
+          v-for="comment in filteredComments"
+          :key="comment.id"
+          class="comment-item"
+          :class="{
+            'unread': !comment.is_read,
+            'mention': comment.has_mention,
+            'my-comment': comment.user_id === currentUserId
+          }"
         >
-          <div  class="comment-avatar=comment.user.avatar || ' default-avatar.png comment.user.name='avatar-img=user-status="comment.user.status="comment-content=comment-header='comment-author="author-name=author-role="comment-meta='comment-time=comment-actions="replyToComment(comment)"
-                    class="action-btn=t('widgets.comments.reply='toggleReaction(comment)"
-                    class="action-btn={ active: comment.user_reacted }'
-                    :title class="t('widgets.comments.like=comment.reactions_count &gt; 0>{{ comment.reactions_count }}</div>
-                  </button>
-                  
-                  <div  class="dropdown=canManageComment(comment)'>
-                    <button  
-                      @click="toggleCommentMenu(comment.id)
-                      class(action-btn=fas fa-ellipsis-v='activeCommentMenu === comment.id=""dropdown-menu=editComment(comment)"
-                        class="dropdown-item=fas fa-edit mr-2'></i>
-                        {{ t('common.edit="deleteComment(comment)""
-                        class="dropdown-item text-red-600'
-                      >
-                        <i class="fas fa-trash mr-2"></i>
-                        {{ t('common.delete="comment-body=editingComment?.id === comment.id='edit-comment-form"3"
-                ></textarea>
-                
-                <div  class="edit-actions=saveEditComment save-btn='cancelEditComment=cancel-btn="comment-text class="formatCommentText(comment.content)'></div>
-              
-              <!-- Fichiers attachés -->
-              <div class="comment-attachments=comment.attachments?.length &gt; 0>
-                <div 
-                  v-for="attachment in comment.attachments=attachment.id=attachment-item='downloadAttachment(attachment)"
-                >
-                  <i  class="fas fa-file=attachment-name='attachment-size="comment-replies=comment.replies?.length &gt; 0>
-              <div  
-                v-for="reply in comment.replies=reply.id=reply-item='reply-avatar=reply.user.avatar || ' default-avatar.png="reply.user.name="avatar-img small=reply-content='reply-header="reply-author=reply-time="reply-text class='formatCommentText(reply.content)></div>
-                </div>
+          <!-- En-tête du commentaire -->
+          <div class="comment-header">
+            <div class="comment-author">
+              <img 
+                :src="comment.user?.avatar || '/default-avatar.png'"
+                :alt="comment.user?.name"
+                class="author-avatar"
+              >
+              <div class="author-info">
+                <h5 class="author-name">{{ comment.user?.name || t('widgets.comments.unknownUser') }}</h5>
+                <span class="comment-date">{{ formatCommentDate(comment.created_at) }}</span>
               </div>
             </div>
             
-            <!-- Formulaire de réponse -->
-            <div  class="reply-form=replyingTo?.id === comment.id reply-input-container='replyText=t('widgets.comments.replyPlaceholder="2
-                ></textarea>
-                
-                <div  class="reply-actions=submitReply !replyText.trim()'
-                    class="reply-submit-btn=cancelReply="reply-cancel-btn='filteredComments.length === 0" class="no-comments=fas fa-comments text-gray-400 text-3xl mb-3'></i>
-          <p class="text-gray-500>{{ t('widgets.comments.noComments="text-gray-400 text-sm=comments-pagination='totalPages &gt; 1">
-        <button   
-          @click="currentPage--=currentPage === 1'
-          class(pagination-btn=fas fa-chevron-left=""pagination-info='currentPage++"
-          ::disabled="currentPage === totalPages=pagination-btn=fas fa-chevron-right='showConfigModal=widgetConfig || configOptions=""showConfigModal = false=updateConfig'
-     >
+            <div class="comment-actions">
+              <button 
+                v-if="!comment.is_read"
+                @click="markAsRead(comment)"
+                class="action-btn"
+                :title="t('widgets.comments.markAsRead')"
+              >
+                <i class="fas fa-eye"></i>
+              </button>
+              
+              <button 
+                @click="replyToComment(comment)"
+                class="action-btn"
+                :title="t('widgets.comments.reply')"
+              >
+                <i class="fas fa-reply"></i>
+              </button>
+              
+              <button 
+                v-if="canEditComment(comment)"
+                @click="editComment(comment)"
+                class="action-btn"
+                :title="t('widgets.comments.edit')"
+              >
+                <i class="fas fa-edit"></i>
+              </button>
+              
+              <button 
+                v-if="canDeleteComment(comment)"
+                @click="deleteComment(comment)"
+                class="action-btn delete"
+                :title="t('widgets.comments.delete')"
+              >
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Contenu du commentaire -->
+          <div class="comment-content">
+            <div v-if="comment.parent_id" class="reply-indicator">
+              <i class="fas fa-reply mr-1"></i>
+              {{ t('widgets.comments.replyTo') }} {{ comment.parent?.user?.name }}
+            </div>
+            
+            <div class="comment-text" v-html="formatCommentText(comment.content)"></div>
+            
+            <div v-if="comment.attachments?.length" class="comment-attachments">
+              <div 
+                v-for="attachment in comment.attachments"
+                :key="attachment.id"
+                class="attachment-item"
+              >
+                <i :class="getAttachmentIcon(attachment.type)"></i>
+                <a :href="attachment.url" target="_blank" class="attachment-link">
+                  {{ attachment.name }}
+                </a>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Métadonnées du commentaire -->
+          <div class="comment-meta">
+            <div class="meta-left">
+              <span v-if="comment.task_id" class="meta-item">
+                <i class="fas fa-tasks mr-1"></i>
+                {{ t('widgets.comments.relatedToTask') }}
+              </span>
+              
+              <span v-if="comment.has_mention" class="meta-item mention">
+                <i class="fas fa-at mr-1"></i>
+                {{ t('widgets.comments.mentionsYou') }}
+              </span>
+              
+              <span v-if="comment.priority" class="meta-item priority" :class="`priority-${comment.priority}`">
+                <i class="fas fa-exclamation-circle mr-1"></i>
+                {{ t(`widgets.comments.priority.${comment.priority}`) }}
+              </span>
+            </div>
+            
+            <div class="meta-right">
+              <button 
+                @click="toggleReplies(comment)"
+                class="replies-toggle"
+                v-if="comment.replies_count > 0"
+              >
+                <i class="fas fa-comments mr-1"></i>
+                {{ comment.replies_count }} {{ t('widgets.comments.replies') }}
+                <i :class="comment.showReplies ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" class="ml-1"></i>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Réponses -->
+          <div v-if="comment.showReplies && comment.replies?.length" class="comment-replies">
+            <div 
+              v-for="reply in comment.replies"
+              :key="reply.id"
+              class="reply-item"
+            >
+              <div class="reply-header">
+                <img 
+                  :src="reply.user?.avatar || '/default-avatar.png'"
+                  :alt="reply.user?.name"
+                  class="reply-avatar"
+                >
+                <div class="reply-info">
+                  <span class="reply-author">{{ reply.user?.name }}</span>
+                  <span class="reply-date">{{ formatCommentDate(reply.created_at) }}</span>
+                </div>
+              </div>
+              
+              <div class="reply-content" v-html="formatCommentText(reply.content)"></div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Message si aucun commentaire -->
+        <div v-if="filteredComments.length === 0" class="no-comments">
+          <i class="fas fa-comments text-gray-400 text-4xl mb-3"></i>
+          <h5 class="text-gray-600 mb-2">{{ t('widgets.comments.noComments') }}</h5>
+          <p class="text-gray-500 text-sm">{{ t('widgets.comments.noCommentsDescription') }}</p>
+          <button @click="showAddCommentModal = true" class="add-first-comment-btn">
+            <i class="fas fa-plus mr-2"></i>
+            {{ t('widgets.comments.addFirstComment') }}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="pagination">
+        <button 
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+          class="pagination-btn"
+        >
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <span class="pagination-info">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        
+        <button 
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+          class="pagination-btn"
+        >
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Modal d'ajout/édition de commentaire -->
+    <CommentModal 
+      v-if="showAddCommentModal || showEditCommentModal"
+      :comment="selectedComment"
+      :is-editing="showEditCommentModal"
+      :is-reply="isReply"
+      :parent-comment="parentComment"
+      @close="closeCommentModal"
+      @save="saveComment"
+    />
+    
+    <!-- Modal de configuration -->
+    <WidgetConfigModal 
+      v-if="showConfigModal"
+      :widget="widgetConfig"
+      :options="configOptions"
+      @close="showConfigModal = false"
+      @save="updateConfig"
+    />
   </BaseWidget>
 </template>
 
-<script>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
-import BaseWidget from './BaseWidget.vue'
-import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
-import projectManagementService from '@/services/projectManagementService'
+<script setup lang="ts">
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
+import BaseWidget from '@/components/widgets/shared/components/BaseWidget.vue'
+import WidgetConfigModal from '@/components/widgets/shared/components/WidgetConfigModal.vue'
+import CommentCreateModal from './components/CommentCreateModal.vue'
+import commentsService from '@/services/commentsService'
+import type { Comment, CommentType } from './types'
 
-export default {
-  name: 'CommentsWidget',
-  components: {
-    BaseWidget,
-    WidgetConfigModal
-  },
-  props: {
-    projectId: {
-      type: [String, Number],
-      required: true
-    },
-    widgetData: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  emits: ['update-widget'],
-  setup(props, { emit }) {
-    const { success, error: showError } = useNotifications()
-    const { user: currentUser } = useAuth()
-    const { t } = useTranslation()
+// Props
+interface Props {
+  projectId: string
+  widgetData?: any
+  widget?: any
+}
+
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  'widget-updated': [widget: any]
+}>()
+
+// Composables
+const { success, error: showError } = useNotifications()
+const { t } = useTranslation()
+const { user } = useAuth()
     
     // État réactif
     const loading = ref(false)
     const error = ref(null)
     const comments = ref([])
-    const projectUsers = ref([])
-    const newComment = ref('')
-    const attachedFiles = ref([])
-    const isSubmitting = ref(false)
-    const showMentions = ref(false)
-    const showEmojis = ref(false)
-    const showOnlyUnread = ref(false)
-    const sortOrder = ref('newest')
+    const filterType = ref('all')
+    const sortBy = ref('newest')
+    const searchQuery = ref('')
     const currentPage = ref(1)
-    const commentsPerPage = ref(10)
-    const activeCommentMenu = ref(null)
-    const editingComment = ref(null)
-    const editCommentText = ref('')
-    const replyingTo = ref(null)
-    const replyText = ref('')
+    const itemsPerPage = ref(10)
+    const showAddCommentModal = ref(false)
+    const showEditCommentModal = ref(false)
     const showConfigModal = ref(false)
+    const selectedComment = ref(null)
+    const parentComment = ref(null)
+    const isReply = ref(false)
     
     // Configuration du widget
     const widgetConfig = ref({
@@ -119,41 +320,23 @@ export default {
       name: 'Commentaires',
       icon: 'fas fa-comments',
       titleKey: 'widgets.comments.title',
-      isEnabled: true,
-      canAddComments: true,
-      allowAttachments: true,
-      allowMentions: true,
-      allowEmojis: true,
+      isEnabled: props.widget?.is_enabled ?? true,
+      showUnreadOnly: false,
       autoRefresh: true,
-      refreshInterval: 30000,
+      refreshInterval: 30000, // 30 secondes
+      showAvatars: true,
+      showAttachments: true,
+      allowMentions: true,
       ...props.widgetData
     })
     
     // Options de configuration
     const configOptions = ref([
       {
-        key: 'canAddComments',
+        key: 'showUnreadOnly',
         type: 'boolean',
-        label: 'Permettre l\'ajout de commentaires',
-        default: true
-      },
-      {
-        key: 'allowAttachments',
-        type: 'boolean',
-        label: 'Autoriser les pièces jointes',
-        default: true
-      },
-      {
-        key: 'allowMentions',
-        type: 'boolean',
-        label: 'Autoriser les mentions',
-        default: true
-      },
-      {
-        key: 'allowEmojis',
-        type: 'boolean',
-        label: 'Autoriser les emojis',
-        default: true
+        label: 'Afficher uniquement les non lus',
+        default: false
       },
       {
         key: 'autoRefresh',
@@ -165,46 +348,114 @@ export default {
         key: 'refreshInterval',
         type: 'number',
         label: 'Intervalle d\'actualisation (ms)',
-        default: 30000,
         min: 5000,
-        max: 300000
+        max: 300000,
+        step: 5000,
+        default: 30000
+      },
+      {
+        key: 'showAvatars',
+        type: 'boolean',
+        label: 'Afficher les avatars',
+        default: true
+      },
+      {
+        key: 'showAttachments',
+        type: 'boolean',
+        label: 'Afficher les pièces jointes',
+        default: true
+      },
+      {
+        key: 'allowMentions',
+        type: 'boolean',
+        label: 'Permettre les mentions',
+        default: true
       }
     ])
     
-    // Emojis communs
-    const commonEmojis = ref([
-      '😀', '😃', '😄', '😁', '😊', '😍', '🤔', '😮', '😢', '😡',
-      '👍', '👎', '👌', '✌️', '🤝', '👏', '🙏', '💪', '🎉', '🔥'
-    ])
-    
     // Propriétés calculées
-    const canAddComments = computed(() => widgetConfig.value.canAddComments)
+    const currentUserId = computed(() => user.value?.id)
+    
+    const totalComments = computed(() => comments.value.length)
+    
+    const recentComments = computed(() => {
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      return comments.value.filter(comment => 
+        new Date(comment.created_at) > oneDayAgo
+      )
+    })
     
     const filteredComments = computed(() => {
       let filtered = [...comments.value]
       
-      if (showOnlyUnread.value) {
-        filtered = filtered.filter(comment => !comment.is_read)
+      // Filtrer par type
+      switch (filterType.value) {
+        case 'unread':
+          filtered = filtered.filter(comment => !comment.is_read)
+          break
+        case 'mentions':
+          filtered = filtered.filter(comment => comment.has_mention)
+          break
+        case 'my-comments':
+          filtered = filtered.filter(comment => comment.user_id === currentUserId.value)
+          break
       }
       
-      // Tri
-      filtered.sort((a, b) => {
-        const dateA = new Date(a.created_at)
-        const dateB = new Date(b.created_at)
-        return sortOrder.value === 'newest' ? dateB - dateA : dateA - dateB
-      })
+      // Filtrer par recherche
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        filtered = filtered.filter(comment => 
+          comment.content.toLowerCase().includes(query) ||
+          comment.user?.name.toLowerCase().includes(query)
+        )
+      }
       
-      return filtered
+      // Trier
+      switch (sortBy.value) {
+        case 'oldest':
+          filtered.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+          break
+        case 'most-replies':
+          filtered.sort((a, b) => (b.replies_count || 0) - (a.replies_count || 0))
+          break
+        default: // newest
+          filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      }
+      
+      // Pagination
+      const start = (currentPage.value - 1) * itemsPerPage.value
+      const end = start + itemsPerPage.value
+      
+      return filtered.slice(start, end)
     })
     
     const totalPages = computed(() => {
-      return Math.ceil(filteredComments.value.length / commentsPerPage.value)
-    })
-    
-    const paginatedComments = computed(() => {
-      const start = (currentPage.value - 1) * commentsPerPage.value
-      const end = start + commentsPerPage.value
-      return filteredComments.value.slice(start, end)
+      const totalFiltered = comments.value.filter(comment => {
+        // Appliquer les mêmes filtres que filteredComments mais sans pagination
+        let include = true
+        
+        switch (filterType.value) {
+          case 'unread':
+            include = !comment.is_read
+            break
+          case 'mentions':
+            include = comment.has_mention
+            break
+          case 'my-comments':
+            include = comment.user_id === currentUserId.value
+            break
+        }
+        
+        if (searchQuery.value && include) {
+          const query = searchQuery.value.toLowerCase()
+          include = comment.content.toLowerCase().includes(query) ||
+                   comment.user?.name.toLowerCase().includes(query)
+        }
+        
+        return include
+      }).length
+      
+      return Math.ceil(totalFiltered / itemsPerPage.value)
     })
     
     // Méthodes
@@ -213,57 +464,11 @@ export default {
       error.value = null
       
       try {
-        // Simuler le chargement des commentaires
-        const result = await projectManagementService.getProjectComments?.(props.projectId) || {
-          success: true,
-          data: [
-            {
-              id: 1,
-              content: 'Excellent travail sur cette fonctionnalité ! 👍',
-              user_id: 1,
-              user: {
-                id: 1,
-                name: 'Marie Dubois',
-                role: 'Chef de projet',
-                avatar: null,
-                status: 'online'
-              },
-              created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-              is_read: true,
-              reactions_count: 2,
-              user_reacted: false,
-              attachments: [],
-              replies: [
-                {
-                  id: 2,
-                  content: 'Merci ! J\'ai hâte de voir la suite.',
-                  user: {
-                    id: 2,
-                    name: 'Jean Martin',
-                    avatar: null
-                  },
-                  created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-                }
-              ]
-            }
-          ]
-        }
-        
+        const result = await commentsService.getProjectComments(props.projectId)
         if (result.success) {
           comments.value = result.data
-        }
-        
-        // Charger les utilisateurs du projet
-        const usersResult = await projectManagementService.getProjectMembers?.(props.projectId) || {
-          success: true,
-          data: [
-            { id: 1, name: 'Marie Dubois', role: 'Chef de projet', avatar: null },
-            { id: 2, name: 'Jean Martin', role: 'Développeur', avatar: null }
-          ]
-        }
-        
-        if (usersResult.success) {
-          projectUsers.value = usersResult.data
+        } else {
+          error.value = result.error
         }
       } catch (err) {
         error.value = t('errors.loadingFailed')
@@ -272,232 +477,187 @@ export default {
       }
     }
     
-    const addComment = async () => {
-      if (!newComment.value.trim() || isSubmitting.value) return
-      
-      isSubmitting.value = true
-      
-      try {
-        const commentData = {
-          content: newComment.value,
-          project_id: props.projectId,
-          attachments: attachedFiles.value
-        }
-        
-        // Simuler l'ajout du commentaire
-        const newCommentObj = {
-          id: Date.now(),
-          content: newComment.value,
-          user_id: currentUser.value.id,
-          user: {
-            id: currentUser.value.id,
-            name: currentUser.value.name,
-            role: currentUser.value.role,
-            avatar: currentUser.value.avatar,
-            status: 'online'
-          },
-          created_at: new Date().toISOString(),
-          is_read: true,
-          reactions_count: 0,
-          user_reacted: false,
-          attachments: [...attachedFiles.value],
-          replies: []
-        }
-        
-        comments.value.unshift(newCommentObj)
-        newComment.value = ''
-        attachedFiles.value = []
-        showMentions.value = false
-        showEmojis.value = false
-        
-        success(t('widgets.comments.commentAdded'))
-      } catch (err) {
-        showError(t('widgets.comments.addFailed'))
-      } finally {
-        isSubmitting.value = false
+    const toggleWidget = () => {
+      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
+      const updatedWidget = {
+        ...widgetConfig.value,
+        is_enabled: widgetConfig.value.isEnabled
       }
+      emit('widget-updated', updatedWidget)
     }
     
-    const handleFileUpload = (event) => {
-      const files = Array.from(event.target.files)
-      attachedFiles.value.push(...files)
-      event.target.value = ''
-    }
-    
-    const removeAttachedFile = (index) => {
-      attachedFiles.value.splice(index, 1)
-    }
-    
-    const toggleMentions = () => {
-      showMentions.value = !showMentions.value
-      showEmojis.value = false
-    }
-    
-    const toggleEmojis = () => {
-      showEmojis.value = !showEmojis.value
-      showMentions.value = false
-    }
-    
-    const addMention = (user) => {
-      newComment.value += `@${user.name} `
-      showMentions.value = false
-    }
-    
-    const addEmoji = (emoji) => {
-      newComment.value += emoji
-      showEmojis.value = false
-    }
-    
-    const formatCommentTime = (dateString) => {
+    const formatCommentDate = (dateString) => {
       const date = new Date(dateString)
       const now = new Date()
-      const diffMs = now - date
-      const diffMins = Math.floor(diffMs / 60000)
-      const diffHours = Math.floor(diffMs / 3600000)
-      const diffDays = Math.floor(diffMs / 86400000)
+      const diffInHours = (now - date) / (1000 * 60 * 60)
       
-      if (diffMins < 1) return t('widgets.comments.justNow')
-      if (diffMins < 60) return t('widgets.comments.minutesAgo', { count: diffMins })
-      if (diffHours < 24) return t('widgets.comments.hoursAgo', { count: diffHours })
-      if (diffDays < 7) return t('widgets.comments.daysAgo', { count: diffDays })
-      
-      return date.toLocaleDateString('fr-FR')
+      if (diffInHours < 1) {
+        const diffInMinutes = Math.floor((now - date) / (1000 * 60))
+        return t('widgets.comments.timeAgo.minutes', { count: diffInMinutes })
+      } else if (diffInHours < 24) {
+        return t('widgets.comments.timeAgo.hours', { count: Math.floor(diffInHours) })
+      } else if (diffInHours < 168) { // 7 jours
+        const diffInDays = Math.floor(diffInHours / 24)
+        return t('widgets.comments.timeAgo.days', { count: diffInDays })
+      } else {
+        return date.toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric'
+        })
+      }
     }
     
     const formatCommentText = (text) => {
-      // Remplacer les mentions par des liens
-      let formatted = text.replace(/@([\w\s]+)/g, '<span class class="mention>@$1</span>')
+      // Remplacer les mentions @username par des liens
+      if (widgetConfig.value.allowMentions) {
+        text = text.replace(/@([\w\-\.]+)/g, '<span class="mention">@$1</span>')
+      }
       
       // Remplacer les URLs par des liens
-      formatted = formatted.replace(
+      text = text.replace(
         /(https?:\/\/[^\s]+)/g,
-        '<a  href="$1' target="_blank=comment-link>$1</a>'
+        '<a href="$1" target="_blank" class="comment-link">$1</a>'
       )
       
-      return formatted
-    }
-    
-    const formatFileSize = (bytes) => {
-      if (bytes === 0) return '0 B'
-      const k = 1024
-      const sizes = ['B', 'KB', 'MB', 'GB']
-      const i = Math.floor(Math.log(bytes) / Math.log(k))
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-    }
-    
-    const canManageComment = (comment) => {
-      return comment.user_id === currentUser.value.id || currentUser.value.role === 'admin'
-    }
-    
-    const toggleCommentMenu = (commentId) => {
-      activeCommentMenu.value = activeCommentMenu.value === commentId ? null : commentId
-    }
-    
-    const editComment = (comment) => {
-      editingComment.value = comment
-      editCommentText.value = comment.content
-      activeCommentMenu.value = null
-    }
-    
-    const saveEditComment = async () => {
-      if (!editCommentText.value.trim()) return
+      // Remplacer les sauts de ligne par des <br>
+      text = text.replace(/\n/g, '<br>')
       
+      return text
+    }
+    
+    const getAttachmentIcon = (type) => {
+      const icons = {
+        image: 'fas fa-image',
+        document: 'fas fa-file-alt',
+        pdf: 'fas fa-file-pdf',
+        video: 'fas fa-video',
+        audio: 'fas fa-music',
+        archive: 'fas fa-file-archive'
+      }
+      return icons[type] || 'fas fa-file'
+    }
+    
+    const canEditComment = (comment) => {
+      return comment.user_id === currentUserId.value || user.value?.role === 'admin'
+    }
+    
+    const canDeleteComment = (comment) => {
+      return comment.user_id === currentUserId.value || user.value?.role === 'admin'
+    }
+    
+    const markAsRead = async (comment) => {
       try {
-        // Simuler la mise à jour
-        const index = comments.value.findIndex(c => c.id === editingComment.value.id)
-        if (index !== -1) {
-          comments.value[index].content = editCommentText.value
-          comments.value[index].updated_at = new Date().toISOString()
+        const result = await commentsService.markAsRead(comment.id)
+        if (result.success) {
+          comment.is_read = true
         }
-        
-        editingComment.value = null
-        editCommentText.value = ''
-        success(t('widgets.comments.commentUpdated'))
       } catch (err) {
-        showError(t('widgets.comments.updateFailed'))
+        showError(t('widgets.comments.markAsReadError'))
       }
     }
     
-    const cancelEditComment = () => {
-      editingComment.value = null
-      editCommentText.value = ''
+    const replyToComment = (comment) => {
+      parentComment.value = comment
+      isReply.value = true
+      selectedComment.value = null
+      showAddCommentModal.value = true
+    }
+    
+    const editComment = (comment) => {
+      selectedComment.value = { ...comment }
+      isReply.value = false
+      parentComment.value = null
+      showEditCommentModal.value = true
     }
     
     const deleteComment = async (comment) => {
       if (!confirm(t('widgets.comments.confirmDelete'))) return
       
       try {
-        comments.value = comments.value.filter(c => c.id !== comment.id)
-        activeCommentMenu.value = null
-        success(t('widgets.comments.commentDeleted'))
-      } catch (err) {
-        showError(t('widgets.comments.deleteFailed'))
-      }
-    }
-    
-    const toggleReaction = async (comment) => {
-      try {
-        if (comment.user_reacted) {
-          comment.reactions_count--
-          comment.user_reacted = false
+        const result = await commentsService.deleteComment(comment.id)
+        if (result.success) {
+          comments.value = comments.value.filter(c => c.id !== comment.id)
+          success(t('widgets.comments.commentDeleted'))
         } else {
-          comment.reactions_count++
-          comment.user_reacted = true
+          showError(result.error)
         }
       } catch (err) {
-        showError(t('widgets.comments.reactionFailed'))
+        showError(t('widgets.comments.deleteError'))
       }
     }
     
-    const replyToComment = (comment) => {
-      replyingTo.value = comment
-      replyText.value = ''
-    }
-    
-    const submitReply = async () => {
-      if (!replyText.value.trim()) return
+    const toggleReplies = async (comment) => {
+      if (!comment.showReplies && !comment.replies) {
+        // Charger les réponses
+        try {
+          const result = await commentsService.getCommentReplies(comment.id)
+          if (result.success) {
+            comment.replies = result.data
+          }
+        } catch (err) {
+          showError(t('widgets.comments.loadRepliesError'))
+          return
+        }
+      }
       
+      comment.showReplies = !comment.showReplies
+    }
+    
+    const saveComment = async (commentData) => {
       try {
-        const reply = {
-          id: Date.now(),
-          content: replyText.value,
-          user: {
-            id: currentUser.value.id,
-            name: currentUser.value.name,
-            avatar: currentUser.value.avatar
-          },
-          created_at: new Date().toISOString()
+        let result
+        
+        if (showEditCommentModal.value) {
+          result = await commentsService.updateComment(selectedComment.value.id, commentData)
+        } else {
+          const payload = {
+            ...commentData,
+            project_id: props.projectId,
+            parent_id: isReply.value ? parentComment.value.id : null
+          }
+          result = await commentsService.createComment(payload)
         }
         
-        if (!replyingTo.value.replies) {
-          replyingTo.value.replies = []
+        if (result.success) {
+          if (showEditCommentModal.value) {
+            const index = comments.value.findIndex(c => c.id === selectedComment.value.id)
+            if (index !== -1) {
+              comments.value[index] = result.data
+            }
+            success(t('widgets.comments.commentUpdated'))
+          } else {
+            if (isReply.value) {
+              // Ajouter la réponse au commentaire parent
+              const parentIndex = comments.value.findIndex(c => c.id === parentComment.value.id)
+              if (parentIndex !== -1) {
+                if (!comments.value[parentIndex].replies) {
+                  comments.value[parentIndex].replies = []
+                }
+                comments.value[parentIndex].replies.push(result.data)
+                comments.value[parentIndex].replies_count = (comments.value[parentIndex].replies_count || 0) + 1
+              }
+            } else {
+              comments.value.unshift(result.data)
+            }
+            success(t('widgets.comments.commentCreated'))
+          }
+          
+          closeCommentModal()
+        } else {
+          showError(result.error)
         }
-        replyingTo.value.replies.push(reply)
-        
-        replyingTo.value = null
-        replyText.value = ''
-        success(t('widgets.comments.replyAdded'))
       } catch (err) {
-        showError(t('widgets.comments.replyFailed'))
+        showError(t('widgets.comments.saveError'))
       }
     }
     
-    const cancelReply = () => {
-      replyingTo.value = null
-      replyText.value = ''
-    }
-    
-    const downloadAttachment = (attachment) => {
-      // Simuler le téléchargement
-      const link = document.createElement('a')
-      link.href = attachment.url
-      link.download = attachment.name
-      link.click()
-    }
-    
-    const toggleWidget = () => {
-      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
-      emit('update-widget', widgetConfig.value)
+    const closeCommentModal = () => {
+      showAddCommentModal.value = false
+      showEditCommentModal.value = false
+      selectedComment.value = null
+      parentComment.value = null
+      isReply.value = false
     }
     
     const updateConfig = (newConfig) => {
@@ -506,81 +666,50 @@ export default {
       showConfigModal.value = false
     }
     
-    // Watchers
-    watch(() => props.projectId, loadComments, { immediate: true })
-    
     // Auto-refresh
-    let refreshInterval
-    watch(() => widgetConfig.value.autoRefresh, (enabled) => {
-      if (refreshInterval) {
-        clearInterval(refreshInterval)
-      }
-      
-      if (enabled) {
+    let refreshInterval = null
+    
+    const startAutoRefresh = () => {
+      if (widgetConfig.value.autoRefresh && widgetConfig.value.refreshInterval) {
         refreshInterval = setInterval(loadComments, widgetConfig.value.refreshInterval)
       }
-    }, { immediate: true })
+    }
     
+    const stopAutoRefresh = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+        refreshInterval = null
+      }
+    }
+    
+    // Lifecycle
     onMounted(() => {
       loadComments()
+      startAutoRefresh()
     })
     
-    return {
-      loading,
-      error,
-      comments,
-      projectUsers,
-      newComment,
-      attachedFiles,
-      isSubmitting,
-      showMentions,
-      showEmojis,
-      showOnlyUnread,
-      sortOrder,
-      currentPage,
-      commentsPerPage,
-      activeCommentMenu,
-      editingComment,
-      editCommentText,
-      replyingTo,
-      replyText,
-      showConfigModal,
-      widgetConfig,
-      configOptions,
-      commonEmojis,
-      canAddComments,
-      filteredComments,
-      totalPages,
-      paginatedComments,
-      currentUser,
-      loadComments,
-      addComment,
-      handleFileUpload,
-      removeAttachedFile,
-      toggleMentions,
-      toggleEmojis,
-      addMention,
-      addEmoji,
-      formatCommentTime,
-      formatCommentText,
-      formatFileSize,
-      canManageComment,
-      toggleCommentMenu,
-      editComment,
-      saveEditComment,
-      cancelEditComment,
-      deleteComment,
-      toggleReaction,
-      replyToComment,
-      submitReply,
-      cancelReply,
-      downloadAttachment,
-      toggleWidget,
-      updateConfig,
-      t
-    }
-  }
-}
+    // Watchers
+    watch(() => props.projectId, loadComments)
+    
+    watch(() => widgetConfig.value.autoRefresh, (newValue) => {
+      if (newValue) {
+        startAutoRefresh()
+      } else {
+        stopAutoRefresh()
+      }
+    })
+    
+    watch(() => widgetConfig.value.refreshInterval, () => {
+      stopAutoRefresh()
+      startAutoRefresh()
+    })
+    
+    // Cleanup
+    onUnmounted(() => {
+      stopAutoRefresh()
+    })
+    
+
 </script>
 
 <style scoped>
@@ -588,134 +717,60 @@ export default {
   @apply space-y-4;
 }
 
-.add-comment-form {
-  @apply space-y-3;
-}
-
-.comment-input-container {
-  @apply flex space-x-3;
-}
-
-.user-avatar {
-  @apply flex-shrink-0;
-}
-
-.avatar-img {
-  @apply w-10 h-10 rounded-full object-cover;
-}
-
-.avatar-img.small {
-  @apply w-8 h-8;
-}
-
-.comment-input-wrapper {
-  @apply flex-1 space-y-2;
-}
-
-.comment-input {
-  @apply w-full p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
-}
-
-.input-actions {
+.comments-header {
   @apply flex items-center justify-between;
 }
 
-.input-options {
-  @apply flex items-center space-x-2;
+.header-left {
+  @apply flex flex-col space-y-2;
 }
 
-.option-btn {
-  @apply p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors;
+.comments-title {
+  @apply text-xl font-bold text-gray-900;
 }
 
-.option-btn.active {
-  @apply text-blue-600 bg-blue-50;
+.comments-stats {
+  @apply flex items-center space-x-4 text-sm text-gray-600;
 }
 
-.submit-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2;
+.stat-item {
+  @apply flex items-center;
 }
 
-.attached-files {
-  @apply flex flex-wrap gap-2;
-}
-
-.attached-file {
-  @apply flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-md text-sm;
-}
-
-.file-name {
-  @apply text-gray-700;
-}
-
-.remove-file-btn {
-  @apply text-gray-500 hover:text-red-600;
-}
-
-.mentions-dropdown,
-.emojis-dropdown {
-  @apply absolute z-10 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto;
-}
-
-.mentions-header,
-.emojis-header {
-  @apply flex items-center justify-between p-3 border-b border-gray-200;
-}
-
-.close-btn {
-  @apply text-gray-500 hover:text-gray-700;
-}
-
-.mentions-list {
-  @apply p-2;
-}
-
-.mention-item {
-  @apply flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md cursor-pointer;
-}
-
-.mention-avatar {
-  @apply w-8 h-8 rounded-full object-cover;
-}
-
-.mention-name {
-  @apply font-medium text-gray-900;
-}
-
-.mention-role {
-  @apply text-sm text-gray-500;
-}
-
-.emojis-grid {
-  @apply grid grid-cols-5 gap-1 p-2;
-}
-
-.emoji-btn {
-  @apply p-2 hover:bg-gray-100 rounded-md text-lg;
-}
-
-.comments-filters {
-  @apply flex items-center justify-between py-3 border-b border-gray-200;
-}
-
-.filter-options {
+.header-right {
   @apply flex items-center space-x-3;
 }
 
-.sort-select {
-  @apply px-3 py-2 border border-gray-300 rounded-md text-sm;
+.filter-controls {
+  @apply flex items-center space-x-2;
 }
 
-.filter-btn {
-  @apply px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 flex items-center space-x-2;
+.filter-select {
+  @apply px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent;
 }
 
-.filter-btn.active {
-  @apply bg-blue-50 border-blue-300 text-blue-700;
+.add-comment-btn {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center;
 }
 
-.comments-count {
-  @apply text-sm text-gray-500;
+.search-bar {
+  @apply relative;
+}
+
+.search-input-wrapper {
+  @apply relative;
+}
+
+.search-icon {
+  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400;
+}
+
+.search-input {
+  @apply w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.clear-search-btn {
+  @apply absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600;
 }
 
 .comments-list {
@@ -723,111 +778,63 @@ export default {
 }
 
 .comment-item {
-  @apply flex space-x-3 p-3 rounded-lg transition-colors;
+  @apply bg-white border rounded-lg p-4 transition-shadow;
 }
 
 .comment-item.unread {
-  @apply bg-blue-50 border-l-4 border-blue-500;
+  @apply border-blue-200 bg-blue-50;
 }
 
-.comment-item.own-comment {
-  @apply bg-green-50;
+.comment-item.mention {
+  @apply border-yellow-200 bg-yellow-50;
 }
 
-.comment-avatar {
-  @apply relative flex-shrink-0;
-}
-
-.user-status {
-  @apply absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white;
-}
-
-.user-status.online {
-  @apply bg-green-500;
-}
-
-.user-status.away {
-  @apply bg-yellow-500;
-}
-
-.user-status.offline {
-  @apply bg-gray-400;
-}
-
-.comment-content {
-  @apply flex-1 space-y-2;
+.comment-item.my-comment {
+  @apply border-green-200 bg-green-50;
 }
 
 .comment-header {
-  @apply flex items-start justify-between;
+  @apply flex items-start justify-between mb-3;
 }
 
 .comment-author {
-  @apply flex items-center space-x-2;
+  @apply flex items-start space-x-3;
+}
+
+.author-avatar {
+  @apply w-8 h-8 rounded-full object-cover;
+}
+
+.author-info {
+  @apply flex flex-col;
 }
 
 .author-name {
   @apply font-medium text-gray-900;
 }
 
-.author-role {
-  @apply text-sm text-gray-500;
-}
-
-.comment-meta {
-  @apply flex items-center space-x-2;
-}
-
-.comment-time {
+.comment-date {
   @apply text-sm text-gray-500;
 }
 
 .comment-actions {
-  @apply flex items-center space-x-1;
-}
-
-.action-btn {
-  @apply p-1 text-gray-500 hover:text-gray-700 rounded-md transition-colors flex items-center space-x-1;
-}
-
-.action-btn.active {
-  @apply text-red-500;
-}
-
-.dropdown {
-  @apply relative;
-}
-
-.dropdown-menu {
-  @apply absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px];
-}
-
-.dropdown-item {
-  @apply w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center;
-}
-
-.comment-body {
-  @apply space-y-2;
-}
-
-.edit-comment-form {
-  @apply space-y-2;
-}
-
-.edit-input {
-  @apply w-full p-2 border border-gray-300 rounded-md resize-none;
-}
-
-.edit-actions {
   @apply flex items-center space-x-2;
 }
 
-.save-btn {
-  @apply px-3 py-1 bg-blue-600 text-white rounded-md text-sm;
+.action-btn {
+  @apply p-2 text-gray-400 hover:text-gray-600 transition-colors;
 }
 
-.cancel-btn {
-  @apply px-3 py-1 bg-gray-300 text-gray-700 rounded-md text-sm;
+.action-btn.delete {
+  @apply hover:text-red-600;
+}
+
+.comment-content {
+  @apply mb-3;
+}
+
+.reply-indicator {
+  @apply text-sm text-gray-500 mb-2 flex items-center;
 }
 
 .comment-text {
@@ -835,34 +842,74 @@ export default {
 }
 
 .comment-attachments {
-  @apply space-y-2;
+  @apply mt-3 space-y-2;
 }
 
 .attachment-item {
-  @apply flex items-center space-x-2 p-2 bg-gray-50 rounded-md cursor-pointer hover:bg-gray-100;
+  @apply flex items-center space-x-2 text-sm;
 }
 
-.attachment-name {
-  @apply flex-1 text-sm text-gray-700;
+.attachment-link {
+  @apply text-blue-600 hover:text-blue-800 underline;
 }
 
-.attachment-size {
-  @apply text-xs text-gray-500;
+.comment-meta {
+  @apply flex items-center justify-between text-sm;
+}
+
+.meta-left {
+  @apply flex items-center space-x-3;
+}
+
+.meta-item {
+  @apply flex items-center text-gray-500;
+}
+
+.meta-item.mention {
+  @apply text-yellow-600;
+}
+
+.meta-item.priority {
+  @apply font-medium;
+}
+
+.priority-high {
+  @apply text-red-600;
+}
+
+.priority-medium {
+  @apply text-yellow-600;
+}
+
+.priority-low {
+  @apply text-green-600;
+}
+
+.meta-right {
+  @apply flex items-center;
+}
+
+.replies-toggle {
+  @apply text-blue-600 hover:text-blue-800 flex items-center transition-colors;
 }
 
 .comment-replies {
-  @apply ml-4 space-y-3 border-l-2 border-gray-200 pl-4;
+  @apply mt-4 pl-6 border-l-2 border-gray-200 space-y-3;
 }
 
 .reply-item {
-  @apply flex space-x-2;
-}
-
-.reply-content {
-  @apply flex-1;
+  @apply bg-gray-50 rounded-lg p-3;
 }
 
 .reply-header {
+  @apply flex items-center space-x-2 mb-2;
+}
+
+.reply-avatar {
+  @apply w-6 h-6 rounded-full object-cover;
+}
+
+.reply-info {
   @apply flex items-center space-x-2;
 }
 
@@ -870,60 +917,40 @@ export default {
   @apply font-medium text-gray-900 text-sm;
 }
 
-.reply-time {
+.reply-date {
   @apply text-xs text-gray-500;
 }
 
-.reply-text {
-  @apply text-sm text-gray-700;
-}
-
-.reply-form {
-  @apply ml-4 mt-2;
-}
-
-.reply-input-container {
-  @apply space-y-2;
-}
-
-.reply-input {
-  @apply w-full p-2 border border-gray-300 rounded-md resize-none text-sm;
-}
-
-.reply-actions {
-  @apply flex items-center space-x-2;
-}
-
-.reply-submit-btn {
-  @apply px-3 py-1 bg-blue-600 text-white rounded-md text-sm;
-}
-
-.reply-cancel-btn {
-  @apply px-3 py-1 bg-gray-300 text-gray-700 rounded-md text-sm;
+.reply-content {
+  @apply text-sm text-gray-800;
 }
 
 .no-comments {
   @apply text-center py-8;
 }
 
-.comments-pagination {
+.add-first-comment-btn {
+  @apply mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center mx-auto;
+}
+
+.pagination {
   @apply flex items-center justify-center space-x-4 pt-4 border-t border-gray-200;
 }
 
 .pagination-btn {
-  @apply p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
 }
 
 .pagination-info {
   @apply text-sm text-gray-600;
 }
 
-/* Styles pour les mentions et liens */
+/* Styles pour le contenu formaté */
 :deep(.mention) {
-  @apply text-blue-600 font-medium;
+  @apply bg-blue-100 text-blue-800 px-1 rounded font-medium;
 }
 
 :deep(.comment-link) {
-  @apply text-blue-600 underline hover:text-blue-800;
+  @apply text-blue-600 hover:text-blue-800 underline;
 }
 </style>

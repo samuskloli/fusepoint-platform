@@ -4,6 +4,23 @@ export default {
   "progressUpdated": "Progression mise à jour avec succès",
   "progressUpdateFailed": "Échec de la mise à jour de la progression",
   "projectUpdated": "Projet mis à jour avec succès",
+  "progressDetails": "Détails de progression",
+  "status": {
+    "planning": "Planification",
+    "in_progress": "En cours",
+    "en_cours": "En cours",
+    "review": "En révision",
+    "completed": "Terminé",
+    "on_hold": "En pause",
+    "undefined": "Non défini"
+  },
+  "priority": {
+    "low": "Faible",
+    "medium": "Moyenne",
+    "high": "Élevée",
+    "urgent": "Urgente",
+    "undefined": "Non définie"
+  },
   "dashboard": {
     "title": "Tableau de bord",
     "backToClients": "Retour aux clients",
@@ -41,13 +58,15 @@ export default {
       "en_cours": "En cours",
       "review": "En révision",
       "completed": "Terminé",
-      "on_hold": "En pause"
+      "on_hold": "En pause",
+      "undefined": "Non défini"
     },
     "priorities": {
       "low": "Faible",
       "medium": "Moyenne",
       "high": "Élevée",
-      "urgent": "Urgente"
+      "urgent": "Urgente",
+      "undefined": "Non définie"
     },
     "dateNotDefined": "Date non définie",
     "allStatuses": "Tous les statuts",
@@ -96,6 +115,7 @@ export default {
   "noWidgetsDescription": "Aucun widget configuré pour ce projet.",
   "loadWidgetsError": "Erreur lors du chargement des widgets",
   "refreshSuccess": "Actualisation réussie",
+  "progressDetails": "{completed} sur {total} terminées",
   "projectDetails": "Détails du projet",
   "selectClient": "Sélectionner un client",
   "titlePlaceholder": "Titre du projet",

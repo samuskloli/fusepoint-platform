@@ -49,6 +49,36 @@ module.exports = {
     statusUpdated: 'Statut mis à jour avec succès'
   },
 
+  // Messages spécifiques aux widgets
+  widgets: {
+    retrieved: 'Widgets récupérés avec succès',
+    categoriesRetrieved: 'Catégories de widgets récupérées avec succès',
+    error: 'Erreur lors de la récupération des widgets',
+    categoriesError: 'Erreur lors de la récupération des catégories de widgets'
+  },
+
+  // Messages spécifiques aux modèles de projet
+  projectTemplates: {
+    retrieved: 'Modèles de projet récupérés avec succès',
+    retrieveError: 'Erreur lors de la récupération des modèles de projet',
+    categoriesRetrieved: 'Catégories de modèles récupérées avec succès',
+    categoriesRetrieveError: 'Erreur lors de la récupération des catégories de modèles',
+    invalidTemplateId: 'ID de modèle invalide',
+    templateRetrieved: 'Modèle de projet récupéré avec succès',
+    templateRetrieveError: 'Erreur lors de la récupération du modèle de projet',
+    templateCreated: 'Modèle de projet créé avec succès',
+    templateCreateError: 'Erreur lors de la création du modèle de projet',
+    templateUpdated: 'Modèle de projet mis à jour avec succès',
+    templateUpdateError: 'Erreur lors de la mise à jour du modèle de projet',
+    templateDeleted: 'Modèle de projet supprimé avec succès',
+    templateDeleteError: 'Erreur lors de la suppression du modèle de projet',
+    widgetsRetrieved: 'Widgets du modèle récupérés avec succès',
+    widgetsRetrieveError: 'Erreur lors de la récupération des widgets du modèle',
+    invalidWidgetsFormat: 'Format de widgets invalide',
+    widgetsUpdated: 'Widgets du modèle mis à jour avec succès',
+    widgetsUpdateError: 'Erreur lors de la mise à jour des widgets du modèle'
+  },
+
   // Messages spécifiques aux agents
   agent: {
     stats_retrieved: 'Statistiques de l\'agent récupérées avec succès',

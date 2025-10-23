@@ -1,5 +1,5 @@
 <template>
-  <div class="pt-4" v-if="!isCollapsed || showWhenCollapsed">
+  <div class="pt-4">
     <h3 v-if="title && !isCollapsed" class="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
       {{ title }}
     </h3>

@@ -39,9 +39,13 @@ class MariaDBService {
       user: process.env.MARIADB_USER || 'oliveirasamuel',
       password: process.env.MARIADB_PASSWORD || '',
       database: process.env.MARIADB_DATABASE || 'fusepoint_db',
-      connectionLimit: 10,
-
-      charset: 'utf8mb4'
+      connectionLimit: 50, // Augmenté de 10 à 50
+      acquireTimeout: 60000, // 60 secondes pour obtenir une connexion
+      timeout: 60000, // 60 secondes de timeout pour les requêtes
+      charset: 'utf8mb4',
+      // Paramètres de gestion des connexions
+      idleTimeout: 300000, // 5 minutes avant fermeture des connexions inactives
+      queueLimit: 0 // Pas de limite sur la queue
     };
   }
 

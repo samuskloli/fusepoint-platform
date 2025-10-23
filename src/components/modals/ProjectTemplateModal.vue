@@ -67,9 +67,9 @@
                     :placeholder="t('projectTemplates.durationPlaceholder')"
                   >
                   <select v-model="templateData.duration_unit" class="duration-unit">
-                    <option value="days">{{ t('common.days') }}</option>
-                    <option value="weeks">{{ t('common.weeks') }}</option>
-                    <option value="months">{{ t('common.months') }}</option>
+                    <option value="days">{{ t('time.days') }}</option>
+                    <option value="weeks">{{ t('time.weeks') }}</option>
+                    <option value="months">{{ t('time.months') }}</option>
                   </select>
                 </div>
               </div>
@@ -378,7 +378,7 @@ export default {
     // Méthodes
     const loadAvailableWidgets = async () => {
       try {
-        const result = await projectTemplateService.getGlobalWidgets()
+        const result = await projectTemplateService.getWidgets()
         if (result.success) {
           availableWidgets.value = result.data
         }

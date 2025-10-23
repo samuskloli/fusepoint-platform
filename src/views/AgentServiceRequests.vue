@@ -1,25 +1,7 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <div
-      class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-0"
-      :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }"
-    >
-      <AgentSidebar @close-sidebar="sidebarOpen = false" />
-    </div>
-
-    <!-- Overlay for mobile -->
-    <div
-      v-if="sidebarOpen"
-      class="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
-      @click="sidebarOpen = false"
-    ></div>
-
+  <RoleLayout>
     <!-- Main content -->
     <div class="flex-1 flex flex-col overflow-hidden">
-      <!-- Header -->
-      <Header @toggle-sidebar="sidebarOpen = !sidebarOpen" />
-
       <!-- Main content area -->
       <main class="flex-1 overflow-y-auto bg-gray-50">
         <!-- Page Header -->
@@ -331,20 +313,18 @@
         </div>
       </div>
     </div>
-  </div>
+  </RoleLayout>
 </template>
 
 <script>
-import AgentSidebar from '@/components/AgentSidebar.vue';
-import Header from '@/components/Header.vue';
+import RoleLayout from '@/components/RoleLayout.vue';
 import axios from 'axios';
 import { useToast } from 'vue-toastification';
 
 export default {
   name: 'AgentServiceRequests',
   components: {
-    AgentSidebar,
-    Header
+    RoleLayout
   },
   setup() {
     const toast = useToast();
@@ -353,7 +333,6 @@ export default {
   data() {
     return {
       loading: true,
-      sidebarOpen: false,
       requests: [],
       searchQuery: '',
       statusFilter: '',

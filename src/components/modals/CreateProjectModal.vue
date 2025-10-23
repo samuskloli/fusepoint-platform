@@ -350,7 +350,38 @@ const createProject = async () => {
     
     if (result.success) {
       success(t('customProjects.success.created'))
-      emit('projectCreated', result.data)
+      // Récupérer les détails complets du projet fraîchement créé pour éviter d'avoir à rafraîchir la page
+      let projectPayload = result.data
+      try {
+        if (result.data && result.data.id) {
+          const details = await projectManagementService.getProjectDetails(result.data.id)
+          if (details.success && details.data) {
+            projectPayload = details.data
+          } else {
+            // Fallback minimal si l'API retourne seulement l'id
+            projectPayload = {
+              id: result.data.id,
+              title: projectForm.name,
+              name: projectForm.name,
+              description: projectForm.description,
+              priority: projectForm.priority,
+              budget: projectForm.budget,
+              startDate: projectForm.startDate,
+              endDate: projectForm.endDate,
+              client_id: props.clientId
+            }
+          }
+        }
+      } catch (fetchErr) {
+        console.error('Erreur lors de la récupération des détails du projet:', fetchErr)
+        projectPayload = {
+          id: result.data?.id,
+          title: projectForm.name,
+          name: projectForm.name
+        }
+      }
+
+      emit('projectCreated', projectPayload)
       closeModal()
     } else {
       error(result.error || t('customProjects.errors.createFailed'))

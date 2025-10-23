@@ -45,10 +45,10 @@
     </div>
 
     <div v-if="!loading && displayedWidgets.length > 0" class="widgets-container">
-      <div v-for="widget in displayedWidgets" :key="widget.id" :class="['widget-wrapper', { 'widget-disabled': !widget.is_enabled }]">
+      <div v-for="widget in displayedWidgets" :key="widget.id" :class="['widget-wrapper']">
         <div class="widget-header">
           <div class="widget-title">
-            <i :class="getWidgetIcon(widget.composant_vue)"></i>
+            <i :class="getWidgetIcon(widget.component_name)"></i>
             <h3>{{ widget.nom }}</h3>
           </div>
           <span v-if="!widget.is_enabled" class="status-badge disabled">{{ t('projects.widgetDisabled') }}</span>
@@ -59,7 +59,7 @@
             <i class="fas fa-lock"></i>
             {{ t('projects.noPermission') }}
           </div>
-          <component v-else :is="getWidgetComponent(widget.composant_vue)" :project-id="project.id" :widget="widget" @widget-updated="onWidgetUpdated" @widget-error="onWidgetError" />
+          <component v-else :is="getWidgetComponent(widget.component_name)" :project-id="project.id" :widget="widget" @widget-updated="onWidgetUpdated" @widget-error="onWidgetError" />
         </div>
       </div>
     </div>
@@ -84,26 +84,66 @@ import projectTemplateService from '@/services/projectTemplateService'
 import { useToast } from '@/composables/useToast'
 import { useAuth } from '@/composables/useAuth'
 
-// Import dynamique des widgets
+// Import direct des widgets
+import ChecklistWidget from '@/components/widgets/ChecklistWidget.vue'
+import GoalsWidget from '@/components/widgets/GoalsWidget.vue'
+import FilesWidget from '@/components/widgets/FilesWidget.vue'
+import CommentsWidget from '@/components/widgets/CommentsWidget.vue'
+import AIWidget from '@/components/widgets/AIWidget.vue'
+import CalendarWidget from '@/components/widgets/CalendarWidget.vue'
+import StatsWidget from '@/components/widgets/StatsWidget.vue'
+import TaskListWidget from '@/components/widgets/TaskListWidget.vue'
+import TeamWidget from '@/components/widgets/TeamWidget.vue'
+import HistoryWidget from '@/components/widgets/HistoryWidget.vue'
+import BaseWidget from '@/components/widgets/shared/components/BaseWidget.vue'
+import FeedbackWidget from '@/components/widgets/FeedbackWidget.vue'
+import FeatureTrackingWidget from '@/components/widgets/FeatureTrackingWidget.vue'
+import VersioningWidget from '@/components/widgets/VersioningWidget.vue'
+import DeliverablesWidget from '@/components/widgets/DeliverablesWidget.vue'
+
 const widgetComponents = {
-  TimelineWidget: () => import('@/components/widgets/TimelineWidget.vue'),
-  ChecklistWidget: () => import('@/components/widgets/ChecklistWidget.vue'),
-  GoalsWidget: () => import('@/components/widgets/GoalsWidget.vue'),
-  PerformanceWidget: () => import('@/components/widgets/PerformanceWidget.vue'),
-  FilesWidget: () => import('@/components/widgets/FilesWidget.vue'),
-  CommentsWidget: () => import('@/components/widgets/CommentsWidget.vue'),
-  AIWidget: () => import('@/components/widgets/AIWidget.vue'),
-  DesignWidget: () => import('@/components/widgets/DesignWidget.vue'),
-  FeedbackWidget: () => import('@/components/widgets/FeedbackWidget.vue'),
-  DevelopmentWidget: () => import('@/components/widgets/DevelopmentWidget.vue'),
-  SEOWidget: () => import('@/components/widgets/SEOWidget.vue'),
-  SocialWidget: () => import('@/components/widgets/SocialWidget.vue'),
-  BrandWidget: () => import('@/components/widgets/BrandWidget.vue'),
-  AnalyticsWidget: () => import('@/components/widgets/AnalyticsWidget.vue')
+  ChecklistWidget,
+  GoalsWidget,
+  FilesWidget,
+  CommentsWidget,
+  AIWidget,
+  CalendarWidget,
+  StatsWidget,
+  TaskListWidget,
+  TeamWidget,
+  HistoryWidget,
+  BaseWidget,
+  FeedbackWidget,
+  FeatureTrackingWidget,
+  VersioningWidget,
+  DeliverablesWidget,
+  // Aliases pour les composants de la base de données
+  ProjectOverviewWidget: BaseWidget,
+  TasksWidget: TaskListWidget,
+  BudgetWidget: BaseWidget,
+  DocumentsWidget: FilesWidget,
+  NotesWidget: CommentsWidget
 }
 
 export default {
   name: 'ProjectDashboardWidget',
+  components: {
+    ChecklistWidget,
+    GoalsWidget,
+    FilesWidget,
+    CommentsWidget,
+    AIWidget,
+    CalendarWidget,
+    StatsWidget,
+    TaskListWidget,
+    TeamWidget,
+    HistoryWidget,
+    BaseWidget,
+    FeedbackWidget,
+    FeatureTrackingWidget,
+    VersioningWidget,
+    DeliverablesWidget
+  },
   props: {
     project: {
       type: Object,
@@ -134,20 +174,26 @@ export default {
     // Méthodes utilitaires
     const getWidgetIcon = (componentName) => {
       const iconMap = {
-        'TimelineWidget': 'fas fa-timeline',
         'ChecklistWidget': 'fas fa-tasks',
         'GoalsWidget': 'fas fa-bullseye',
-        'PerformanceWidget': 'fas fa-chart-line',
         'FilesWidget': 'fas fa-folder',
         'CommentsWidget': 'fas fa-comments',
         'AIWidget': 'fas fa-robot',
-        'DesignWidget': 'fas fa-palette',
+        'CalendarWidget': 'fas fa-calendar',
+        'StatsWidget': 'fas fa-chart-bar',
+        'TaskListWidget': 'fas fa-list',
+        'TeamWidget': 'fas fa-users',
+        'HistoryWidget': 'fas fa-history',
+        'BaseWidget': 'fas fa-puzzle-piece',
         'FeedbackWidget': 'fas fa-comment-dots',
-        'DevelopmentWidget': 'fas fa-code',
-        'SEOWidget': 'fas fa-search',
-        'SocialWidget': 'fas fa-share-alt',
-        'BrandWidget': 'fas fa-copyright',
-        'AnalyticsWidget': 'fas fa-chart-bar'
+        'FeatureTrackingWidget': 'fas fa-road',
+        'VersioningWidget': 'fas fa-code-branch',
+        // Icônes pour les composants de la base de données
+        'ProjectOverviewWidget': 'fas fa-project-diagram',
+        'TasksWidget': 'fas fa-tasks',
+        'BudgetWidget': 'fas fa-euro-sign',
+        'DocumentsWidget': 'fas fa-folder',
+        'NotesWidget': 'fas fa-sticky-note'
       }
       return iconMap[componentName] || 'fas fa-puzzle-piece'
     }
@@ -179,12 +225,19 @@ export default {
     
     const hasWidgetPermission = (widget) => {
       // Logique de permissions basée sur le rôle utilisateur et les paramètres du widget
-      if (user.value?.role === 'agent' || user.value?.role === 'admin') {
+      if (user.value?.role === 'agent' || user.value?.role === 'admin' || user.value?.role === 'super_admin') {
         return true
       }
       
       // Pour les clients, vérifier les permissions spécifiques du widget
-      return widget.client_permissions?.includes('read') || widget.client_permissions?.includes('write')
+      // Si aucune permission n'est définie, autoriser par défaut
+      if (!widget.permissions || Object.keys(widget.permissions).length === 0) {
+        return true
+      }
+      
+      // Vérifier les permissions client
+      const clientPermissions = widget.permissions.client || []
+      return clientPermissions.includes('read') || clientPermissions.includes('write') || clientPermissions.includes('view')
     }
     
     // Méthodes principales
@@ -428,9 +481,7 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.widget-wrapper.widget-disabled {
-  opacity: 0.6;
-}
+
 
 .widget-header {
   display: flex;
@@ -497,17 +548,7 @@ export default {
   padding: 1.5rem;
 }
 
-.widget-disabled-message {
-  padding: 3rem;
-  text-align: center;
-  color: var(--text-secondary);
-}
 
-.widget-disabled-message i {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: var(--text-tertiary);
-}
 
 .loading-state,
 .empty-state {

@@ -35,12 +35,14 @@ class ClientManagementService {
     }
 
     // Récupérer les statistiques
-    const [projects, tasks, files, messages] = await Promise.all([
+    const [projects, tasks, files] = await Promise.all([
       projectService.getClientProjects(clientId),
       projectService.getClientTasks(clientId),
-      clientService.getClientFiles(clientId),
-      clientService.getClientMessages(clientId)
+      clientService.getClientFiles(clientId)
     ]);
+    
+    // Pour l'instant, pas de messages - cette fonctionnalité sera ajoutée plus tard
+    const messages = [];
 
     return {
       client: {
@@ -330,7 +332,7 @@ class ClientManagementService {
       throw error;
     }
 
-    const team = await clientService.getClientTeam(clientId, options);
+    const team = await clientService.getClientTeamMembers(clientId);
     return team;
   }
 

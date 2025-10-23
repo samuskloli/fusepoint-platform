@@ -129,11 +129,16 @@ class DatabaseService implements IDatabaseService {
     // Remplacer DATETIME par TIMESTAMP
     mariadbSchema = mariadbSchema.replace(/DATETIME/gi, 'TIMESTAMP');
     
-    // Remplacer CURRENT_TIMESTAMP par NOW()
+    // Remplacer DEFAULT CURRENT_TIMESTAMP (laisser tel quel pour MariaDB)
     mariadbSchema = mariadbSchema.replace(/DEFAULT CURRENT_TIMESTAMP/gi, 'DEFAULT CURRENT_TIMESTAMP');
     
     // Remplacer TEXT par LONGTEXT pour les champs longs
-    mariadbSchema = mariadbSchema.replace(/TEXT/gi, 'LONGTEXT');
+    mariadbSchema = mariadbSchema.replace(/\bTEXT\b/gi, 'LONGTEXT');
+
+    // Remplacer les colonnes de type JSON par LONGTEXT pour compatibilité MariaDB
+    // Ne pas altérer les fonctions JSON_* (JSON_OBJECT, JSON_ARRAY, etc.)
+    mariadbSchema = mariadbSchema.replace(/\bJSON\s*(?=,|\n|\r|\))/gi, 'LONGTEXT');
+    mariadbSchema = mariadbSchema.replace(/\bJSON\s+NOT\s+NULL\b/gi, 'LONGTEXT NOT NULL');
     
     // Ajouter IF NOT EXISTS seulement si pas déjà présent
     mariadbSchema = mariadbSchema.replace(/CREATE TABLE (?!IF NOT EXISTS)([^\s]+)/gi, 'CREATE TABLE IF NOT EXISTS $1');

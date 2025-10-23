@@ -19,7 +19,7 @@ router.options('*', (req, res) => {
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, firstName, lastName, role } = req.body;
     const ipAddress = req.ip;
 
     // Validation des données
@@ -47,10 +47,11 @@ router.post('/register', async (req, res) => {
       email,
       password,
       firstName,
-      lastName
+      lastName,
+      role
     }, ipAddress);
 
-    res.status(201).json({
+    const responsePayload = {
       success: true,
       message: 'Utilisateur créé avec succès',
       user: {
@@ -59,7 +60,11 @@ router.post('/register', async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName
       }
-    });
+    };
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.debug = { confirmationToken: user.confirmationToken };
+    }
+    res.status(201).json(responsePayload);
 
   } catch (error) {
     console.error('❌ Erreur inscription:', error);
@@ -109,7 +114,16 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
     
-    res.status(500).json({ error: 'Erreur lors de la connexion' });
+    const payload = { error: 'Erreur lors de la connexion' };
+    if (process.env.NODE_ENV !== 'production') {
+      payload.debug = {
+        message: error.message,
+        code: error.code,
+        sql: error.sql,
+        stack: error.stack
+      };
+    }
+    res.status(500).json(payload);
   }
 });
 
@@ -370,7 +384,8 @@ router.get('/me', authService.authenticateMiddleware.bind(authService), async (r
     // Sinon, vérifier les rôles spécifiques
     let canAccessAgent = false;
     if (!isSuperAdmin) {
-      const userRoles = await permissionsService.getUserRoles(user.id);
+      const rolesResult = await permissionsService.getUserRoles(user.id);
+      const userRoles = Array.isArray(rolesResult) ? rolesResult : (rolesResult?.data || []);
       canAccessAgent = userRoles.some(role => ['agent', 'admin'].includes(role.name));
     }
     

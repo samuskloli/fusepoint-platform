@@ -124,16 +124,16 @@ export const initializeAuth = async (to, from, next) => {
       return;
     }
     
-    // Si token présent mais pas d'utilisateur en cache, essayer de récupérer
+    // Si token présent mais pas d'utilisateur en cache, récupérer en arrière-plan
     if (token && !user && !authService.isTokenExpired()) {
-      try {
-        await authService.getCurrentUser();
-      } catch (error) {
-        console.warn('⚠️ Token invalide, nettoyage:', error);
-        authService.clearTokens();
-        authService.clearUser();
-        authService.clearCompanies();
-      }
+      console.log('🔄 Initialisation auth: récupération utilisateur en arrière-plan');
+      authService.getCurrentUser()
+        .catch((error) => {
+          console.warn('⚠️ Token invalide, nettoyage:', error);
+          authService.clearTokens();
+          authService.clearUser();
+          authService.clearCompanies();
+        });
     }
     
     next();

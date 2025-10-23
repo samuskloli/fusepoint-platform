@@ -234,3 +234,27 @@ Cette configuration garantit :
 - ✅ **Maintenabilité** : Configuration centralisée et documentée
 
 Votre préoccupation était justifiée, mais l'implémentation actuelle utilise bien les variables d'environnement, ce qui assure la portabilité entre les environnements.
+
+
+## Templates par défaut (backend)
+
+- `DISABLE_DEFAULT_TEMPLATES` permet de désactiver l’insertion automatique des modèles standards lors de l’initialisation de la base MariaDB.
+- À définir dans `server/.env` ou `server/.env.mariadb`.
+
+Exemple:
+```env
+DISABLE_DEFAULT_TEMPLATES=1
+```
+
+Effet:
+- Les tables liées aux templates sont créées normalement.
+- Les `INSERT` vers `project_templates` et `project_template_widgets` du fichier `server/database/project_templates_schema.sql` sont ignorés.
+- Les widgets de base restent insérés pour l’écosystème.
+
+Remarques:
+- Si des templates standards existent déjà, ils ne sont pas supprimés automatiquement.
+- Vous pouvez les désactiver (`is_active=0`) ou les supprimer via l’interface ou en SQL:
+
+```sql
+UPDATE project_templates SET is_active = 0 WHERE name = 'Template Standard';
+```

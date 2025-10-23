@@ -1,123 +1,611 @@
 <template>
   <BaseWidget 
-    :widget="widgetConfig=loading=error='showConfigModal = true=toggleWidget="loadGoals="goals-widget=goals-header='header-info="goals-title=goals-summary="summary-item='fas fa-bullseye text-blue-500></i>
-              {{ activeGoals.length }} {{ t('widgets.goals.active === summary-item=fas fa-check-circle text-green-500'></i>
-              {{ completedGoals.length }} {{ t('widgets.goals.completed="header-actions=showAddGoalModal = true="add-goal-btn='canAddGoals=fas fa-plus mr-2"></i>
-            {{ t('widgets.goals.addGoal="goals-filters=filter-tabs='activeFilter = 'all="filter-tab={ active: activeFilter === 'all="activeFilter = 'active='filter-tab={ active: activeFilter === 'active="activeFilter = 'completed="filter-tab={ active: activeFilter === 'completed='activeFilter = 'overdue="filter-tab={ active: activeFilter === 'overdue="filter-options='sortBy=sort-select="priority="deadline=progress='created="overall-progress=goals.length &gt; 0">
-        <div  class="progress-header=progress-label progress-percentage='progress-bar=progress-fill="{ width: `${overallProgress}%` }
-          ></div>
+    :widget="widgetConfig"
+    :loading="loading"
+    :error="error"
+    @configure="showConfigModal = true"
+    @toggle="toggleWidget"
+    @retry="loadGoals"
+  >
+    <div class="goals-widget">
+      <!-- En-tête des objectifs -->
+      <div class="goals-header">
+        <div class="header-left">
+          <h3 class="goals-title">{{ t('widgets.goals.title') }}</h3>
+          <div class="goals-stats">
+            <span class="stat-item">
+              <i class="fas fa-bullseye mr-1"></i>
+              {{ totalGoals }} {{ t('widgets.goals.totalGoals') }}
+            </span>
+            <span class="stat-item">
+              <i class="fas fa-check-circle mr-1 text-green-500"></i>
+              {{ completedGoals }} {{ t('widgets.goals.completed') }}
+            </span>
+            <span class="stat-item">
+              <i class="fas fa-percentage mr-1"></i>
+              {{ completionRate }}% {{ t('widgets.goals.completionRate') }}
+            </span>
+          </div>
         </div>
         
-        <div  class="progress-details=detail-item goals-list='goal in filteredGoals=goal.id="goal-item"goal-info="goal-title-row=goal-title='goal-badges="priority-badge=`priority-${goal.priority}`
-                  >
-                    {{ t(`widgets.goals.priority.${goal.priority}`) }}
-                  </div>
-                  
-                  <span  
-                    class="category-badge=goal.category='goal-description="goal.description=goal-meta="meta-item='fas fa-calendar-alt=goal.deadline="text-gray-500>
-                    {{ t('widgets.goals.noDeadline="meta-item=goal.assigned_to='fas fa-user="goal-actions=toggleGoalStatus(goal)"
-                class="action-btn=goal.status === 'completed='goal.status === 'completed="fas fa-check=goal.status === 'completed="far fa-circle='dropdown=toggleGoalMenu(goal.id)"
-                  class="action-btn=fas fa-ellipsis-v='activeGoalMenu === goal.id="dropdown-menu=editGoal(goal)"
-                    class="dropdown-item=fas fa-edit mr-2'></i>
-                    {{ t('common.edit="duplicateGoal(goal)"
-                    class="dropdown-item=fas fa-copy mr-2'></i>
-                    {{ t('common.duplicate="deleteGoal(goal)"
-                    class="dropdown-item text-red-600'
-                  >
-                    <i class="fas fa-trash mr-2"></i>
-                    {{ t('common.delete="goal-progress=progress-header='progress-label="progress-percentage=progress-bar small="progress-fill='{
-                  'bg-green-500': goal.status === 'completed',
-                  'bg-red-500': isOverdue(goal),
-                  'bg-blue-500': !isOverdue(goal) && goal.status !== 'completed={ width: `${goal.progress || 0}%` }"
-              ></div>
+        <div class="header-right">
+          <div class="view-controls">
+            <button 
+              @click="viewMode = 'list'"
+              class="view-btn"
+              :class="{ active: viewMode === 'list' }"
+              :title="t('widgets.goals.listView')"
+            >
+              <i class="fas fa-list"></i>
+            </button>
+            
+            <button 
+              @click="viewMode = 'cards'"
+              class="view-btn"
+              :class="{ active: viewMode === 'cards' }"
+              :title="t('widgets.goals.cardsView')"
+            >
+              <i class="fas fa-th-large"></i>
+            </button>
+          </div>
+          
+          <div class="filter-controls">
+            <select v-model="filterStatus" class="filter-select">
+              <option value="all">{{ t('widgets.goals.allGoals') }}</option>
+              <option value="active">{{ t('widgets.goals.active') }}</option>
+              <option value="completed">{{ t('widgets.goals.completed') }}</option>
+              <option value="overdue">{{ t('widgets.goals.overdue') }}</option>
+              <option value="upcoming">{{ t('widgets.goals.upcoming') }}</option>
+            </select>
+            
+            <select v-model="sortBy" class="filter-select">
+              <option value="priority">{{ t('widgets.goals.sortByPriority') }}</option>
+              <option value="deadline">{{ t('widgets.goals.sortByDeadline') }}</option>
+              <option value="progress">{{ t('widgets.goals.sortByProgress') }}</option>
+              <option value="name">{{ t('widgets.goals.sortByName') }}</option>
+            </select>
+          </div>
+          
+          <button @click="showCreateModal = true" class="create-btn">
+            <i class="fas fa-plus mr-2"></i>
+            {{ t('widgets.goals.createGoal') }}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Barre de recherche -->
+      <div class="search-bar">
+        <div class="search-input-wrapper">
+          <i class="fas fa-search search-icon"></i>
+          <input 
+            v-model="searchQuery"
+            type="text"
+            :placeholder="t('widgets.goals.searchGoals')"
+            class="search-input"
+          >
+          <button 
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="clear-search-btn"
+          >
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Graphique de progression globale -->
+      <div v-if="widgetConfig.showOverview" class="goals-overview">
+        <div class="overview-chart">
+          <div class="chart-container">
+            <div class="progress-ring">
+              <svg class="progress-svg" width="120" height="120">
+                <circle
+                  class="progress-bg"
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  stroke-width="8"
+                />
+                <circle
+                  class="progress-bar"
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="none"
+                  stroke="#3b82f6"
+                  stroke-width="8"
+                  stroke-linecap="round"
+                  :stroke-dasharray="circumference"
+                  :stroke-dashoffset="progressOffset"
+                  transform="rotate(-90 60 60)"
+                />
+              </svg>
+              <div class="progress-text">
+                <span class="progress-percentage">{{ completionRate }}%</span>
+                <span class="progress-label">{{ t('widgets.goals.complete') }}</span>
+              </div>
             </div>
           </div>
           
-          <!-- Sous-objectifs -->
-          <div  class="sub-goals=goal.sub_goals?.length &gt; 0'>
-            <div class="sub-goals-header=sub-goals-title fas fa-list-ul mr-1></i>
-                {{ t('widgets.goals.subGoals="toggleSubGoals(goal.id)'
-                class="toggle-btn=fas fa-chevron-down="{ 'rotate-180': expandedGoals.includes(goal.id) }'></i>
+          <div class="overview-stats">
+            <div class="stat-card">
+              <div class="stat-icon bg-blue-100 text-blue-600">
+                <i class="fas fa-bullseye"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ totalGoals }}</div>
+                <div class="stat-label">{{ t('widgets.goals.totalGoals') }}</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon bg-green-100 text-green-600">
+                <i class="fas fa-check-circle"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ completedGoals }}</div>
+                <div class="stat-label">{{ t('widgets.goals.completed') }}</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon bg-yellow-100 text-yellow-600">
+                <i class="fas fa-clock"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ activeGoals }}</div>
+                <div class="stat-label">{{ t('widgets.goals.active') }}</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon bg-red-100 text-red-600">
+                <i class="fas fa-exclamation-triangle"></i>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ overdueGoals }}</div>
+                <div class="stat-label">{{ t('widgets.goals.overdue') }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Liste/Cartes des objectifs -->
+      <div class="goals-container" :class="viewMode">
+        <!-- Vue cartes -->
+        <div v-if="viewMode === 'cards'" class="goals-grid">
+          <div 
+            v-for="goal in filteredGoals"
+            :key="goal.id"
+            class="goal-card"
+            :class="{
+              'completed': goal.status === 'completed',
+              'overdue': isOverdue(goal),
+              'high-priority': goal.priority === 'high'
+            }"
+            @click="selectGoal(goal)"
+          >
+            <div class="goal-header">
+              <div class="goal-priority">
+                <span 
+                  class="priority-badge"
+                  :class="getPriorityClass(goal.priority)"
+                >
+                  {{ getPriorityLabel(goal.priority) }}
+                </span>
+              </div>
+              
+              <div class="goal-actions">
+                <button 
+                  @click.stop="editGoal(goal)"
+                  class="action-btn"
+                  :title="t('widgets.goals.edit')"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+                
+                <div class="dropdown">
+                  <button 
+                    @click.stop="toggleGoalMenu(goal.id)"
+                    class="action-btn"
+                    :title="t('widgets.goals.moreActions')"
+                  >
+                    <i class="fas fa-ellipsis-v"></i>
+                  </button>
+                  
+                  <div v-if="activeGoalMenu === goal.id" class="dropdown-menu">
+                    <button @click="duplicateGoal(goal)" class="dropdown-item">
+                      <i class="fas fa-copy mr-2"></i>
+                      {{ t('widgets.goals.duplicate') }}
+                    </button>
+                    
+                    <button @click="archiveGoal(goal)" class="dropdown-item">
+                      <i class="fas fa-archive mr-2"></i>
+                      {{ t('widgets.goals.archive') }}
+                    </button>
+                    
+                    <button @click="deleteGoal(goal)" class="dropdown-item text-red-600">
+                      <i class="fas fa-trash mr-2"></i>
+                      {{ t('widgets.goals.delete') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="goal-content">
+              <h4 class="goal-title" :title="goal.title">{{ goal.title }}</h4>
+              <p v-if="goal.description" class="goal-description">{{ goal.description }}</p>
+              
+              <div class="goal-progress">
+                <div class="progress-header">
+                  <span class="progress-label">{{ t('widgets.goals.progress') }}</span>
+                  <span class="progress-value">{{ goal.progress }}%</span>
+                </div>
+                <div class="progress-bar-container">
+                  <div 
+                    class="progress-bar"
+                    :style="{ width: goal.progress + '%' }"
+                    :class="getProgressClass(goal.progress)"
+                  ></div>
+                </div>
+              </div>
+              
+              <div class="goal-meta">
+                <div v-if="goal.deadline" class="goal-deadline">
+                  <i class="fas fa-calendar-alt mr-1"></i>
+                  <span :class="{ 'text-red-600': isOverdue(goal) }">
+                    {{ formatDeadline(goal.deadline) }}
+                  </span>
+                </div>
+                
+                <div v-if="goal.assignee" class="goal-assignee">
+                  <i class="fas fa-user mr-1"></i>
+                  <span>{{ goal.assignee.name }}</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="goal-footer">
+              <div class="goal-tags">
+                <span 
+                  v-for="tag in goal.tags"
+                  :key="tag"
+                  class="goal-tag"
+                >
+                  {{ tag }}
+                </span>
+              </div>
+              
+              <div class="goal-status">
+                <button 
+                  @click.stop="toggleGoalStatus(goal)"
+                  class="status-btn"
+                  :class="getStatusClass(goal.status)"
+                >
+                  <i :class="getStatusIcon(goal.status)"></i>
+                  {{ getStatusLabel(goal.status) }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Vue liste -->
+        <div v-else class="goals-list">
+          <div class="list-header">
+            <div class="header-cell title">{{ t('widgets.goals.title') }}</div>
+            <div class="header-cell priority">{{ t('widgets.goals.priority') }}</div>
+            <div class="header-cell progress">{{ t('widgets.goals.progress') }}</div>
+            <div class="header-cell deadline">{{ t('widgets.goals.deadline') }}</div>
+            <div class="header-cell assignee">{{ t('widgets.goals.assignee') }}</div>
+            <div class="header-cell status">{{ t('widgets.goals.status') }}</div>
+            <div class="header-cell actions">{{ t('widgets.goals.actions') }}</div>
+          </div>
+          
+          <div 
+            v-for="goal in filteredGoals"
+            :key="goal.id"
+            class="list-item"
+            :class="{
+              'completed': goal.status === 'completed',
+              'overdue': isOverdue(goal),
+              'selected': selectedGoal?.id === goal.id
+            }"
+            @click="selectGoal(goal)"
+          >
+            <div class="list-cell title">
+              <div class="goal-title-cell">
+                <h5 class="goal-title">{{ goal.title }}</h5>
+                <p v-if="goal.description" class="goal-description">{{ goal.description }}</p>
+              </div>
+            </div>
+            
+            <div class="list-cell priority">
+              <span 
+                class="priority-badge"
+                :class="getPriorityClass(goal.priority)"
+              >
+                {{ getPriorityLabel(goal.priority) }}
+              </span>
+            </div>
+            
+            <div class="list-cell progress">
+              <div class="progress-container">
+                <div class="progress-bar-small">
+                  <div 
+                    class="progress-fill"
+                    :style="{ width: goal.progress + '%' }"
+                    :class="getProgressClass(goal.progress)"
+                  ></div>
+                </div>
+                <span class="progress-text">{{ goal.progress }}%</span>
+              </div>
+            </div>
+            
+            <div class="list-cell deadline">
+              <span 
+                v-if="goal.deadline"
+                :class="{ 'text-red-600': isOverdue(goal) }"
+              >
+                {{ formatDeadline(goal.deadline) }}
+              </span>
+              <span v-else class="text-gray-400">—</span>
+            </div>
+            
+            <div class="list-cell assignee">
+              <div v-if="goal.assignee" class="assignee-info">
+                <img 
+                  v-if="goal.assignee.avatar"
+                  :src="goal.assignee.avatar"
+                  :alt="goal.assignee.name"
+                  class="assignee-avatar"
+                >
+                <div v-else class="assignee-avatar-placeholder">
+                  {{ goal.assignee.name.charAt(0).toUpperCase() }}
+                </div>
+                <span class="assignee-name">{{ goal.assignee.name }}</span>
+              </div>
+              <span v-else class="text-gray-400">—</span>
+            </div>
+            
+            <div class="list-cell status">
+              <button 
+                @click.stop="toggleGoalStatus(goal)"
+                class="status-btn-small"
+                :class="getStatusClass(goal.status)"
+              >
+                <i :class="getStatusIcon(goal.status)"></i>
+                {{ getStatusLabel(goal.status) }}
               </button>
             </div>
             
-            <div  
-              v-if="expandedGoals.includes(goal.id)"
-              class="sub-goals-list=subGoal in goal.sub_goals='subGoal.id="sub-goal-item"
-                  class="sub-goal-checkbox=fas fa-check='subGoal.completed="sub-goal-title=sub-goal-deadline="subGoal.deadline='goal-comments=goal.recent_comments?.length &gt; 0>
-            <div  class="comments-header=fas fa-comments mr-1'></i>
-              {{ t('widgets.goals.recentComments="comments-list=comment in goal.recent_comments.slice(0, 2) 
-                :key="comment.id=comment-item=comment.user.avatar || '/default-avatar.png='comment.user.name=comment-avatar="comment-content="comment-header=comment-author='comment-time="comment-text=filteredGoals.length === 0" class="no-goals=fas fa-bullseye text-gray-400 text-4xl mb-3'></i>
-          <h5 class="text-gray-600 mb-2">{{ t('widgets.goals.noGoals="text-gray-500 text-sm mb-4'>{{ t('widgets.goals.noGoalsDescription="showAddGoalModal = true=create-first-goal-btn="canAddGoals='fas fa-plus mr-2"></i>
-            {{ t('widgets.goals.createFirstGoal="showAddGoalModal=projectId='editingGoal="closeGoalModal=onGoalSaved="showConfigModal='widgetConfig=configOptions="showConfigModal = false="updateConfig"
+            <div class="list-cell actions">
+              <div class="action-buttons">
+                <button 
+                  @click.stop="editGoal(goal)"
+                  class="action-btn-small"
+                  :title="t('widgets.goals.edit')"
+                >
+                  <i class="fas fa-edit"></i>
+                </button>
+                
+                <div class="dropdown">
+                  <button 
+                    @click.stop="toggleGoalMenu(goal.id)"
+                    class="action-btn-small"
+                    :title="t('widgets.goals.moreActions')"
+                  >
+                    <i class="fas fa-ellipsis-v"></i>
+                  </button>
+                  
+                  <div v-if="activeGoalMenu === goal.id" class="dropdown-menu">
+                    <button @click="duplicateGoal(goal)" class="dropdown-item">
+                      <i class="fas fa-copy mr-2"></i>
+                      {{ t('widgets.goals.duplicate') }}
+                    </button>
+                    
+                    <button @click="archiveGoal(goal)" class="dropdown-item">
+                      <i class="fas fa-archive mr-2"></i>
+                      {{ t('widgets.goals.archive') }}
+                    </button>
+                    
+                    <button @click="deleteGoal(goal)" class="dropdown-item text-red-600">
+                      <i class="fas fa-trash mr-2"></i>
+                      {{ t('widgets.goals.delete') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Message si aucun objectif -->
+        <div v-if="filteredGoals.length === 0" class="no-goals">
+          <i class="fas fa-bullseye text-gray-400 text-4xl mb-3"></i>
+          <h5 class="text-gray-600 mb-2">{{ t('widgets.goals.noGoals') }}</h5>
+          <p class="text-gray-500 text-sm">{{ t('widgets.goals.noGoalsDescription') }}</p>
+          <button @click="showCreateModal = true" class="create-first-goal-btn">
+            <i class="fas fa-plus mr-2"></i>
+            {{ t('widgets.goals.createFirstGoal') }}
+          </button>
+        </div>
+      </div>
+      
+      <!-- Pagination -->
+      <div v-if="totalPages > 1" class="pagination">
+        <button 
+          @click="currentPage--"
+          :disabled="currentPage === 1"
+          class="pagination-btn"
+        >
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        
+        <span class="pagination-info">
+          {{ currentPage }} / {{ totalPages }}
+        </span>
+        
+        <button 
+          @click="currentPage++"
+          :disabled="currentPage === totalPages"
+          class="pagination-btn"
+        >
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Modal de création/édition -->
+    <GoalFormModal 
+      v-if="showCreateModal || showEditModal"
+      :goal="selectedGoal"
+      :project-id="projectId"
+      @close="closeModals"
+      @save="handleGoalSave"
+    />
+    
+    <!-- Modal de détails -->
+    <GoalDetailsModal 
+      v-if="showDetailsModal"
+      :goal="selectedGoal"
+      @close="showDetailsModal = false"
+      @edit="editGoal"
+      @delete="deleteGoal"
+    />
+    
+    <!-- Modal de configuration -->
+    <WidgetConfigModal 
+      v-if="showConfigModal"
+      :widget="widgetConfig"
+      :options="configOptions"
+      @close="showConfigModal = false"
+      @save="updateConfig"
     />
   </BaseWidget>
 </template>
 
-<script>
-import { ref, computed, onMounted, watch } from 'vue'
-import BaseWidget from './BaseWidget.vue'
-import AddGoalModal from '../modals/AddGoalModal.vue'
-import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
-import projectManagementService from '@/services/projectManagementService'
+<script setup lang="ts">
+import { ref, computed, onMounted, watch, onUnmounted } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
+import { useAuth } from '@/composables/useAuth'
+import BaseWidget from '@/components/widgets/shared/components/BaseWidget.vue'
+import WidgetConfigModal from '@/components/widgets/shared/components/WidgetConfigModal.vue'
+import GoalFormModal from './components/GoalFormModal.vue'
+import GoalDetailsModal from './components/GoalDetailsModal.vue'
+import { goalsService } from './services/goalsService'
+import type { Widget } from '@/types/widgets'
 
-export default {
-  name: 'GoalsWidget',
-  components: {
-    BaseWidget,
-    AddGoalModal,
-    WidgetConfigModal
-  },
-  props: {
-    projectId: {
-      type: [String, Number],
-      required: true
-    },
-    widgetData: {
-      type: Object,
-      default: () => ({})
-    }
-  },
-  emits: ['update-widget'],
-  setup(props, { emit }) {
-    const { success, error: showError } = useNotifications()
-    const { t } = useTranslation()
+// Types pour les objectifs
+export type GoalStatus = 'active' | 'completed' | 'paused' | 'cancelled' | 'archived'
+export type GoalPriority = 'high' | 'medium' | 'low'
+export type FilterStatus = GoalStatus | 'all' | 'overdue' | 'upcoming'
+export type SortBy = 'title' | 'deadline' | 'priority' | 'progress'
+
+export interface Goal {
+  id: string
+  title: string
+  description?: string
+  status: GoalStatus
+  priority: GoalPriority
+  progress: number
+  deadline?: string
+  assignee?: {
+    id: string
+    name: string
+    avatar?: string
+  }
+  tags: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface GoalsWidgetConfig {
+  titleKey: string
+  isEnabled: boolean
+  showProgress: boolean
+  showDeadlines: boolean
+  showPriority: boolean
+  showOverview: boolean
+  maxGoals: number
+  allowCreate: boolean
+  allowEdit: boolean
+  allowDelete: boolean
+  defaultView: 'cards' | 'list'
+  sortBy: 'priority' | 'deadline' | 'progress' | 'title'
+  filterBy: 'all' | 'active' | 'completed'
+  autoRefresh: boolean
+  refreshInterval: number
+}
+
+// Props
+interface Props {
+  projectId: string
+  widgetData?: any
+  widget?: any
+}
+
+const props = defineProps<Props>()
+
+// Emits
+const emit = defineEmits<{
+  'widget-updated': [widget: any]
+}>()
+
+// Composables
+const { success, error: showError } = useNotifications()
+const { t } = useTranslation()
+const { user } = useAuth()
     
-    // État réactif
-    const loading = ref(false)
-    const error = ref(null)
-    const goals = ref([])
-    const activeFilter = ref('all')
-    const sortBy = ref('priority')
-    const expandedGoals = ref([])
-    const activeGoalMenu = ref(null)
-    const showAddGoalModal = ref(false)
-    const showConfigModal = ref(false)
-    const editingGoal = ref(null)
+    // État
+    const loading = ref<boolean>(false)
+    const error = ref<string | null>(null)
+    const goals = ref<Goal[]>([])
+    const selectedGoal = ref<Goal | null>(null)
+    const viewMode = ref<'cards' | 'list'>('cards')
+    const filterStatus = ref<'all' | GoalStatus>('all')
+    const sortBy = ref<'priority' | 'deadline' | 'progress' | 'title'>('priority')
+    const searchQuery = ref<string>('')
+    const currentPage = ref<number>(1)
+    const itemsPerPage = ref<number>(12)
+    const showCreateModal = ref<boolean>(false)
+    const showEditModal = ref<boolean>(false)
+    const showDetailsModal = ref<boolean>(false)
+    const showConfigModal = ref<boolean>(false)
+    const activeGoalMenu = ref<string | null>(null)
     
     // Configuration du widget
-    const widgetConfig = ref({
-      id: 'goals',
-      name: 'Objectifs',
-      icon: 'fas fa-bullseye',
+    const widgetConfig = computed((): Widget & GoalsWidgetConfig => ({
+      id: props.widget?.id ?? null,
+      name: props.widget?.name ?? 'Goals Widget',
       titleKey: 'widgets.goals.title',
-      isEnabled: true,
-      canAddGoals: true,
-      showProgress: true,
-      showSubGoals: true,
-      showComments: true,
-      autoCalculateProgress: true,
-      ...props.widgetData
-    })
+      isEnabled: props.widget?.is_enabled ?? true,
+      showProgress: props.widget?.show_progress ?? true,
+      showDeadlines: props.widget?.show_deadlines ?? true,
+      showPriority: props.widget?.show_priority ?? true,
+      showOverview: props.widget?.show_overview ?? true,
+      maxGoals: props.widget?.max_goals ?? 10,
+      allowCreate: props.widget?.allow_create ?? true,
+      allowEdit: props.widget?.allow_edit ?? true,
+      allowDelete: props.widget?.allow_delete ?? true,
+      defaultView: props.widget?.default_view ?? 'list',
+      sortBy: props.widget?.sort_by ?? 'priority',
+      filterBy: props.widget?.filter_by ?? 'all',
+      autoRefresh: props.widget?.auto_refresh ?? false,
+      refreshInterval: props.widget?.refresh_interval ?? 30000
+    }))
     
     // Options de configuration
     const configOptions = ref([
       {
-        key: 'canAddGoals',
+        key: 'showOverview',
         type: 'boolean',
-        label: 'Permettre l\'ajout d\'objectifs',
+        label: 'Afficher la vue d\'ensemble',
         default: true
       },
       {
@@ -127,51 +615,84 @@ export default {
         default: true
       },
       {
-        key: 'showSubGoals',
+        key: 'showDeadlines',
         type: 'boolean',
-        label: 'Afficher les sous-objectifs',
+        label: 'Afficher les échéances',
         default: true
       },
       {
-        key: 'showComments',
+        key: 'showAssignees',
         type: 'boolean',
-        label: 'Afficher les commentaires récents',
+        label: 'Afficher les assignés',
         default: true
       },
       {
-        key: 'autoCalculateProgress',
+        key: 'allowCreate',
         type: 'boolean',
-        label: 'Calculer automatiquement la progression',
+        label: 'Permettre la création',
         default: true
+      },
+      {
+        key: 'allowEdit',
+        type: 'boolean',
+        label: 'Permettre la modification',
+        default: true
+      },
+      {
+        key: 'allowDelete',
+        type: 'boolean',
+        label: 'Permettre la suppression',
+        default: true
+      },
+      {
+        key: 'autoRefresh',
+        type: 'boolean',
+        label: 'Actualisation automatique',
+        default: true
+      },
+      {
+        key: 'refreshInterval',
+        type: 'number',
+        label: 'Intervalle d\'actualisation (ms)',
+        min: 60000,
+        max: 600000,
+        step: 60000,
+        default: 300000
       }
     ])
     
     // Propriétés calculées
-    const canAddGoals = computed(() => widgetConfig.value.canAddGoals)
+    const totalGoals = computed(() => goals.value.length)
     
-    const activeGoals = computed(() => 
-      goals.value.filter(goal => goal.status === 'active')
-    )
+    const completedGoals = computed(() => {
+      return goals.value.filter(goal => goal.status === 'completed').length
+    })
     
-    const completedGoals = computed(() => 
-      goals.value.filter(goal => goal.status === 'completed')
-    )
+    const activeGoals = computed(() => {
+      return goals.value.filter(goal => goal.status === 'active').length
+    })
     
-    const overdueGoals = computed(() => 
-      goals.value.filter(goal => isOverdue(goal))
-    )
+    const overdueGoals = computed(() => {
+      return goals.value.filter(goal => isOverdue(goal)).length
+    })
     
-    const overallProgress = computed(() => {
-      if (goals.value.length === 0) return 0
-      const totalProgress = goals.value.reduce((sum, goal) => sum + (goal.progress || 0), 0)
-      return Math.round(totalProgress / goals.value.length)
+    const completionRate = computed(() => {
+      if (totalGoals.value === 0) return 0
+      return Math.round((completedGoals.value / totalGoals.value) * 100)
+    })
+    
+    const circumference = computed(() => 2 * Math.PI * 50)
+    
+    const progressOffset = computed(() => {
+      const progress = completionRate.value
+      return circumference.value - (progress / 100) * circumference.value
     })
     
     const filteredGoals = computed(() => {
       let filtered = [...goals.value]
       
       // Filtrer par statut
-      switch (activeFilter.value) {
+      switch (filterStatus.value) {
         case 'active':
           filtered = filtered.filter(goal => goal.status === 'active')
           break
@@ -181,6 +702,22 @@ export default {
         case 'overdue':
           filtered = filtered.filter(goal => isOverdue(goal))
           break
+        case 'upcoming':
+          const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          filtered = filtered.filter(goal => 
+            goal.deadline && new Date(goal.deadline) <= nextWeek && !isOverdue(goal)
+          )
+          break
+      }
+      
+      // Filtrer par recherche
+      if (searchQuery.value) {
+        const query = searchQuery.value.toLowerCase()
+        filtered = filtered.filter(goal => 
+          goal.title.toLowerCase().includes(query) ||
+          goal.description?.toLowerCase().includes(query) ||
+          goal.tags?.some(tag => tag.toLowerCase().includes(query))
+        )
       }
       
       // Trier
@@ -195,15 +732,53 @@ export default {
             if (!b.deadline) return -1
             return new Date(a.deadline) - new Date(b.deadline)
           case 'progress':
-            return (b.progress || 0) - (a.progress || 0)
-          case 'created':
-            return new Date(b.created_at) - new Date(a.created_at)
+            return b.progress - a.progress
+          case 'name':
+            return a.title.localeCompare(b.title)
           default:
             return 0
         }
       })
       
-      return filtered
+      // Pagination
+      const start = (currentPage.value - 1) * itemsPerPage.value
+      const end = start + itemsPerPage.value
+      
+      return filtered.slice(start, end)
+    })
+    
+    const totalPages = computed(() => {
+      const totalFiltered = goals.value.filter(goal => {
+        // Appliquer les mêmes filtres que filteredGoals mais sans pagination
+        let include = true
+        
+        switch (filterStatus.value) {
+          case 'active':
+            include = goal.status === 'active'
+            break
+          case 'completed':
+            include = goal.status === 'completed'
+            break
+          case 'overdue':
+            include = isOverdue(goal)
+            break
+          case 'upcoming':
+            const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            include = goal.deadline && new Date(goal.deadline) <= nextWeek && !isOverdue(goal)
+            break
+        }
+        
+        if (searchQuery.value && include) {
+          const query = searchQuery.value.toLowerCase()
+          include = goal.title.toLowerCase().includes(query) ||
+                   goal.description?.toLowerCase().includes(query) ||
+                   goal.tags?.some(tag => tag.toLowerCase().includes(query))
+        }
+        
+        return include
+      }).length
+      
+      return Math.ceil(totalFiltered / itemsPerPage.value)
     })
     
     // Méthodes
@@ -212,75 +787,11 @@ export default {
       error.value = null
       
       try {
-        // Simuler le chargement des objectifs
-        const result = await projectManagementService.getProjectGoals?.(props.projectId) || {
-          success: true,
-          data: [
-            {
-              id: 1,
-              title: 'Augmenter le taux de conversion',
-              description: 'Améliorer le taux de conversion du site web de 15%',
-              status: 'active',
-              priority: 'high',
-              category: 'marketing',
-              progress: 65,
-              deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-              assigned_to: {
-                id: 1,
-                name: 'Marie Dubois',
-                avatar: null
-              },
-              created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-              sub_goals: [
-                {
-                  id: 1,
-                  title: 'Optimiser la page d\'accueil',
-                  completed: true,
-                  deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-                },
-                {
-                  id: 2,
-                  title: 'Améliorer le tunnel de conversion',
-                  completed: false,
-                  deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
-                }
-              ],
-              recent_comments: [
-                {
-                  id: 1,
-                  content: 'Bonne progression sur cet objectif !',
-                  user: {
-                    id: 2,
-                    name: 'Jean Martin',
-                    avatar: null
-                  },
-                  created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
-                }
-              ]
-            },
-            {
-              id: 2,
-              title: 'Lancer la campagne publicitaire',
-              description: 'Mettre en place une campagne publicitaire sur les réseaux sociaux',
-              status: 'completed',
-              priority: 'medium',
-              category: 'advertising',
-              progress: 100,
-              deadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-              assigned_to: {
-                id: 2,
-                name: 'Jean Martin',
-                avatar: null
-              },
-              created_at: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-              sub_goals: [],
-              recent_comments: []
-            }
-          ]
-        }
-        
+        const result = await goalsService.getGoals()
         if (result.success) {
           goals.value = result.data
+        } else {
+          error.value = result.error
         }
       } catch (err) {
         error.value = t('errors.loadingFailed')
@@ -289,206 +800,289 @@ export default {
       }
     }
     
-    const isOverdue = (goal) => {
+    const toggleWidget = () => {
+      const updatedWidget = {
+        ...props.widget,
+        is_enabled: !props.widget?.is_enabled
+      }
+      emit('widget-updated', updatedWidget)
+    }
+    
+    const isOverdue = (goal: Goal): boolean => {
       if (!goal.deadline || goal.status === 'completed') return false
       return new Date(goal.deadline) < new Date()
     }
     
-    const formatDate = (dateString) => {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      })
-    }
-    
-    const formatCommentTime = (dateString) => {
-      const date = new Date(dateString)
+    const formatDeadline = (deadline: string): string => {
+      const date = new Date(deadline)
       const now = new Date()
-      const diffMs = now - date
-      const diffHours = Math.floor(diffMs / 3600000)
-      const diffDays = Math.floor(diffMs / 86400000)
+      const diffInDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24))
       
-      if (diffHours < 1) return t('widgets.goals.justNow')
-      if (diffHours < 24) return t('widgets.goals.hoursAgo', { count: diffHours })
-      return t('widgets.goals.daysAgo', { count: diffDays })
-    }
-    
-    const toggleGoalStatus = async (goal) => {
-      try {
-        const newStatus = goal.status === 'completed' ? 'active' : 'completed'
-        goal.status = newStatus
-        
-        if (newStatus === 'completed') {
-          goal.progress = 100
-        }
-        
-        success(t('widgets.goals.statusUpdated'))
-      } catch (err) {
-        showError(t('widgets.goals.updateFailed'))
+      if (diffInDays < 0) {
+        return t('widgets.goals.overdueDays', { days: Math.abs(diffInDays) })
+      } else if (diffInDays === 0) {
+        return t('widgets.goals.today')
+      } else if (diffInDays === 1) {
+        return t('widgets.goals.tomorrow')
+      } else if (diffInDays <= 7) {
+        return t('widgets.goals.inDays', { days: diffInDays })
+      } else {
+        return date.toLocaleDateString('fr-FR', {
+          day: 'numeric',
+          month: 'short',
+          year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+        })
       }
     }
     
-    const toggleGoalMenu = (goalId) => {
+    const getPriorityClass = (priority: GoalPriority): string => {
+      const classes: Record<GoalPriority, string> = {
+        high: 'priority-high',
+        medium: 'priority-medium',
+        low: 'priority-low'
+      }
+      return classes[priority] || 'priority-medium'
+    }
+    
+    const getPriorityLabel = (priority: GoalPriority): string => {
+      const labels: Record<GoalPriority, string> = {
+        high: t('widgets.goals.priorityHigh'),
+        medium: t('widgets.goals.priorityMedium'),
+        low: t('widgets.goals.priorityLow')
+      }
+      return labels[priority] || labels.medium
+    }
+    
+    const getProgressClass = (progress: number): string => {
+      if (progress >= 80) return 'progress-high'
+      if (progress >= 50) return 'progress-medium'
+      if (progress >= 25) return 'progress-low'
+      return 'progress-minimal'
+    }
+    
+    const getStatusClass = (status: GoalStatus): string => {
+      const classes: Record<GoalStatus, string> = {
+        active: 'status-active',
+        completed: 'status-completed',
+        paused: 'status-paused',
+        cancelled: 'status-cancelled'
+      }
+      return classes[status] || 'status-active'
+    }
+    
+    const getStatusIcon = (status: GoalStatus): string => {
+      const icons: Record<GoalStatus, string> = {
+        active: 'fas fa-play',
+        completed: 'fas fa-check',
+        paused: 'fas fa-pause',
+        cancelled: 'fas fa-times'
+      }
+      return icons[status] || 'fas fa-play'
+    }
+    
+    const getStatusLabel = (status: GoalStatus): string => {
+      const labels: Record<GoalStatus, string> = {
+        active: t('widgets.goals.statusActive'),
+        completed: t('widgets.goals.statusCompleted'),
+        paused: t('widgets.goals.statusPaused'),
+        cancelled: t('widgets.goals.statusCancelled')
+      }
+      return labels[status] || labels.active
+    }
+    
+    const selectGoal = (goal: Goal): void => {
+      selectedGoal.value = goal
+      showDetailsModal.value = true
+    }
+    
+    const toggleGoalMenu = (goalId: string): void => {
       activeGoalMenu.value = activeGoalMenu.value === goalId ? null : goalId
     }
     
-    const editGoal = (goal) => {
-      editingGoal.value = goal
-      showAddGoalModal.value = true
+    const editGoal = (goal: Goal): void => {
+      if (!widgetConfig.value.allowEdit) {
+        showError(t('widgets.goals.editNotAllowed'))
+        return
+      }
+      
+      selectedGoal.value = goal
+      showEditModal.value = true
       activeGoalMenu.value = null
     }
     
-    const duplicateGoal = async (goal) => {
+    const duplicateGoal = async (goal: Goal): Promise<void> => {
       try {
-        const duplicatedGoal = {
+        const duplicatedGoal: Partial<Goal> = {
           ...goal,
-          id: Date.now(),
-          title: `${goal.title} (copie)`,
+          id: undefined,
+          title: `${goal.title} (Copie)`,
           status: 'active',
           progress: 0,
-          created_at: new Date().toISOString()
+          created_at: undefined,
+          updated_at: undefined
         }
         
-        goals.value.unshift(duplicatedGoal)
-        activeGoalMenu.value = null
-        success(t('widgets.goals.goalDuplicated'))
+        const result = await goalsService.createGoal(duplicatedGoal as Goal)
+        if (result.success) {
+          goals.value.push(result.data)
+          success(t('widgets.goals.goalDuplicated'))
+        } else {
+          showError(result.error)
+        }
       } catch (err) {
-        showError(t('widgets.goals.duplicateFailed'))
+        showError(t('widgets.goals.duplicateError'))
       }
+      
+      activeGoalMenu.value = null
     }
     
-    const deleteGoal = async (goal) => {
-      if (!confirm(t('widgets.goals.confirmDelete'))) return
+    const archiveGoal = async (goal: Goal): Promise<void> => {
+      try {
+        const result = await goalsService.updateGoal(goal.id, { status: 'archived' })
+        if (result.success) {
+          const index = goals.value.findIndex(g => g.id === goal.id)
+          if (index > -1) {
+            goals.value[index].status = 'archived'
+          }
+          success(t('widgets.goals.goalArchived'))
+        } else {
+          showError(result.error)
+        }
+      } catch (err) {
+        showError(t('widgets.goals.archiveError'))
+      }
+      
+      activeGoalMenu.value = null
+    }
+    
+    const deleteGoal = async (goal: Goal): Promise<void> => {
+      if (!widgetConfig.value.allowDelete) {
+        showError(t('widgets.goals.deleteNotAllowed'))
+        return
+      }
+      
+      if (!confirm(t('widgets.goals.confirmDelete', { title: goal.title }))) return
       
       try {
-        goals.value = goals.value.filter(g => g.id !== goal.id)
-        activeGoalMenu.value = null
-        success(t('widgets.goals.goalDeleted'))
-      } catch (err) {
-        showError(t('widgets.goals.deleteFailed'))
-      }
-    }
-    
-    const toggleSubGoals = (goalId) => {
-      const index = expandedGoals.value.indexOf(goalId)
-      if (index > -1) {
-        expandedGoals.value.splice(index, 1)
-      } else {
-        expandedGoals.value.push(goalId)
-      }
-    }
-    
-    const toggleSubGoalStatus = async (goal, subGoal) => {
-      try {
-        subGoal.completed = !subGoal.completed
-        
-        // Recalculer la progression si activé
-        if (widgetConfig.value.autoCalculateProgress) {
-          const completedSubGoals = goal.sub_goals.filter(sg => sg.completed).length
-          goal.progress = Math.round((completedSubGoals / goal.sub_goals.length) * 100)
-          
-          // Marquer l'objectif comme terminé si tous les sous-objectifs sont terminés
-          if (completedSubGoals === goal.sub_goals.length) {
-            goal.status = 'completed'
-            goal.progress = 100
-          }
+        const result = await goalsService.deleteGoal(goal.id)
+        if (result.success) {
+          goals.value = goals.value.filter(g => g.id !== goal.id)
+          success(t('widgets.goals.goalDeleted'))
+        } else {
+          showError(result.error)
         }
-        
-        success(t('widgets.goals.subGoalUpdated'))
       } catch (err) {
-        showError(t('widgets.goals.updateFailed'))
+        showError(t('widgets.goals.deleteError'))
+      }
+      
+      activeGoalMenu.value = null
+      showDetailsModal.value = false
+    }
+    
+    const toggleGoalStatus = async (goal: Goal): Promise<void> => {
+      const newStatus: GoalStatus = goal.status === 'completed' ? 'active' : 'completed'
+      const newProgress = newStatus === 'completed' ? 100 : goal.progress
+      
+      try {
+        const result = await goalsService.updateGoal(goal.id, {
+          status: newStatus,
+          progress: newProgress
+        })
+        
+        if (result.success) {
+          const index = goals.value.findIndex(g => g.id === goal.id)
+          if (index > -1) {
+            goals.value[index].status = newStatus
+            goals.value[index].progress = newProgress
+          }
+          
+          const message = newStatus === 'completed' 
+            ? t('widgets.goals.goalCompleted')
+            : t('widgets.goals.goalReactivated')
+          success(message)
+        } else {
+          showError(result.error)
+        }
+      } catch (err) {
+        showError(t('widgets.goals.updateError'))
       }
     }
     
-    const closeGoalModal = () => {
-      showAddGoalModal.value = false
-      editingGoal.value = null
-    }
-    
-    const onGoalSaved = (goalData) => {
-      if (editingGoal.value) {
+    const handleGoalSave = (goalData: Partial<Goal>): void => {
+      if (selectedGoal.value) {
         // Mise à jour
-        const index = goals.value.findIndex(g => g.id === editingGoal.value.id)
-        if (index !== -1) {
+        const index = goals.value.findIndex(g => g.id === selectedGoal.value!.id)
+        if (index > -1) {
           goals.value[index] = { ...goals.value[index], ...goalData }
         }
         success(t('widgets.goals.goalUpdated'))
       } else {
-        // Ajout
-        const newGoal = {
-          id: Date.now(),
-          ...goalData,
-          status: 'active',
-          progress: 0,
-          created_at: new Date().toISOString(),
-          sub_goals: [],
-          recent_comments: []
-        }
-        goals.value.unshift(newGoal)
-        success(t('widgets.goals.goalAdded'))
+        // Création
+        goals.value.push(goalData as Goal)
+        success(t('widgets.goals.goalCreated'))
       }
       
-      closeGoalModal()
+      closeModals()
     }
     
-    const toggleWidget = () => {
-      widgetConfig.value.isEnabled = !widgetConfig.value.isEnabled
-      emit('update-widget', widgetConfig.value)
+    const closeModals = (): void => {
+      showCreateModal.value = false
+      showEditModal.value = false
+      showDetailsModal.value = false
+      selectedGoal.value = null
     }
     
-    const updateConfig = (newConfig) => {
-      widgetConfig.value = { ...widgetConfig.value, ...newConfig }
-      emit('update-widget', widgetConfig.value)
+    const updateConfig = (newConfig: Partial<GoalsWidgetConfig>): void => {
+      emit('widget-updated', { ...widgetConfig.value, ...newConfig })
       showConfigModal.value = false
     }
     
-    // Watchers
-    watch(() => props.projectId, loadGoals, { immediate: true })
+    // Auto-refresh
+    let refreshInterval = null
     
+    const startAutoRefresh = () => {
+      if (widgetConfig.value.autoRefresh && widgetConfig.value.refreshInterval) {
+        refreshInterval = setInterval(loadGoals, widgetConfig.value.refreshInterval)
+      }
+    }
+    
+    const stopAutoRefresh = () => {
+      if (refreshInterval) {
+        clearInterval(refreshInterval)
+        refreshInterval = null
+      }
+    }
+    
+    // Lifecycle
     onMounted(() => {
       loadGoals()
+      startAutoRefresh()
     })
     
-    return {
-      loading,
-      error,
-      goals,
-      activeFilter,
-      sortBy,
-      expandedGoals,
-      activeGoalMenu,
-      showAddGoalModal,
-      showConfigModal,
-      editingGoal,
-      widgetConfig,
-      configOptions,
-      canAddGoals,
-      activeGoals,
-      completedGoals,
-      overdueGoals,
-      overallProgress,
-      filteredGoals,
-      loadGoals,
-      isOverdue,
-      formatDate,
-      formatCommentTime,
-      toggleGoalStatus,
-      toggleGoalMenu,
-      editGoal,
-      duplicateGoal,
-      deleteGoal,
-      toggleSubGoals,
-      toggleSubGoalStatus,
-      closeGoalModal,
-      onGoalSaved,
-      toggleWidget,
-      updateConfig,
-      t
-    }
-  }
-}
+    // Watchers
+    watch(() => props.projectId, loadGoals)
+    
+    watch(() => widgetConfig.value.autoRefresh, (newValue) => {
+      if (newValue) {
+        startAutoRefresh()
+      } else {
+        stopAutoRefresh()
+      }
+    })
+    
+    watch(() => widgetConfig.value.refreshInterval, () => {
+      stopAutoRefresh()
+      startAutoRefresh()
+    })
+    
+    // Cleanup
+    onUnmounted(() => {
+      stopAutoRefresh()
+    })
+      
+      // Dans <script setup>, toutes les variables et fonctions sont automatiquement exposées
+      // Pas besoin de return statement
+
 </script>
 
 <style scoped>
@@ -497,135 +1091,160 @@ export default {
 }
 
 .goals-header {
-  @apply flex items-start justify-between;
+  @apply flex items-center justify-between;
 }
 
-.header-info {
-  @apply flex-1;
+.header-left {
+  @apply flex flex-col space-y-2;
 }
 
 .goals-title {
-  @apply text-lg font-semibold text-gray-900 mb-2;
+  @apply text-xl font-bold text-gray-900;
 }
 
-.goals-summary {
-  @apply flex items-center space-x-4 text-sm;
+.goals-stats {
+  @apply flex items-center space-x-4 text-sm text-gray-600;
 }
 
-.summary-item {
-  @apply flex items-center space-x-1 text-gray-600;
+.stat-item {
+  @apply flex items-center;
 }
 
-.header-actions {
-  @apply flex-shrink-0;
+.header-right {
+  @apply flex items-center space-x-3;
 }
 
-.add-goal-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center text-sm;
+.view-controls {
+  @apply flex items-center space-x-1 border border-gray-300 rounded-md;
 }
 
-.goals-filters {
-  @apply flex items-center justify-between border-b border-gray-200 pb-3;
+.view-btn {
+  @apply p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors;
 }
 
-.filter-tabs {
-  @apply flex items-center space-x-1;
+.view-btn.active {
+  @apply text-blue-600 bg-blue-50;
 }
 
-.filter-tab {
-  @apply px-3 py-2 text-sm rounded-md transition-colors;
-}
-
-.filter-tab:not(.active) {
-  @apply text-gray-600 hover:text-gray-900 hover:bg-gray-100;
-}
-
-.filter-tab.active {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.filter-options {
+.filter-controls {
   @apply flex items-center space-x-2;
 }
 
-.sort-select {
-  @apply px-3 py-2 border border-gray-300 rounded-md text-sm;
+.filter-select {
+  @apply px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent;
 }
 
-.overall-progress {
-  @apply bg-gray-50 rounded-lg p-4;
+.create-btn {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center;
 }
 
-.progress-header {
-  @apply flex items-center justify-between mb-2;
+.search-bar {
+  @apply relative;
 }
 
-.progress-label {
-  @apply text-sm font-medium text-gray-700;
+.search-input-wrapper {
+  @apply relative;
+}
+
+.search-icon {
+  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400;
+}
+
+.search-input {
+  @apply w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+}
+
+.clear-search-btn {
+  @apply absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600;
+}
+
+.goals-overview {
+  @apply bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6;
+}
+
+.overview-chart {
+  @apply flex items-center justify-between;
+}
+
+.chart-container {
+  @apply relative;
+}
+
+.progress-ring {
+  @apply relative;
+}
+
+.progress-svg {
+  @apply transform -rotate-90;
+}
+
+.progress-text {
+  @apply absolute inset-0 flex flex-col items-center justify-center;
 }
 
 .progress-percentage {
-  @apply text-sm font-bold text-gray-900;
+  @apply text-2xl font-bold text-gray-900;
 }
 
-.progress-bar {
-  @apply w-full bg-gray-200 rounded-full h-3 overflow-hidden;
+.progress-label {
+  @apply text-sm text-gray-600;
 }
 
-.progress-bar.small {
-  @apply h-2;
+.overview-stats {
+  @apply grid grid-cols-2 lg:grid-cols-4 gap-4;
 }
 
-.progress-fill {
-  @apply h-full bg-blue-500 transition-all duration-500 ease-out;
+.stat-card {
+  @apply bg-white rounded-lg p-4 flex items-center space-x-3;
 }
 
-.progress-details {
-  @apply mt-2 text-xs text-gray-600;
+.stat-icon {
+  @apply w-10 h-10 rounded-lg flex items-center justify-center;
 }
 
-.detail-item {
-  @apply mr-4;
+.stat-content {
+  @apply flex-1;
 }
 
-.goals-list {
-  @apply space-y-4 max-h-96 overflow-y-auto;
+.stat-value {
+  @apply text-xl font-bold text-gray-900;
 }
 
-.goal-item {
-  @apply bg-white border border-gray-200 rounded-lg p-4 transition-all;
+.stat-label {
+  @apply text-sm text-gray-600;
 }
 
-.goal-item.completed {
-  @apply bg-green-50 border-green-200;
+.goals-container {
+  @apply min-h-[400px];
 }
 
-.goal-item.overdue {
-  @apply bg-red-50 border-red-200;
+/* Vue cartes */
+.goals-grid {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
 }
 
-.goal-item.high-priority {
+.goal-card {
+  @apply bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer;
+}
+
+.goal-card.completed {
+  @apply border-green-200 bg-green-50;
+}
+
+.goal-card.overdue {
+  @apply border-red-200 bg-red-50;
+}
+
+.goal-card.high-priority {
   @apply border-l-4 border-l-red-500;
 }
 
 .goal-header {
-  @apply flex items-start justify-between mb-3;
+  @apply flex items-center justify-between mb-3;
 }
 
-.goal-info {
-  @apply flex-1;
-}
-
-.goal-title-row {
-  @apply flex items-start justify-between mb-2;
-}
-
-.goal-title {
-  @apply text-base font-semibold text-gray-900;
-}
-
-.goal-badges {
-  @apply flex items-center space-x-2;
+.goal-priority {
+  @apply flex items-center;
 }
 
 .priority-badge {
@@ -644,36 +1263,220 @@ export default {
   @apply bg-green-100 text-green-800;
 }
 
-.category-badge {
-  @apply px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700;
-}
-
-.goal-description {
-  @apply text-sm text-gray-600 mb-3;
-}
-
-.goal-meta {
-  @apply space-y-1;
-}
-
-.meta-item {
-  @apply flex items-center space-x-2 text-sm text-gray-600;
-}
-
 .goal-actions {
-  @apply flex items-center space-x-2;
+  @apply flex items-center space-x-1;
 }
 
 .action-btn {
-  @apply w-8 h-8 flex items-center justify-center rounded-md border transition-colors;
+  @apply p-1 text-gray-400 hover:text-gray-600 transition-colors;
 }
 
-.action-btn.pending {
-  @apply border-gray-300 text-gray-500 hover:border-green-300 hover:text-green-600;
+.goal-content {
+  @apply space-y-3;
 }
 
-.action-btn.completed {
-  @apply border-green-500 bg-green-500 text-white;
+.goal-title {
+  @apply text-lg font-semibold text-gray-900 truncate;
+}
+
+.goal-description {
+  @apply text-sm text-gray-600 line-clamp-2;
+}
+
+.goal-progress {
+  @apply space-y-2;
+}
+
+.progress-header {
+  @apply flex items-center justify-between text-sm;
+}
+
+.progress-label {
+  @apply text-gray-600;
+}
+
+.progress-value {
+  @apply font-medium text-gray-900;
+}
+
+.progress-bar-container {
+  @apply w-full bg-gray-200 rounded-full h-2;
+}
+
+.progress-bar {
+  @apply h-2 rounded-full transition-all duration-300;
+}
+
+.progress-high {
+  @apply bg-green-500;
+}
+
+.progress-medium {
+  @apply bg-blue-500;
+}
+
+.progress-low {
+  @apply bg-yellow-500;
+}
+
+.progress-minimal {
+  @apply bg-gray-400;
+}
+
+.goal-meta {
+  @apply flex items-center justify-between text-sm text-gray-600;
+}
+
+.goal-deadline {
+  @apply flex items-center;
+}
+
+.goal-assignee {
+  @apply flex items-center;
+}
+
+.goal-footer {
+  @apply flex items-center justify-between mt-4 pt-3 border-t border-gray-200;
+}
+
+.goal-tags {
+  @apply flex items-center space-x-1;
+}
+
+.goal-tag {
+  @apply px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full;
+}
+
+.goal-status {
+  @apply flex items-center;
+}
+
+.status-btn {
+  @apply px-3 py-1 text-xs rounded-full font-medium transition-colors;
+}
+
+.status-active {
+  @apply bg-blue-100 text-blue-800 hover:bg-blue-200;
+}
+
+.status-completed {
+  @apply bg-green-100 text-green-800 hover:bg-green-200;
+}
+
+.status-paused {
+  @apply bg-yellow-100 text-yellow-800 hover:bg-yellow-200;
+}
+
+.status-cancelled {
+  @apply bg-red-100 text-red-800 hover:bg-red-200;
+}
+
+/* Vue liste */
+.goals-list {
+  @apply space-y-1;
+}
+
+.list-header {
+  @apply grid grid-cols-12 gap-4 px-4 py-2 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-700;
+}
+
+.list-item {
+  @apply grid grid-cols-12 gap-4 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100;
+}
+
+.list-item.completed {
+  @apply bg-green-50 border-green-200;
+}
+
+.list-item.overdue {
+  @apply bg-red-50 border-red-200;
+}
+
+.list-item.selected {
+  @apply bg-blue-50 border-blue-200;
+}
+
+.header-cell.title,
+.list-cell.title {
+  @apply col-span-4;
+}
+
+.header-cell.priority,
+.list-cell.priority {
+  @apply col-span-1 flex items-center;
+}
+
+.header-cell.progress,
+.list-cell.progress {
+  @apply col-span-2 flex items-center;
+}
+
+.header-cell.deadline,
+.list-cell.deadline {
+  @apply col-span-2 flex items-center;
+}
+
+.header-cell.assignee,
+.list-cell.assignee {
+  @apply col-span-2 flex items-center;
+}
+
+.header-cell.status,
+.list-cell.status {
+  @apply col-span-1 flex items-center;
+}
+
+.header-cell.actions,
+.list-cell.actions {
+  @apply col-span-1 flex items-center justify-end;
+}
+
+.goal-title-cell {
+  @apply space-y-1;
+}
+
+.progress-container {
+  @apply flex items-center space-x-2;
+}
+
+.progress-bar-small {
+  @apply w-16 bg-gray-200 rounded-full h-2;
+}
+
+.progress-fill {
+  @apply h-2 rounded-full transition-all duration-300;
+}
+
+.progress-text {
+  @apply text-xs text-gray-600;
+}
+
+.assignee-info {
+  @apply flex items-center space-x-2;
+}
+
+.assignee-avatar {
+  @apply w-6 h-6 rounded-full object-cover;
+}
+
+.assignee-avatar-placeholder {
+  @apply w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700;
+}
+
+.assignee-name {
+  @apply text-sm text-gray-900;
+}
+
+.status-btn-small {
+  @apply px-2 py-1 text-xs rounded-full font-medium transition-colors;
+}
+
+.action-buttons {
+  @apply flex items-center space-x-1;
+}
+
+.action-btn-small {
+  @apply p-1 text-gray-400 hover:text-gray-600 transition-colors;
 }
 
 .dropdown {
@@ -681,114 +1484,30 @@ export default {
 }
 
 .dropdown-menu {
-  @apply absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[140px];
+  @apply absolute right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[150px];
 }
 
 .dropdown-item {
   @apply w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center;
 }
 
-.goal-progress {
-  @apply mb-3;
-}
-
-.sub-goals {
-  @apply border-t border-gray-200 pt-3 mt-3;
-}
-
-.sub-goals-header {
-  @apply flex items-center justify-between mb-2;
-}
-
-.sub-goals-title {
-  @apply text-sm font-medium text-gray-700 flex items-center;
-}
-
-.toggle-btn {
-  @apply p-1 text-gray-500 hover:text-gray-700 transition-transform;
-}
-
-.rotate-180 {
-  @apply transform rotate-180;
-}
-
-.sub-goals-list {
-  @apply space-y-2;
-}
-
-.sub-goal-item {
-  @apply flex items-center space-x-3 p-2 bg-gray-50 rounded-md;
-}
-
-.sub-goal-item.completed {
-  @apply bg-green-50;
-}
-
-.sub-goal-checkbox {
-  @apply w-5 h-5 border border-gray-300 rounded flex items-center justify-center text-white transition-colors;
-}
-
-.sub-goal-item.completed .sub-goal-checkbox {
-  @apply bg-green-500 border-green-500;
-}
-
-.sub-goal-title {
-  @apply flex-1 text-sm text-gray-700;
-}
-
-.sub-goal-item.completed .sub-goal-title {
-  @apply line-through text-gray-500;
-}
-
-.sub-goal-deadline {
-  @apply text-xs text-gray-500;
-}
-
-.goal-comments {
-  @apply border-t border-gray-200 pt-3 mt-3;
-}
-
-.comments-header {
-  @apply text-sm font-medium text-gray-700 mb-2 flex items-center;
-}
-
-.comments-list {
-  @apply space-y-2;
-}
-
-.comment-item {
-  @apply flex space-x-2;
-}
-
-.comment-avatar {
-  @apply w-6 h-6 rounded-full object-cover;
-}
-
-.comment-content {
-  @apply flex-1;
-}
-
-.comment-header {
-  @apply flex items-center space-x-2 mb-1;
-}
-
-.comment-author {
-  @apply text-xs font-medium text-gray-900;
-}
-
-.comment-time {
-  @apply text-xs text-gray-500;
-}
-
-.comment-text {
-  @apply text-xs text-gray-700;
-}
-
 .no-goals {
-  @apply text-center py-8;
+  @apply text-center py-12;
 }
 
 .create-first-goal-btn {
-  @apply px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center;
+  @apply mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center mx-auto;
+}
+
+.pagination {
+  @apply flex items-center justify-center space-x-4 pt-4 border-t border-gray-200;
+}
+
+.pagination-btn {
+  @apply p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+}
+
+.pagination-info {
+  @apply text-sm text-gray-600;
 }
 </style>

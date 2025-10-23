@@ -76,7 +76,11 @@ const VueI18nPlugin = {
   install(app) {
     // Installer Vue I18n
     app.use(i18n)
-    
+
+    // Alias global pour les templates utilisant directement t(...)
+    // Assure que _ctx.t est une fonction même sans injection explicite via setup
+    app.config.globalProperties.t = (...args) => i18n.global.t(...args)
+
     // Enregistrer seulement les directives personnalisées qui ne sont pas déjà fournies par Vue I18n
     // Vue I18n fournit déjà la directive 't', donc on évite de la réenregistrer
     Object.keys(i18nDirectives).forEach(name => {

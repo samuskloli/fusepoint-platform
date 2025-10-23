@@ -607,7 +607,7 @@ export default {
     
     const loadAvailableWidgets = async () => {
       try {
-        const result = await projectTemplateService.getGlobalWidgets()
+        const result = await projectTemplateService.getWidgets()
         if (result.success) {
           availableWidgets.value = result.data
         }

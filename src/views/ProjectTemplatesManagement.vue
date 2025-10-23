@@ -1,10 +1,7 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
-    <!-- Menu latéral de l'agent -->
-    <AgentSidebar />
-    
+  <RoleLayout>
     <!-- Contenu principal -->
-    <div class="flex-1 flex flex-col overflow-hidden ml-64">
+    <div class="flex-1 flex flex-col overflow-hidden">
       <!-- En-tête -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
         <div class="flex items-center justify-between">
@@ -233,8 +230,8 @@
             </tbody>
           </table>
         </div>
+        </div>
       </div>
-    </div>
 
     <!-- Modals -->
     <ProjectTemplateModal
@@ -244,6 +241,13 @@
       @saved="handleTemplateSaved"
     />
 
+    <TemplateWidgetsModal
+      v-if="showWidgetsModal"
+      :template="selectedTemplate"
+      @close="showWidgetsModal = false"
+      @updated="handleWidgetsUpdated"
+    />
+
     <ConfirmDeleteModal
       v-if="showDeleteModal"
       :title="t('projectTemplates.management.deleteTemplate')"
@@ -251,23 +255,25 @@
       @confirm="confirmDeleteTemplate"
       @cancel="showDeleteModal = false"
     />
-  </div>
+  </RoleLayout>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
-import AgentSidebar from '@/components/AgentSidebar.vue'
+import RoleLayout from '@/components/RoleLayout.vue'
 import ProjectTemplateModal from '@/components/modals/ProjectTemplateModal.vue'
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
 import { useProjectTemplates } from '@/composables/useProjectTemplates'
+import TemplateWidgetsModal from '@/components/agent/modals/TemplateWidgetsModal.vue'
 
 export default {
   name: 'ProjectTemplatesManagement',
   components: {
-    AgentSidebar,
+    RoleLayout,
     ProjectTemplateModal,
-    ConfirmDeleteModal
+    ConfirmDeleteModal,
+    TemplateWidgetsModal
   },
   setup() {
     const { t } = useTranslation()
@@ -290,6 +296,7 @@ export default {
     const showCreateTemplateModal = ref(false)
     const showEditTemplateModal = ref(false)
     const showDeleteModal = ref(false)
+    const showWidgetsModal = ref(false)
     const selectedTemplate = ref(null)
     const templateToDelete = ref(null)
     
@@ -324,6 +331,16 @@ export default {
     const editTemplate = (template) => {
       selectedTemplate.value = template
       showEditTemplateModal.value = true
+    }
+    
+    const manageWidgets = (template) => {
+      selectedTemplate.value = template
+      showWidgetsModal.value = true
+    }
+    
+    const handleWidgetsUpdated = async () => {
+      await loadTemplates()
+      showWidgetsModal.value = false
     }
     
     const duplicateTemplate = async (template) => {
@@ -387,10 +404,13 @@ export default {
       showCreateTemplateModal,
       showEditTemplateModal,
       showDeleteModal,
+      showWidgetsModal,
       selectedTemplate,
       templateToDelete,
       filteredTemplates,
       editTemplate,
+      manageWidgets,
+      handleWidgetsUpdated,
       duplicateTemplate,
       deleteTemplate,
       confirmDeleteTemplate,
@@ -403,17 +423,5 @@ export default {
 </script>
 
 <style scoped>
-/* Styles personnalisés si nécessaire */
-.animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* scoped styles for ProjectTemplatesManagement */
 </style>

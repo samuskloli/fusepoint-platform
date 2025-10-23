@@ -22,6 +22,7 @@ const RouteHandlerService = require('../services/routeHandlerService');
 const ClientManagementService = require('../services/clientManagementService');
 const ProjectManagementService = require('../services/projectManagementService');
 const NotificationManagementService = require('../services/notificationManagementService');
+const { requireProjectView, requireProjectEdit } = require('../middleware/projectAccess');
 
 // Middleware pour toutes les routes agent - seuls les admins et agents peuvent accéder
 router.use(authMiddleware);
@@ -360,10 +361,28 @@ router.get('/projects', RouteHandlerService.asyncHandler(async (req, res) => {
 }, { logKey: 'logs.retrievingAgentProjects', errorKey: 'errors.retrievingAgentProjects' }));
 
 /**
+ * DELETE /api/agent/projects/bulk
+ * Supprimer plusieurs projets en même temps
+ */
+router.delete('/projects/bulk', RouteHandlerService.validateRequiredFieldsMiddleware(['projectIds']), RouteHandlerService.asyncHandler(async (req, res) => {
+  const { projectIds } = req.body;
+  const agentId = req.user.id;
+
+  const ids = Array.isArray(projectIds) ? projectIds : [];
+  const idValidation = validationService.validateIdArray(ids);
+  if (!idValidation.isValid) {
+    return responseService.validationError(res, [{ field: 'projectIds', message: idValidation.message }]);
+  }
+
+  const result = await ProjectManagementService.deleteMultipleProjectsWithValidation(ids, agentId);
+  RouteHandlerService.successResponse(res, result, 'projects.multipleProjectsDeleted');
+}, { logKey: 'logs.deletingMultipleProjects', errorKey: 'errors.deletingMultipleProjects' }));
+
+/**
  * GET /api/agent/projects/:projectId
  * Récupérer les détails d'un projet spécifique
  */
-router.get('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.get('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), requireProjectView, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   
   const project = await ProjectManagementService.getProjectDetails(projectId, req.user.id);
@@ -375,7 +394,7 @@ router.get('/projects/:projectId', RouteHandlerService.validateIdParam('projectI
  * GET /api/agent/projects/:projectId/tasks
  * Récupérer les tâches d'un projet spécifique
  */
-router.get('/projects/:projectId/tasks', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.get('/projects/:projectId/tasks', RouteHandlerService.validateIdParam('projectId'), requireProjectView, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   const options = {
     page: req.query.page,
@@ -393,7 +412,7 @@ router.get('/projects/:projectId/tasks', RouteHandlerService.validateIdParam('pr
  * GET /api/agent/projects/:projectId/files
  * Récupérer les fichiers d'un projet spécifique
  */
-router.get('/projects/:projectId/files', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.get('/projects/:projectId/files', RouteHandlerService.validateIdParam('projectId'), requireProjectView, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   const options = {
     page: req.query.page,
@@ -410,7 +429,7 @@ router.get('/projects/:projectId/files', RouteHandlerService.validateIdParam('pr
  * GET /api/agent/projects/:projectId/team
  * Récupérer les membres de l'équipe d'un projet spécifique
  */
-router.get('/projects/:projectId/team', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.get('/projects/:projectId/team', RouteHandlerService.validateIdParam('projectId'), requireProjectView, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   
   const members = await ProjectManagementService.getProjectTeamMembers(projectId, req.user.id);
@@ -419,10 +438,16 @@ router.get('/projects/:projectId/team', RouteHandlerService.validateIdParam('pro
 }, { logKey: 'logs.retrievingProjectTeam', errorKey: 'errors.retrievingProjectTeam' }));
 
 /**
+ * DELETE /api/agent/projects/bulk
+ * Supprimer plusieurs projets en même temps
+ */
+// (Bloc '/projects/bulk' supprimé; la route est définie plus haut une seule fois)
+
+/**
  * PUT /api/agent/projects/:projectId
  * Mettre à jour un projet spécifique
  */
-router.put('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.put('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), requireProjectEdit, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   const updateData = req.body;
   
@@ -435,7 +460,7 @@ router.put('/projects/:projectId', RouteHandlerService.validateIdParam('projectI
  * DELETE /api/agent/projects/:projectId
  * Supprimer un projet spécifique
  */
-router.delete('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), RouteHandlerService.asyncHandler(async (req, res) => {
+router.delete('/projects/:projectId', RouteHandlerService.validateIdParam('projectId'), requireProjectEdit, RouteHandlerService.asyncHandler(async (req, res) => {
   const projectId = req.validatedParams.projectId;
   
   const result = await ProjectManagementService.deleteProjectWithValidation(projectId, req.user.id);
@@ -443,24 +468,7 @@ router.delete('/projects/:projectId', RouteHandlerService.validateIdParam('proje
   RouteHandlerService.successResponse(res, result, 'projects.projectDeleted');
 }, { logKey: 'logs.deletingProject', errorKey: 'errors.deletingProject' }));
 
-/**
- * DELETE /api/agent/projects/bulk
- * Supprimer plusieurs projets en même temps
- */
-router.delete('/projects/bulk', RouteHandlerService.validateRequiredFieldsMiddleware(['projectIds']), RouteHandlerService.asyncHandler(async (req, res) => {
-  const { projectIds } = req.body;
-  
-  if (!Array.isArray(projectIds) || projectIds.length === 0) {
-    return res.status(400).json({
-      success: false,
-      message: 'projectIds doit être un tableau non vide'
-    });
-  }
-  
-  const result = await ProjectManagementService.deleteMultipleProjectsWithValidation(projectIds, req.user.id);
-  
-  RouteHandlerService.successResponse(res, result, 'projects.multipleProjectsDeleted');
-}, { logKey: 'logs.deletingMultipleProjects', errorKey: 'errors.deletingMultipleProjects' }));
+
 
 /**
  * GET /api/agent/clients/:clientId/tasks
@@ -504,7 +512,7 @@ router.get('/clients/:clientId/files', RouteHandlerService.validateIdParam('clie
 router.get('/clients/:clientId/team', RouteHandlerService.validateIdParam('clientId'), RouteHandlerService.asyncHandler(async (req, res) => {
   const clientId = req.validatedParams.clientId;
   
-  const teamMembers = await ClientManagementService.getClientTeamMembers(clientId, req.user.id);
+  const teamMembers = await ClientManagementService.getClientTeam(clientId, req.user.id);
   
   RouteHandlerService.successResponse(res, teamMembers, 'success.retrieved');
 }, { logKey: 'logs.retrievingClientTeam', errorKey: 'errors.retrievingClientTeam' }));

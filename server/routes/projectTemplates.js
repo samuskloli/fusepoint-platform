@@ -4,6 +4,7 @@ const projectTemplateService = require('../services/projectTemplateService');
 const { authenticateToken } = require('../middleware/auth');
 const { requireRole } = require('../middleware/roleAuth');
 const responseService = require('../services/responseService');
+const { requireProjectView } = require('../middleware/projectAccess');
 
 /**
  * @route GET /api/project-templates
@@ -203,7 +204,7 @@ router.put('/:id/widgets', authenticateToken, requireRole(['agent', 'admin', 'su
  * @desc Récupérer les widgets d'un projet
  * @access Agent
  */
-router.get('/projects/:projectId/widgets', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), async (req, res) => {
+router.get('/projects/:projectId/widgets', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), requireProjectView, async (req, res) => {
   try {
     const projectId = parseInt(req.params.projectId);
     
@@ -211,8 +212,12 @@ router.get('/projects/:projectId/widgets', authenticateToken, requireRole(['agen
       return responseService.error(res, 'ID de projet invalide', 400);
     }
     
-    const widgets = await projectTemplateService.getProjectWidgets(projectId);
-    responseService.success(res, widgets, 'Widgets du projet récupérés avec succès');
+    const result = await projectTemplateService.getProjectWidgets(projectId);
+    if (result.success) {
+      responseService.success(res, 'Widgets du projet récupérés avec succès', result.data);
+    } else {
+      responseService.error(res, result.error, 400);
+    }
   } catch (error) {
     responseService.error(res, 'Erreur serveur lors de la récupération des widgets du projet', 500);
   }

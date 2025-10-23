@@ -68,12 +68,13 @@ class ProjectService {
       const agentId = client.agent_id;
 
       const projectId = await databaseService.run(
-        `INSERT INTO projects (client_id, agent_id, name, description, status, progress, budget, start_date, end_date, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        `INSERT INTO projects (client_id, agent_id, title, name, description, status, progress, budget, start_date, end_date, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
         [
           clientId,
           agentId, // Assigner automatiquement l'agent du client au projet
-          projectData.name,
+          projectData.name, // title
+          projectData.name, // name
           projectData.description || null,
           projectData.status || 'en_cours',
           projectData.progress || 0,
@@ -117,12 +118,14 @@ class ProjectService {
         `SELECT p.*, u.first_name, u.last_name, u.email as client_email
          FROM projects p
          LEFT JOIN users u ON p.client_id = u.id
-         WHERE p.agent_id = ? OR p.client_id IN (
-           SELECT ac.client_id FROM agent_clients ac 
-           WHERE ac.agent_id = ? AND ac.status = 'active'
-         )
+         WHERE p.agent_id = ? 
+           OR u.agent_id = ?
+           OR p.client_id IN (
+             SELECT ac.client_id FROM agent_clients ac 
+             WHERE ac.agent_id = ? AND ac.status = 'active'
+           )
          ORDER BY p.created_at DESC`,
-        [agentId, agentId]
+        [agentId, agentId, agentId]
       );
       
       systemLogsService.info('Projets de l\'agent récupérés avec succès', 'projects', null, null, { 
@@ -379,11 +382,11 @@ class ProjectService {
         query = `SELECT p.*, u.first_name, u.last_name, u.email as client_email
                  FROM projects p
                  LEFT JOIN users u ON p.client_id = u.id
-                 WHERE (p.agent_id = ? OR p.client_id IN (
+                 WHERE (p.agent_id = ? OR u.agent_id = ? OR p.client_id IN (
                    SELECT client_id FROM agent_clients 
                    WHERE agent_id = ? AND status = 'active'
                  ))`;
-        params = [agentId, agentId];
+        params = [agentId, agentId, agentId];
       }
       
       if (filters.status) {
@@ -412,8 +415,10 @@ class ProjectService {
                       WHERE (p.agent_id = ? OR p.client_id IN (
                         SELECT client_id FROM agent_clients 
                         WHERE agent_id = ? AND status = 'active'
+                      ) OR p.client_id IN (
+                        SELECT id FROM users WHERE agent_id = ?
                       ))`;
-        countParams = [agentId, agentId];
+        countParams = [agentId, agentId, agentId];
       }
       
       if (filters.status) {
@@ -528,6 +533,76 @@ class ProjectService {
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des tâches actives du projet', 'projects', null, null, { 
         projectId, 
+        error: error.message 
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Met à jour un projet
+   * @param {number} projectId - ID du projet
+   * @param {Object} updateData - Données à mettre à jour
+   * @returns {Promise<Object>} Projet mis à jour
+   */
+  async updateProject(projectId, updateData) {
+    try {
+      systemLogsService.info('Mise à jour du projet', 'projects', null, null, { projectId, updateData });
+      
+      // Vérifier que le projet existe
+      const existingProject = await this.getProjectById(projectId);
+      if (!existingProject) {
+        const error = new Error('Project not found');
+        error.code = 'PROJECT_NOT_FOUND';
+        throw error;
+      }
+
+      // Construire la requête de mise à jour
+      const updateFields = [];
+      const updateValues = [];
+      
+      const allowedFields = ['name', 'description', 'deadline', 'budget', 'priority', 'status'];
+      
+      allowedFields.forEach(field => {
+        if (updateData[field] !== undefined) {
+          updateFields.push(`${field} = ?`);
+          updateValues.push(updateData[field]);
+        }
+      });
+
+      if (updateFields.length === 0) {
+        const error = new Error('No valid fields to update');
+        error.code = 'NO_DATA_TO_UPDATE';
+        throw error;
+      }
+
+      // Ajouter updated_at
+      updateFields.push('updated_at = NOW()');
+      updateValues.push(projectId);
+
+      const updateQuery = `UPDATE projects SET ${updateFields.join(', ')} WHERE id = ?`;
+      
+      const result = await databaseService.run(updateQuery, updateValues);
+      
+      if (result.changes === 0) {
+        const error = new Error('Project update failed');
+        error.code = 'UPDATE_FAILED';
+        throw error;
+      }
+
+      // Récupérer le projet mis à jour
+      const updatedProject = await this.getProjectById(projectId);
+      
+      systemLogsService.info('Projet mis à jour avec succès', 'projects', null, null, { 
+        projectId, 
+        updatedFields: Object.keys(updateData)
+      });
+      
+      return updatedProject;
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la mise à jour du projet', 'projects', null, null, { 
+        projectId, 
+        updateData,
         error: error.message 
       });
       throw error;

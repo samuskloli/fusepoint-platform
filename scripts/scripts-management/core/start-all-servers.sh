@@ -3,6 +3,11 @@
 # Script de démarrage automatique de tous les serveurs
 # Évite les conflits et démarre dans le bon ordre
 
+# Déterminer le répertoire racine du projet quelle que soit la cwd
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+cd "$PROJECT_ROOT"
+
 echo "🚀 ================================"
 echo "📱 DÉMARRAGE AUTOMATIQUE FUSEPOINT"
 echo "🚀 ================================"
@@ -48,7 +53,7 @@ sleep 2
 # Démarrage du backend (port 3002)
 echo "🔧 Démarrage du backend..."
 cd server
-npm run dev > ../logs/backend.log 2>&1 &
+PORT=3002 FRONTEND_URL=http://localhost:5173 npm run dev > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > ../logs/backend.pid
 cd ..

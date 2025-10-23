@@ -1,5 +1,4 @@
-const MariaDBService = require('./mariadbService');
-const mariadbService = new MariaDBService();
+const databaseService = require('./databaseService');
 const systemLogsService = require('./systemLogsService');
 const validationService = require('./validationService');
 
@@ -12,7 +11,7 @@ class ProjectTemplateService {
       let query = `
         SELECT 
           pt.*,
-          COUNT(ptw.widget_id) as widget_count
+          CAST(COUNT(ptw.widget_id) AS UNSIGNED) as widget_count
         FROM project_templates pt
         LEFT JOIN project_template_widgets ptw ON pt.id = ptw.template_id
         WHERE pt.is_active = 1
@@ -32,12 +31,32 @@ class ProjectTemplateService {
       
       query += ' GROUP BY pt.id ORDER BY pt.name';
       
-      const templates = await mariadbService.query(query, params);
+      const templates = await databaseService.query(query, params);
       
       // Récupérer les widgets pour chaque modèle
       for (const template of templates) {
+        // Normaliser BigInt pour la sérialisation JSON
+        if (typeof template.widget_count === 'bigint') {
+          template.widget_count = Number(template.widget_count);
+        }
+        
         template.widgets = await this.getTemplateWidgets(template.id);
-        template.tags = template.tags ? JSON.parse(template.tags) : [];
+        try {
+          if (!template.tags) {
+            template.tags = [];
+          } else if (typeof template.tags === 'string') {
+            const t = template.tags.trim();
+            if (t.startsWith('[') || t.startsWith('{')) {
+              template.tags = JSON.parse(t);
+            } else {
+              template.tags = t.split(',').map(s => s.trim()).filter(Boolean);
+            }
+          } else if (Array.isArray(template.tags)) {
+            // keep as-is
+          } else {
+            template.tags = [];
+          }
+        } catch (e) { template.tags = []; };
       }
       
       return { success: true, data: templates };
@@ -48,20 +67,36 @@ class ProjectTemplateService {
   }
 
   /**
-   * Récupérer un modèle de projet par ID
+   * Récupérer un modèle par ID
    */
   async getTemplateById(templateId) {
     try {
-      const query = 'SELECT * FROM project_templates WHERE id = ? AND is_active = 1';
-      const templates = await mariadbService.query(query, [templateId]);
+      const template = await databaseService.get(
+        'SELECT * FROM project_templates WHERE id = ? AND is_active = 1',
+        [templateId]
+      );
       
-      if (templates.length === 0) {
+      if (!template) {
         return { success: false, error: 'Modèle non trouvé' };
       }
       
-      const template = templates[0];
       template.widgets = await this.getTemplateWidgets(templateId);
-      template.tags = template.tags ? JSON.parse(template.tags) : [];
+      try {
+        if (!template.tags) {
+          template.tags = [];
+        } else if (typeof template.tags === 'string') {
+          const t = template.tags.trim();
+          if (t.startsWith('[') || t.startsWith('{')) {
+            template.tags = JSON.parse(t);
+          } else {
+            template.tags = t.split(',').map(s => s.trim()).filter(Boolean);
+          }
+        } else if (Array.isArray(template.tags)) {
+          // keep as-is
+        } else {
+          template.tags = [];
+        }
+      } catch (e) { template.tags = []; };
       
       return { success: true, data: template };
     } catch (error) {
@@ -71,44 +106,41 @@ class ProjectTemplateService {
   }
 
   /**
-   * Créer un nouveau modèle de projet
+   * Créer un nouveau modèle
    */
   async createTemplate(templateData, agentId) {
     try {
-      // Validation des données
       const validation = validationService.validateProjectTemplate(templateData);
       if (!validation.isValid) {
         return { success: false, error: validation.errors.join(', ') };
       }
 
-      const { name, description, duration_estimate, tags, icon, color, category, widgets } = templateData;
-      
-      // Insérer le modèle
-      const insertQuery = `
-        INSERT INTO project_templates (name, description, duration_estimate, tags, icon, color, category)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `;
-      
-      const result = await mariadbService.query(insertQuery, [
-        name,
-        description,
-        duration_estimate || null,
-        JSON.stringify(tags || []),
-        icon || 'fas fa-project-diagram',
-        color || '#3B82F6',
-        category || 'general'
+      const result = await databaseService.run(`
+        INSERT INTO project_templates (
+          name, description, category, tags, 
+          estimated_duration, estimated_budget, 
+          created_by, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      `, [
+        templateData.name,
+        templateData.description,
+        templateData.category,
+        JSON.stringify(templateData.tags || []),
+        templateData.estimated_duration,
+        templateData.estimated_budget,
+        agentId
       ]);
-      
+
       const templateId = result.insertId;
-      
-      // Associer les widgets si fournis
-      if (widgets && widgets.length > 0) {
-        await this.updateTemplateWidgets(templateId, widgets);
+
+      // Ajouter les widgets si fournis
+      if (templateData.widgets && templateData.widgets.length > 0) {
+        await this.updateTemplateWidgets(templateId, templateData.widgets);
       }
+
+      systemLogsService.info('Nouveau modèle de projet créé', 'project_templates', agentId, null, { templateId, name: templateData.name });
       
-      systemLogsService.info('Modèle de projet créé', 'project_templates', agentId, null, { templateId, name });
-      
-      return { success: true, data: { id: templateId, ...templateData } };
+      return { success: true, data: { id: templateId } };
     } catch (error) {
       systemLogsService.error('Erreur lors de la création du modèle', 'project_templates', agentId, null, { error: error.message });
       return { success: false, error: error.message };
@@ -116,37 +148,33 @@ class ProjectTemplateService {
   }
 
   /**
-   * Mettre à jour un modèle de projet
+   * Mettre à jour un modèle
    */
   async updateTemplate(templateId, templateData, agentId) {
     try {
-      const { name, description, duration_estimate, tags, icon, color, category, widgets } = templateData;
-      
-      const updateQuery = `
-        UPDATE project_templates 
-        SET name = ?, description = ?, duration_estimate = ?, tags = ?, icon = ?, color = ?, category = ?, updated_at = CURRENT_TIMESTAMP
+      const validation = validationService.validateProjectTemplate(templateData);
+      if (!validation.isValid) {
+        return { success: false, error: validation.errors.join(', ') };
+      }
+
+      await databaseService.run(`
+        UPDATE project_templates SET 
+          name = ?, description = ?, category = ?, tags = ?,
+          estimated_duration = ?, estimated_budget = ?,
+          updated_at = NOW()
         WHERE id = ?
-      `;
-      
-      await mariadbService.query(updateQuery, [
-        name,
-        description,
-        duration_estimate,
-        JSON.stringify(tags || []),
-        icon,
-        color,
-        category,
+      `, [
+        templateData.name,
+        templateData.description,
+        templateData.category,
+        JSON.stringify(templateData.tags || []),
+        templateData.estimated_duration,
+        templateData.estimated_budget,
         templateId
       ]);
-      
-      // Mettre à jour les widgets si fournis
-      if (widgets) {
-        await this.updateTemplateWidgets(templateId, widgets);
-      }
-      
-      systemLogsService.info('Modèle de projet mis à jour', 'project_templates', agentId, null, { templateId });
-      
-      return { success: true, data: templateData };
+
+      systemLogsService.info('Modèle de projet mis à jour', 'project_templates', agentId, null, { templateId, name: templateData.name });
+      return { success: true, data: { id: templateId } };
     } catch (error) {
       systemLogsService.error('Erreur lors de la mise à jour du modèle', 'project_templates', agentId, null, { templateId, error: error.message });
       return { success: false, error: error.message };
@@ -154,15 +182,16 @@ class ProjectTemplateService {
   }
 
   /**
-   * Supprimer un modèle de projet (soft delete)
+   * Supprimer un modèle
    */
   async deleteTemplate(templateId, agentId) {
     try {
-      const updateQuery = 'UPDATE project_templates SET is_active = 0 WHERE id = ?';
-      await mariadbService.query(updateQuery, [templateId]);
-      
+      await databaseService.run(
+        'UPDATE project_templates SET is_active = 0 WHERE id = ?',
+        [templateId]
+      );
+
       systemLogsService.info('Modèle de projet supprimé', 'project_templates', agentId, null, { templateId });
-      
       return { success: true };
     } catch (error) {
       systemLogsService.error('Erreur lors de la suppression du modèle', 'project_templates', agentId, null, { templateId, error: error.message });
@@ -175,26 +204,57 @@ class ProjectTemplateService {
    */
   async getTemplateWidgets(templateId) {
     try {
-      const query = `
+      const widgets = await databaseService.query(`
         SELECT 
-          w.*,
-          ptw.position,
-          ptw.is_enabled,
-          ptw.default_config
-        FROM widgets w
-        INNER JOIN project_template_widgets ptw ON w.id = ptw.widget_id
+          ptw.*,
+          w.name as widget_name,
+          w.description as widget_description,
+          w.category as widget_category,
+          w.component_name,
+          w.default_config as widget_default_config
+        FROM project_template_widgets ptw
+        JOIN widgets w ON ptw.widget_id = w.id
         WHERE ptw.template_id = ?
         ORDER BY ptw.position
-      `;
-      
-      const widgets = await mariadbService.query(query, [templateId]);
-      
-      return widgets.map(widget => ({
-        ...widget,
-        config_schema: widget.config_schema ? JSON.parse(widget.config_schema) : {},
-        default_config: widget.default_config ? JSON.parse(widget.default_config) : {},
-        permissions: widget.permissions ? JSON.parse(widget.permissions) : {}
-      }));
+      `, [templateId]);
+
+      return widgets.map(widget => {
+        let cfg = {};
+        let defCfg = {};
+        
+        // Parse config
+        if (widget.config) {
+          try {
+            if (typeof widget.config === 'object' && widget.config !== null) {
+              cfg = widget.config;
+            } else if (typeof widget.config === 'string') {
+              cfg = JSON.parse(widget.config);
+            }
+          } catch (e) { 
+            cfg = {}; 
+          }
+        }
+
+        // Utilitaires de parsing JSON sûrs
+        const parseJson = (val) => {
+          try {
+            if (!val) return {};
+            if (typeof val === 'object' && val !== null) return val;
+            if (typeof val === 'string') return JSON.parse(val);
+            return {};
+          } catch { return {}; }
+        };
+
+        const templateDefault = parseJson(widget.default_config);
+        const widgetDefault = parseJson(widget.widget_default_config);
+        defCfg = Object.keys(templateDefault).length ? templateDefault : widgetDefault;
+        
+        return {
+          ...widget,
+          config: cfg,
+          default_config: defCfg
+        };
+      });
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des widgets du modèle', 'project_templates', null, null, { templateId, error: error.message });
       return [];
@@ -206,25 +266,28 @@ class ProjectTemplateService {
    */
   async updateTemplateWidgets(templateId, widgets) {
     try {
-      // Supprimer les anciennes associations
-      await mariadbService.query('DELETE FROM project_template_widgets WHERE template_id = ?', [templateId]);
-      
-      // Ajouter les nouvelles associations
-      for (const widget of widgets) {
-        const insertQuery = `
-          INSERT INTO project_template_widgets (template_id, widget_id, position, is_enabled, default_config)
-          VALUES (?, ?, ?, ?, ?)
-        `;
-        
-        await mariadbService.query(insertQuery, [
+      // Supprimer les widgets existants
+      await databaseService.run(
+        'DELETE FROM project_template_widgets WHERE template_id = ?',
+        [templateId]
+      );
+
+      // Ajouter les nouveaux widgets
+      for (let i = 0; i < widgets.length; i++) {
+        const widget = widgets[i];
+        await databaseService.run(`
+          INSERT INTO project_template_widgets (
+            template_id, widget_id, position, config, is_required
+          ) VALUES (?, ?, ?, ?, ?)
+        `, [
           templateId,
           widget.widget_id,
-          widget.position || 0,
-          widget.is_enabled !== false,
-          JSON.stringify(widget.default_config || {})
+          i + 1,
+          JSON.stringify(widget.config || {}),
+          widget.is_required || 0
         ]);
       }
-      
+
       return { success: true };
     } catch (error) {
       systemLogsService.error('Erreur lors de la mise à jour des widgets du modèle', 'project_templates', null, null, { templateId, error: error.message });
@@ -239,25 +302,46 @@ class ProjectTemplateService {
     try {
       let query = 'SELECT * FROM widgets WHERE is_active = 1';
       const params = [];
-      
+
       if (filters.category) {
         query += ' AND category = ?';
         params.push(filters.category);
       }
-      
+
+      if (filters.search) {
+        query += ' AND (name LIKE ? OR description LIKE ?)';
+        params.push(`%${filters.search}%`, `%${filters.search}%`);
+      }
+
       query += ' ORDER BY category, name';
+
+      const widgets = await databaseService.query(query, params);
       
-      const widgets = await mariadbService.query(query, params);
-      
-      return {
-        success: true,
-        data: widgets.map(widget => ({
+      const processedWidgets = widgets.map(widget => {
+        let defaultConfig = {};
+        
+        if (widget.default_config) {
+          try {
+            // Si c'est déjà un objet valide (et pas null), l'utiliser tel quel
+            if (typeof widget.default_config === 'object' && widget.default_config !== null) {
+              defaultConfig = widget.default_config;
+            } else if (typeof widget.default_config === 'string') {
+              // Si c'est une chaîne, essayer de la parser
+              defaultConfig = JSON.parse(widget.default_config);
+            }
+          } catch (parseError) {
+            console.warn(`Erreur parsing default_config pour widget ${widget.id}:`, parseError);
+            defaultConfig = {};
+          }
+        }
+        
+        return {
           ...widget,
-          config_schema: widget.config_schema ? JSON.parse(widget.config_schema) : {},
-          default_config: widget.default_config ? JSON.parse(widget.default_config) : {},
-          permissions: widget.permissions ? JSON.parse(widget.permissions) : {}
-        }))
-      };
+          default_config: defaultConfig
+        };
+      });
+
+      return { success: true, data: processedWidgets };
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des widgets', 'widgets', null, null, { error: error.message });
       return { success: false, error: error.message };
@@ -269,74 +353,100 @@ class ProjectTemplateService {
    */
   async createProjectFromTemplate(templateId, projectData, agentId) {
     try {
-      console.log('🔍 Début createProjectFromTemplate:', { templateId, projectData, agentId });
-      
       // Récupérer le modèle
-      console.log('📋 Récupération du modèle...');
       const templateResult = await this.getTemplateById(templateId);
       if (!templateResult.success) {
-        console.log('❌ Échec récupération modèle:', templateResult);
         return templateResult;
       }
-      
+
       const template = templateResult.data;
-      console.log('✅ Modèle récupéré:', template.name);
-      
+
       // Créer le projet
-      console.log('💾 Création du projet en base...');
-      const projectInsertQuery = `
-        INSERT INTO projects (client_id, agent_id, template_id, title, name, description, status, created_by)
-        VALUES (?, ?, ?, ?, ?, ?, 'en_cours', ?)
-      `;
-      
-      const projectParams = [
+      const projectResult = await databaseService.run(`
+        INSERT INTO projects (
+          title, name, description, client_id, agent_id,
+          status, budget, template_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, 'en_cours', ?, ?, NOW())
+      `, [
+        projectData.name, // title
+        projectData.name, // name
+        projectData.description || template.description,
         projectData.client_id,
         agentId,
-        templateId,
-        projectData.title,
-        projectData.name || projectData.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-'),
-        projectData.description || template.description,
-        agentId
-      ];
-      
-      console.log('📝 Paramètres du projet:', projectParams);
-      const projectResult = await mariadbService.query(projectInsertQuery, projectParams);
-      console.log('✅ Projet créé avec ID:', projectResult.insertId);
-      
-      const projectId = projectResult.insertId;
-      
-      // Créer les instances de widgets pour le projet
-      console.log('🔧 Création des widgets, nombre:', template.widgets.length);
+        template.estimated_budget || null,
+        templateId
+      ]);
+
+      const projectId = Number(projectResult.insertId);
+
+      // Copier les widgets du modèle vers le projet
       for (const widget of template.widgets) {
-        console.log('🔧 Traitement widget:', { id: widget.id, name: widget.name, position: widget.position });
-        const widgetInsertQuery = `
-          INSERT INTO project_widgets (project_id, widget_id, position, is_enabled, widget_config)
-          VALUES (?, ?, ?, ?, ?)
-        `;
-        
-        const widgetParams = [
+        await databaseService.run(`
+          INSERT INTO project_widgets (
+            project_id, widget_id, position, widget_config, is_enabled
+          ) VALUES (?, ?, ?, ?, ?)
+        `, [
           projectId,
-          widget.id,
-          widget.position,
-          widget.is_enabled,
-          JSON.stringify(widget.default_config || {})
-        ];
-        
-        console.log('🔧 Paramètres widget:', widgetParams);
-        await mariadbService.query(widgetInsertQuery, widgetParams);
-        console.log('✅ Widget créé avec succès');
+          widget.widget_id,
+          widget.position || 0,
+          JSON.stringify(widget.config || widget.default_config || {}),
+          (widget.is_enabled === 0 || widget.is_enabled === false) ? 0 : 1
+        ]);
       }
-      
-      console.log('📝 Enregistrement du log système...');
-      systemLogsService.info('Projet créé à partir du modèle', 'projects', agentId, null, { projectId, templateId });
-      console.log('✅ Log système enregistré');
-      
-      console.log('🎉 Retour du résultat final...');
-      return { success: true, data: { id: projectId, ...projectData, template } };
+
+      // Créer les tâches par défaut basées sur le modèle
+      const defaultTasks = [
+        {
+          title: 'Analyse des besoins',
+          description: 'Analyser les besoins spécifiques du client',
+          status: 'pending',
+          priority: 'high'
+        },
+        {
+          title: 'Planification du projet',
+          description: 'Établir le planning détaillé du projet',
+          status: 'pending',
+          priority: 'high'
+        },
+        {
+          title: 'Configuration des widgets',
+          description: 'Configurer les widgets selon les besoins',
+          status: 'pending',
+          priority: 'medium'
+        }
+      ];
+
+      for (const task of defaultTasks) {
+        await databaseService.run(`
+          INSERT INTO tasks (
+            project_id, title, description, status
+          ) VALUES (?, ?, ?, ?)
+        `, [
+          projectId,
+          task.title,
+          task.description,
+          task.status
+        ]);
+      }
+
+      systemLogsService.info('Projet créé à partir du modèle', 'projects', agentId, null, { 
+        projectId, 
+        templateId, 
+        projectName: projectData.name 
+      });
+
+      return { 
+        success: true, 
+        data: { 
+          id: projectId,
+          template_used: template.name
+        } 
+      };
     } catch (error) {
-      console.log('❌ ERREUR dans createProjectFromTemplate:', error);
-      console.log('📊 Stack trace:', error.stack);
-      systemLogsService.error('Erreur lors de la création du projet à partir du modèle', 'projects', agentId, null, { templateId, error: error.message });
+      systemLogsService.error('Erreur lors de la création du projet depuis le modèle', 'projects', agentId, null, { 
+        templateId, 
+        error: error.message 
+      });
       return { success: false, error: error.message };
     }
   }
@@ -346,19 +456,17 @@ class ProjectTemplateService {
    */
   async getTemplateCategories() {
     try {
-      const query = `
-        SELECT DISTINCT category, COUNT(*) as count
+      const categories = await databaseService.query(`
+        SELECT DISTINCT category 
         FROM project_templates 
-        WHERE is_active = 1 
-        GROUP BY category 
+        WHERE is_active = 1 AND category IS NOT NULL
         ORDER BY category
-      `;
-      
-      const categories = await mariadbService.query(query);
-      
-      return { success: true, data: categories };
+      `);
+
+      const categoryList = categories.map(row => row.category);
+      return { success: true, data: categoryList };
     } catch (error) {
-      systemLogsService.error('Erreur lors de la récupération des catégories', 'project_templates', null, null, { error: error.message });
+      systemLogsService.error('Erreur lors de la récupération des catégories de modèles', 'project_templates', null, null, { error: error.message });
       return { success: false, error: error.message };
     }
   }
@@ -368,26 +476,56 @@ class ProjectTemplateService {
    */
   async getProjectWidgets(projectId) {
     try {
-      const query = `
+      const widgets = await databaseService.query(`
         SELECT 
-          w.*,
-          pw.position,
-          pw.is_enabled,
-          pw.widget_config
-        FROM widgets w
-        INNER JOIN project_widgets pw ON w.id = pw.widget_id
+          pw.*,
+          w.name as widget_name,
+          w.description as widget_description,
+          w.category as widget_category,
+          w.component_name,
+          w.default_config
+        FROM project_widgets pw
+        JOIN widgets w ON pw.widget_id = w.id
         WHERE pw.project_id = ?
         ORDER BY pw.position
-      `;
-      
-      const widgets = await mariadbService.query(query, [projectId]);
-      
-      return widgets.map(widget => ({
-        ...widget,
-        config_schema: widget.config_schema ? JSON.parse(widget.config_schema) : {},
-        widget_config: widget.widget_config ? JSON.parse(widget.widget_config) : {},
-        permissions: widget.permissions ? JSON.parse(widget.permissions) : {}
-      }));
+      `, [projectId]);
+
+      return widgets.map(widget => {
+        let cfg = {};
+        let defCfg = {};
+        
+        // Parse config
+        if (widget.config) {
+          try {
+            if (typeof widget.config === 'object' && widget.config !== null) {
+              cfg = widget.config;
+            } else if (typeof widget.config === 'string') {
+              cfg = JSON.parse(widget.config);
+            }
+          } catch (e) { 
+            cfg = {}; 
+          }
+        }
+        
+        // Parse default_config
+        if (widget.default_config) {
+          try {
+            if (typeof widget.default_config === 'object' && widget.default_config !== null) {
+              defCfg = widget.default_config;
+            } else if (typeof widget.default_config === 'string') {
+              defCfg = JSON.parse(widget.default_config);
+            }
+          } catch (e) { 
+            defCfg = {}; 
+          }
+        }
+        
+        return {
+          ...widget,
+          config: cfg,
+          default_config: defCfg
+        };
+      });
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des widgets du projet', 'projects', null, null, { projectId, error: error.message });
       return [];
@@ -399,17 +537,15 @@ class ProjectTemplateService {
    */
   async getWidgetCategories() {
     try {
-      const query = `
-        SELECT DISTINCT category, COUNT(*) as count
+      const categories = await databaseService.query(`
+        SELECT DISTINCT category 
         FROM widgets 
-        WHERE is_active = 1 
-        GROUP BY category 
+        WHERE is_active = 1 AND category IS NOT NULL
         ORDER BY category
-      `;
-      
-      const categories = await mariadbService.query(query);
-      
-      return { success: true, data: categories };
+      `);
+
+      const categoryList = categories.map(row => row.category);
+      return { success: true, data: categoryList };
     } catch (error) {
       systemLogsService.error('Erreur lors de la récupération des catégories de widgets', 'widgets', null, null, { error: error.message });
       return { success: false, error: error.message };

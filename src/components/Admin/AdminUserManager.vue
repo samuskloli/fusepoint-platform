@@ -480,7 +480,9 @@ export default {
       // Rôles disponibles
       availableRoles: [
         { value: 'user', label: this.$t('roles.user') },
+        { value: 'client', label: this.$t('roles.client') },
         { value: 'agent', label: this.$t('roles.agent') },
+        { value: 'prestataire', label: this.$t('roles.prestataire') },
         { value: 'admin', label: this.$t('roles.admin') }
       ]
     };
@@ -563,8 +565,10 @@ export default {
     getRoleLabel(role) {
       const roleMap = {
         'user': this.$t('roles.user'),
+        'client': this.$t('roles.client'),
         'agent': this.$t('roles.agent'),
         'admin': this.$t('roles.admin'),
+        'prestataire': this.$t('roles.prestataire'),
         'super_admin': this.$t('roles.superAdmin')
       };
       return roleMap[role] || role;
@@ -573,8 +577,10 @@ export default {
     getRoleColorClass(role) {
       const colorMap = {
         'user': 'bg-gray-100 text-gray-800',
+        'client': 'bg-green-100 text-green-800',
         'agent': 'bg-blue-100 text-blue-800',
         'admin': 'bg-purple-100 text-purple-800',
+        'prestataire': 'bg-orange-100 text-orange-800',
         'super_admin': 'bg-red-100 text-red-800'
       };
       return colorMap[role] || 'bg-gray-100 text-gray-800';

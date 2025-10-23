@@ -125,6 +125,7 @@ class ComprehensiveBackupSystem {
           'server/config',
           'package.json',
           'server/package.json',
+          'vite.config.ts',
           'vite.config.js',
           'tailwind.config.js'
         ];

@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const MariaDBService = require('./mariadbService');
+const databaseService = require('./databaseService');
 const { exec } = require('child_process');
 const util = require('util');
 const execAsync = util.promisify(exec);
@@ -8,7 +8,7 @@ const ComprehensiveBackupSystem = require('../../scripts/backup-system.cjs');
 
 class BackupService {
   constructor() {
-    this.mariadb = new MariaDBService();
+    this.db = databaseService;
     this.backupDir = path.join(__dirname, '../backups');
     this.ensureBackupDirectory();
     
@@ -57,82 +57,73 @@ class BackupService {
       
       await this.saveBackupMetadata(backupInfo);
       
-      return {
-        success: true,
-        backup: backupInfo,
-        message: 'Sauvegarde créée avec succès'
-      };
+      console.log(`Sauvegarde créée: ${backupName} (${this.formatBytes(stats.size)})`);
+      return backupInfo;
     } catch (error) {
       console.error('Erreur lors de la création de la sauvegarde:', error);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Erreur lors de la création de la sauvegarde'
-      };
+      throw error;
     }
   }
 
-  // Sauvegarder les métadonnées de sauvegarde
+  // Sauvegarder les métadonnées de la sauvegarde
   async saveBackupMetadata(backupInfo) {
-    const metadataPath = path.join(this.backupDir, 'backups_metadata.json');
-    
     try {
-      let metadata = [];
+      // Créer la table si elle n'existe pas
+      await this.db.run(`
+        CREATE TABLE IF NOT EXISTS backups (
+          id VARCHAR(255) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          type VARCHAR(50) NOT NULL,
+          description TEXT,
+          path VARCHAR(500) NOT NULL,
+          size BIGINT NOT NULL,
+          created_at DATETIME NOT NULL,
+          status VARCHAR(50) NOT NULL
+        )
+      `);
       
-      // Lire les métadonnées existantes
-      try {
-        const existingData = await fs.readFile(metadataPath, 'utf8');
-        metadata = JSON.parse(existingData);
-      } catch (error) {
-        // Fichier n'existe pas encore, on commence avec un tableau vide
-      }
-      
-      // Ajouter la nouvelle sauvegarde
-      metadata.push(backupInfo);
-      
-      // Garder seulement les 50 dernières sauvegardes dans les métadonnées
-      if (metadata.length > 50) {
-        metadata = metadata.slice(-50);
-      }
-      
-      // Sauvegarder les métadonnées
-      await fs.writeFile(metadataPath, JSON.stringify(metadata, null, 2));
+      // Insérer les métadonnées
+      await this.db.run(`
+        INSERT INTO backups (id, name, type, description, path, size, created_at, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        backupInfo.id,
+        backupInfo.name,
+        backupInfo.type,
+        backupInfo.description,
+        backupInfo.path,
+        backupInfo.size,
+        backupInfo.created_at,
+        backupInfo.status
+      ]);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des métadonnées:', error);
+      throw error;
     }
   }
 
   // Récupérer la liste des sauvegardes
   async getBackups() {
-    const metadataPath = path.join(this.backupDir, 'backups_metadata.json');
-    
     try {
-      const data = await fs.readFile(metadataPath, 'utf8');
-      const metadata = JSON.parse(data);
+      const backups = await this.db.query(`
+        SELECT * FROM backups 
+        ORDER BY created_at DESC
+      `);
       
-      // Vérifier que les fichiers existent encore
+      // Vérifier que les fichiers existent toujours
       const validBackups = [];
-      
-      for (const backup of metadata) {
+      for (const backup of backups) {
         try {
           await fs.access(backup.path);
-          const stats = await fs.stat(backup.path);
-          validBackups.push({
-            ...backup,
-            size: stats.size,
-            exists: true
-          });
+          validBackups.push(backup);
         } catch (error) {
-          // Fichier n'existe plus, marquer comme manquant
-          validBackups.push({
-            ...backup,
-            exists: false,
-            status: 'missing'
-          });
+          // Le fichier n'existe plus, supprimer l'entrée de la base
+          await this.db.run('DELETE FROM backups WHERE id = ?', [backup.id]);
+          console.log(`Sauvegarde orpheline supprimée: ${backup.name}`);
         }
       }
       
-      return validBackups.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return validBackups;
     } catch (error) {
       console.error('Erreur lors de la récupération des sauvegardes:', error);
       return [];
@@ -142,257 +133,218 @@ class BackupService {
   // Supprimer une sauvegarde
   async deleteBackup(backupId) {
     try {
-      const backups = await this.getBackups();
-      const backup = backups.find(b => b.id === backupId);
+      // Récupérer les informations de la sauvegarde
+      const backup = await this.db.get('SELECT * FROM backups WHERE id = ?', [backupId]);
       
       if (!backup) {
-        return {
-          success: false,
-          message: 'Sauvegarde non trouvée'
-        };
+        throw new Error('Sauvegarde non trouvée');
       }
       
       // Supprimer le fichier
       try {
         await fs.unlink(backup.path);
       } catch (error) {
-        console.warn('Fichier de sauvegarde déjà supprimé:', backup.path);
+        console.log('Fichier de sauvegarde déjà supprimé:', backup.path);
       }
       
-      // Mettre à jour les métadonnées
-      const updatedBackups = backups.filter(b => b.id !== backupId);
-      const metadataPath = path.join(this.backupDir, 'backups_metadata.json');
-      await fs.writeFile(metadataPath, JSON.stringify(updatedBackups, null, 2));
+      // Supprimer l'entrée de la base
+      await this.db.run('DELETE FROM backups WHERE id = ?', [backupId]);
       
-      return {
-        success: true,
-        message: 'Sauvegarde supprimée avec succès'
-      };
+      console.log(`Sauvegarde supprimée: ${backup.name}`);
+      return { success: true };
     } catch (error) {
       console.error('Erreur lors de la suppression de la sauvegarde:', error);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Erreur lors de la suppression de la sauvegarde'
-      };
+      throw error;
     }
   }
 
   // Restaurer une sauvegarde
   async restoreBackup(backupId) {
     try {
-      const backups = await this.getBackups();
-      const backup = backups.find(b => b.id === backupId);
+      // Récupérer les informations de la sauvegarde
+      const backup = await this.db.get('SELECT * FROM backups WHERE id = ?', [backupId]);
       
       if (!backup) {
-        return {
-          success: false,
-          message: 'Sauvegarde non trouvée'
-        };
+        throw new Error('Sauvegarde non trouvée');
       }
       
-      if (!backup.exists) {
-        return {
-          success: false,
-          message: 'Fichier de sauvegarde manquant'
-        };
-      }
+      // Vérifier que le fichier existe
+      await fs.access(backup.path);
       
-      // Créer une sauvegarde de la base actuelle avant restauration
-      await this.createBackup('pre_restore', `Sauvegarde automatique avant restauration de ${backup.name}`);
+      // Lire le contenu du fichier SQL
+      const sqlContent = await fs.readFile(backup.path, 'utf8');
       
-      // Restaurer la sauvegarde
+      // Exécuter la restauration
       const config = require('../config/mariadb.config');
-      const command = `mysql -h ${config.host} -P ${config.port} -u ${config.user} -p${config.password} ${config.database} < "${backup.path}"`;
-      await execAsync(command);
+      const command = `mysql -h ${config.host} -P ${config.port} -u ${config.user} -p${config.password} ${config.database}`;
       
-      return {
-        success: true,
-        message: 'Sauvegarde restaurée avec succès'
-      };
+      await execAsync(command, { input: sqlContent });
+      
+      console.log(`Sauvegarde restaurée: ${backup.name}`);
+      return { success: true };
     } catch (error) {
       console.error('Erreur lors de la restauration:', error);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Erreur lors de la restauration de la sauvegarde'
-      };
+      throw error;
     }
   }
 
   // Télécharger une sauvegarde
   async downloadBackup(backupId) {
     try {
-      const backups = await this.getBackups();
-      const backup = backups.find(b => b.id === backupId);
+      const backup = await this.db.get('SELECT * FROM backups WHERE id = ?', [backupId]);
       
       if (!backup) {
         throw new Error('Sauvegarde non trouvée');
       }
       
-      if (!backup.exists) {
-        throw new Error('Fichier de sauvegarde manquant');
-      }
+      // Vérifier que le fichier existe
+      await fs.access(backup.path);
       
       return {
-        success: true,
         path: backup.path,
-        name: `${backup.name}.sql`,
+        name: backup.name,
         size: backup.size
       };
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
-      return {
-        success: false,
-        error: error.message
-      };
+      throw error;
     }
   }
 
   // Nettoyer les anciennes sauvegardes
   async cleanOldBackups(daysToKeep = 30) {
     try {
-      const backups = await this.getBackups();
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
       
-      let deletedCount = 0;
+      const oldBackups = await this.db.query(`
+        SELECT * FROM backups 
+        WHERE created_at < ? AND type = 'auto'
+      `, [cutoffDate.toISOString()]);
       
-      for (const backup of backups) {
-        const backupDate = new Date(backup.created_at);
-        
-        if (backupDate < cutoffDate && backup.type !== 'manual') {
-          const result = await this.deleteBackup(backup.id);
-          if (result.success) {
-            deletedCount++;
-          }
+      let deletedCount = 0;
+      let freedSpace = 0;
+      
+      for (const backup of oldBackups) {
+        try {
+          await fs.unlink(backup.path);
+          freedSpace += backup.size;
+        } catch (error) {
+          console.log('Fichier déjà supprimé:', backup.path);
         }
+        
+        await this.db.run('DELETE FROM backups WHERE id = ?', [backup.id]);
+        deletedCount++;
       }
       
-      return {
-        success: true,
-        deletedCount: deletedCount,
-        message: `${deletedCount} anciennes sauvegardes supprimées`
-      };
+      console.log(`Nettoyage terminé: ${deletedCount} sauvegardes supprimées, ${this.formatBytes(freedSpace)} libérés`);
+      return { deletedCount, freedSpace };
     } catch (error) {
       console.error('Erreur lors du nettoyage:', error);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Erreur lors du nettoyage des anciennes sauvegardes'
-      };
+      throw error;
     }
   }
 
-  // Programmer des sauvegardes automatiques
+  // Programmer une sauvegarde automatique
   async scheduleAutoBackup() {
-    // Sauvegarde quotidienne
-    setInterval(async () => {
-      try {
-        await this.createBackup('auto_daily', 'Sauvegarde automatique quotidienne');
-        console.log('Sauvegarde automatique quotidienne créée');
-        
-        // Nettoyer les anciennes sauvegardes automatiques
-        await this.cleanOldBackups(30);
-      } catch (error) {
-        console.error('Erreur lors de la sauvegarde automatique:', error);
-      }
-    }, 24 * 60 * 60 * 1000); // 24 heures
-    
-    console.log('Sauvegarde automatique programmée (quotidienne)');
+    try {
+      // Créer une sauvegarde automatique
+      const backup = await this.createBackup('auto', 'Sauvegarde automatique programmée');
+      
+      // Nettoyer les anciennes sauvegardes automatiques
+      await this.cleanOldBackups(30);
+      
+      return backup;
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde automatique:', error);
+      throw error;
+    }
   }
 
   // Obtenir les statistiques des sauvegardes
   async getBackupStats() {
     try {
-      const backups = await this.getBackups();
+      const stats = await this.db.query(`
+        SELECT 
+          COUNT(*) as total_backups,
+          SUM(size) as total_size,
+          AVG(size) as avg_size,
+          MIN(created_at) as oldest_backup,
+          MAX(created_at) as newest_backup,
+          type,
+          COUNT(*) as count_by_type
+        FROM backups 
+        GROUP BY type
+      `);
       
-      const stats = {
-        total: backups.length,
-        totalSize: 0,
-        byType: {},
-        recent: backups.slice(0, 5),
-        oldestBackup: null,
-        newestBackup: null
-      };
+      const totalStats = await this.db.get(`
+        SELECT 
+          COUNT(*) as total_backups,
+          SUM(size) as total_size,
+          AVG(size) as avg_size
+        FROM backups
+      `);
       
-      if (backups.length > 0) {
-        stats.totalSize = backups.reduce((sum, backup) => sum + (backup.size || 0), 0);
-        stats.oldestBackup = backups[backups.length - 1];
-        stats.newestBackup = backups[0];
-        
-        // Compter par type
-        backups.forEach(backup => {
-          stats.byType[backup.type] = (stats.byType[backup.type] || 0) + 1;
-        });
-      }
-      
-      return stats;
-    } catch (error) {
-      console.error('Erreur lors du calcul des statistiques:', error);
       return {
-        total: 0,
-        totalSize: 0,
-        byType: {},
-        recent: [],
-        oldestBackup: null,
-        newestBackup: null
+        total: totalStats,
+        byType: stats
       };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      return { total: {}, byType: [] };
     }
   }
 
   // Vérifier l'intégrité d'une sauvegarde
   async verifyBackup(backupId) {
     try {
-      const backups = await this.getBackups();
-      const backup = backups.find(b => b.id === backupId);
+      const backup = await this.db.get('SELECT * FROM backups WHERE id = ?', [backupId]);
       
       if (!backup) {
-        return {
-          success: false,
-          message: 'Sauvegarde non trouvée'
-        };
+        return { valid: false, error: 'Sauvegarde non trouvée' };
       }
       
-      if (!backup.exists) {
-        return {
-          success: false,
-          message: 'Fichier de sauvegarde manquant'
-        };
-      }
-      
-      // Tester la validité du fichier SQL
+      // Vérifier que le fichier existe
       try {
-        const sqlContent = await fs.readFile(backup.path, 'utf8');
-        if (sqlContent.includes('-- MySQL dump') || sqlContent.includes('-- MariaDB dump') || sqlContent.length > 0) {
-          return {
-            success: true,
-            message: 'Sauvegarde valide'
-          };
-        } else {
-          return {
-            success: false,
-            message: 'Fichier de sauvegarde invalide'
+        const stats = await fs.stat(backup.path);
+        
+        // Vérifier la taille
+        if (stats.size !== backup.size) {
+          return { 
+            valid: false, 
+            error: 'Taille du fichier incorrecte',
+            expected: backup.size,
+            actual: stats.size
           };
         }
+        
+        // Vérifier le contenu SQL basique
+        const content = await fs.readFile(backup.path, 'utf8');
+        if (!content.includes('CREATE TABLE') && !content.includes('INSERT INTO')) {
+          return { 
+            valid: false, 
+            error: 'Contenu SQL invalide'
+          };
+        }
+        
+        return { 
+          valid: true, 
+          size: stats.size,
+          lastModified: stats.mtime
+        };
       } catch (error) {
-        return {
-          success: false,
-          message: 'Erreur lors de la lecture du fichier',
-          error: error.message
+        return { 
+          valid: false, 
+          error: 'Fichier inaccessible: ' + error.message
         };
       }
     } catch (error) {
       console.error('Erreur lors de la vérification:', error);
-      return {
-        success: false,
-        error: error.message,
-        message: 'Erreur lors de la vérification de la sauvegarde'
-      };
+      return { valid: false, error: error.message };
     }
   }
 
-  // Formater la taille en bytes
+  // Formater les octets en format lisible
   formatBytes(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;

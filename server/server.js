@@ -13,6 +13,7 @@ const { BetaAnalyticsDataClient } = require('@google-analytics/data');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 const sharp = require('sharp');
+const debugRoutes = require('./routes/debugDb');
 
 // Services
 const aiChatService = require('./services/aiChatService');
@@ -38,9 +39,20 @@ const prestataireRoutes = require('./routes/prestataire');
 const platformSettingsBlocksRoutes = require('./routes/platformSettingsBlocks');
 const clientRoutes = require('./routes/client');
 const projectTemplatesRoutes = require('./routes/projectTemplates');
+const optimizedProjectConfigRoutes = require('./routes/optimizedProjectConfig');
+const clientWidgetConfigsRoutes = require('./routes/clientWidgetConfigs');
+const widgetsRoutes = require('./routes/widgets');
+const multiTenantWidgetsRoutes = require('./routes/multiTenantWidgets');
+const filesRoutes = require('./routes/files');
+const thumbnailsRoutes = require('./routes/thumbnails');
+const projectDashboardRoutes = require('./routes/projectDashboard');
+const projectFilesRoutes = require('./routes/projectFiles');
+const projectTasksRoutes = require('./routes/projectTasks');
+const projectWidgetsRoutes = require('./routes/projectWidgets');
 
 
 const app = express();
+app.set('etag', 'strong');
 const PORT = process.env.PORT || 3000;
 
 // Middleware de sécurité - CSP désactivée pour éviter les blocages
@@ -50,10 +62,21 @@ app.use(helmet({
 
 // Configuration CORS optimisée pour production et développement
 // Liste d'origines autorisées depuis l'env, avec valeurs par défaut pour dev et prod
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://beta.fusepoint.ch,https://fusepoint.ch,https://www.fusepoint.ch,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173')
+const defaultOrigins = 'https://beta.fusepoint.ch,https://fusepoint.ch,https://www.fusepoint.ch,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173'
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+
+const envOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+
+// DEBUG: afficher les origines autorisées et l'environnement
+console.log('🔎 ALLOWED_ORIGINS (env):', process.env.ALLOWED_ORIGINS);
+console.log('🔎 allowedOrigins (liste):', allowedOrigins);
 
 const corsOptions = {
   origin(origin, callback) {
@@ -63,8 +86,9 @@ const corsOptions = {
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires'],
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'Pragma', 'Expires', 'If-Match', 'If-None-Match'],
+  exposedHeaders: ['Cache-Control', 'ETag', 'Content-Type', 'X-Thumbnail-Available'],
   optionsSuccessStatus: 200
 };
 
@@ -217,10 +241,18 @@ async function initializeDatabase() {
 // Routes publiques (sans authentification)
 app.use('/api/auth', authRoutes);
 
-// Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth)
+// Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth et GET /api/files/signed)
 app.use('/api', (req, res, next) => {
+  // Laisser passer les préflights CORS
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
   // Exclure les routes d'authentification
   if (req.path.startsWith('/auth')) {
+    return next();
+  }
+  // Exclure UNIQUEMENT la consommation GET des URL signées
+  if (req.method === 'GET' && req.path.startsWith('/files/signed')) {
     return next();
   }
   // Appliquer le middleware d'authentification pour toutes les autres routes
@@ -239,6 +271,19 @@ app.use('/api/prestataire', prestataireRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/super-admin', platformSettingsBlocksRoutes);
 app.use('/api/project-templates', projectTemplatesRoutes);
+app.use('/api/projects', optimizedProjectConfigRoutes);
+app.use('/projects', optimizedProjectConfigRoutes);
+app.use('/api/projects', projectDashboardRoutes);
+app.use('/api/projects', projectFilesRoutes);
+app.use('/api/projects', projectTasksRoutes);
+app.use('/api/projects', projectWidgetsRoutes);
+app.use('/api/client-widget-configs', clientWidgetConfigsRoutes);
+app.use('/api/widgets', widgetsRoutes);
+app.use('/api/agent/widgets', widgetsRoutes);
+app.use('/api/clients', multiTenantWidgetsRoutes);
+app.use('/api/files', filesRoutes);
+app.use('/api/thumbnails', thumbnailsRoutes);
+app.use('/api/debug', debugRoutes);
 
 
 // Route d'upload de fichiers
@@ -394,7 +439,7 @@ app.get('/api/ai/status', async (req, res) => {
   }
 });
 
-// Route de santé
+// Santé
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
@@ -454,273 +499,70 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Route de monitoring système
 app.get('/api/system/status', authMiddleware, async (req, res) => {
   try {
-    const dbStatus = await databaseService.checkConnection();
-    const memoryUsage = process.memoryUsage();
-    const uptime = process.uptime();
-    
-    res.json({
-      status: 'operational',
-      timestamp: new Date().toISOString(),
-      uptime: Math.floor(uptime),
-      memory: {
-        used: Math.round(memoryUsage.heapUsed / 1024 / 1024),
-        total: Math.round(memoryUsage.heapTotal / 1024 / 1024),
-        external: Math.round(memoryUsage.external / 1024 / 1024)
-      },
-      database: dbStatus,
-      email: !!emailTransporter,
-      environment: process.env.NODE_ENV || 'development',
-      version: '2.0.0'
-    });
+    const status = await platformSettingsService.getSystemStatus();
+    res.json({ success: true, status });
   } catch (error) {
     console.error('❌ Erreur statut système:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération du statut' });
+    res.status(500).json({ error: 'Erreur lors de la récupération du statut système' });
   }
 });
 
 // Route de nettoyage des fichiers temporaires
 app.post('/api/system/cleanup', authMiddleware, async (req, res) => {
   try {
-    const uploadsDir = path.join(__dirname, '../uploads');
-    const files = fs.readdirSync(uploadsDir);
-    const now = Date.now();
-    const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 jours
-    
-    let deletedCount = 0;
-    
-    for (const file of files) {
-      const filePath = path.join(uploadsDir, file);
-      const stats = fs.statSync(filePath);
-      
-      if (now - stats.mtime.getTime() > maxAge) {
-        fs.unlinkSync(filePath);
-        deletedCount++;
-      }
+    await authService.cleanupExpiredSessions();
+    res.json({ success: true, message: 'Nettoyage effectué' });
+  } catch (error) {
+    console.error('❌ Erreur nettoyage système:', error);
+    res.status(500).json({ error: 'Erreur lors du nettoyage du système' });
+  }
+});
+
+// Middleware de gestion d'erreurs global
+app.use((err, req, res, next) => {
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || (status === 403 ? 'Accès refusé' : status === 404 ? 'Ressource non trouvée' : 'Erreur interne du serveur');
+  const payload = {
+    success: false,
+    message,
+  };
+  if (err.code) payload.code = err.code;
+  if (process.env.NODE_ENV === 'development' && err.stack) payload.stack = err.stack;
+  res.status(status).json(payload);
+});
+
+// Route 404 globale
+app.use('*', (req, res) => {
+  res.status(404).json({ success: false, message: 'Route non trouvée', path: req.originalUrl });
+});
+
+// Démarrage du serveur
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log('\n🚀 ===== FUSEPOINT PLATFORM API =====');
+    console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
+    console.log(`🌐 Port: ${PORT}`);
+    console.log(`🔧 Environnement: ${process.env.NODE_ENV}`);
+    console.log('💾 Base de données: MariaDB (initialisée)');
+    console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
+    console.log('🔐 Authentification: JWT');
+    console.log('📊 Analytics: Google Analytics proxy');
+    console.log('🛡️ Sécurité: Helmet, CORS, Rate limiting');
+    console.log('📁 Upload: Multer avec optimisation d\'images');
+
+    console.log('\n🌍 URLs disponibles:');
+    console.log('   • API: http://localhost:' + PORT + '/api');
+    console.log('   • Documentation: http://localhost:' + PORT + '/api');
+    console.log('   • Santé: http://localhost:' + PORT + '/health');
+    console.log('   • Production: https://beta.fusepoint.ch');
+
+    console.log('\n✅ Serveur prêt à recevoir les connexions');
+    console.log('=====================================\n');
+
+    if (emailTransporter) {
+      emailTransporter.verify()
+        .then(() => console.log('✅ Connexion SMTP vérifiée avec succès'))
+        .catch(() => console.log('⚠️ Échec vérification SMTP'));
     }
-    
-    res.json({
-      success: true,
-      message: `${deletedCount} fichiers supprimés`,
-      deletedCount
-    });
-  } catch (error) {
-    console.error('❌ Erreur nettoyage:', error);
-    res.status(500).json({ error: 'Erreur lors du nettoyage' });
-  }
-});
-
-// Documentation API améliorée
-app.get('/api', (req, res) => {
-  res.json({
-    message: 'Fusepoint Platform API',
-    version: '2.0.0',
-    description: 'API complète pour la plateforme marketing Fusepoint',
-    endpoints: {
-      authentication: {
-        login: 'POST /api/auth/login',
-        register: 'POST /api/auth/register',
-        refresh: 'POST /api/auth/refresh',
-        logout: 'POST /api/auth/logout'
-      },
-      companies: {
-        list: 'GET /api/companies',
-        create: 'POST /api/companies',
-        update: 'PUT /api/companies/:id',
-        delete: 'DELETE /api/companies/:id'
-      },
-
-      files: {
-        upload: 'POST /api/upload',
-        serve: 'GET /uploads/:filename'
-      },
-      email: {
-        send: 'POST /api/email/send',
-        test: 'POST /api/email/test'
-      },
-      system: {
-        status: 'GET /api/system/status',
-        cleanup: 'POST /api/system/cleanup',
-        health: 'GET /health'
-      },
-      analytics: 'GET /api/analytics/*',
-      social: {
-        facebook: '/api/facebook/*',
-        instagram: '/api/instagram/*'
-      }
-    },
-    features: [
-      'Authentification JWT',
-      'Upload de fichiers avec optimisation',
-      'Envoi d\'emails SMTP',
-      'Chat IA contextuel',
-      'Intégrations sociales',
-      'Analytics Google',
-      'Rate limiting',
-      'Monitoring système'
-    ],
-    documentation: 'https://beta.fusepoint.ch/api',
-    support: 'support@fusepoint.ch'
   });
 });
-
-// Servir les fichiers statiques du frontend
-const frontendPath = path.join(__dirname, '../dist');
-if (fs.existsSync(frontendPath)) {
-  app.use(express.static(frontendPath));
-  
-  // Route catch-all pour SPA
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-  });
-}
-
-// Middleware de gestion des erreurs 404
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api/')) {
-    res.status(404).json({
-      error: 'Endpoint non trouvé',
-      path: req.path,
-      method: req.method,
-      timestamp: new Date().toISOString()
-    });
-  } else {
-    next();
-  }
-});
-
-// Gestion globale des erreurs améliorée
-app.use((error, req, res, next) => {
-  console.error('❌ Erreur serveur:', {
-    message: error.message,
-    stack: error.stack,
-    url: req.url,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    timestamp: new Date().toISOString()
-  });
-
-  // Erreurs spécifiques
-  if (error.name === 'ValidationError') {
-    return res.status(400).json({
-      error: 'Erreur de validation',
-      details: error.message
-    });
-  }
-
-  if (error.name === 'UnauthorizedError') {
-    return res.status(401).json({
-      error: 'Non autorisé',
-      message: 'Token invalide ou expiré'
-    });
-  }
-
-  if (error.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({
-      error: 'Fichier trop volumineux',
-      message: 'La taille du fichier dépasse la limite autorisée'
-    });
-  }
-
-  if (error.code === 'ER_LOCK_WAIT_TIMEOUT' || error.code === 'ER_LOCK_DEADLOCK') {
-    return res.status(503).json({
-      error: 'Base de données occupée',
-      message: 'Veuillez réessayer dans quelques instants'
-    });
-  }
-
-  // Erreur générique
-  res.status(error.status || 500).json({
-    error: 'Erreur interne du serveur',
-    message: process.env.NODE_ENV === 'development' ? error.message : 'Une erreur est survenue',
-    timestamp: new Date().toISOString(),
-    requestId: req.headers['x-request-id'] || 'unknown'
-  });
-});
-
-// Fonction de démarrage du serveur
-async function startServer() {
-  try {
-    // Initialisation de la base de données
-    await initializeDatabase();
-    
-    // Démarrage du serveur HTTP
-    const server = app.listen(PORT, '0.0.0.0', () => {
-      console.log('\n🚀 ===== FUSEPOINT PLATFORM API =====');
-      console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
-      console.log(`🌐 Port: ${PORT}`);
-      console.log(`🔧 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`💾 Base de données: MariaDB (initialisée)`);
-
-      console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
-      console.log(`🔐 Authentification: JWT`);
-      console.log(`📊 Analytics: Google Analytics proxy`);
-      console.log(`🛡️ Sécurité: Helmet, CORS, Rate limiting`);
-      console.log(`📁 Upload: Multer avec optimisation d'images`);
-      console.log(`\n🌍 URLs disponibles:`);
-      console.log(`   • API: http://localhost:${PORT}/api`);
-      console.log(`   • Documentation: http://localhost:${PORT}/api`);
-      console.log(`   • Santé: http://localhost:${PORT}/health`);
-      console.log(`   • Production: https://beta.fusepoint.ch`);
-      console.log(`\n✅ Serveur prêt à recevoir les connexions`);
-      console.log('=====================================\n');
-    });
-
-    // Gestion propre de l'arrêt du serveur
-    const gracefulShutdown = (signal) => {
-      console.log(`\n🛑 Signal ${signal} reçu, arrêt en cours...`);
-      
-      server.close(async () => {
-        console.log('🔌 Serveur HTTP fermé');
-        
-        try {
-          // Fermer les connexions de base de données
-          if (databaseService && databaseService.close) {
-            await databaseService.close();
-            console.log('💾 Base de données fermée');
-          }
-          
-          // Fermer le transporteur email
-          if (emailTransporter && emailTransporter.close) {
-            emailTransporter.close();
-            console.log('📧 Service email fermé');
-          }
-          
-          console.log('✅ Arrêt propre terminé');
-          process.exit(0);
-        } catch (error) {
-          console.error('❌ Erreur lors de l\'arrêt:', error);
-          process.exit(1);
-        }
-      });
-      
-      // Forcer l'arrêt après 30 secondes
-      setTimeout(() => {
-        console.error('⏰ Timeout: arrêt forcé');
-        process.exit(1);
-      }, 30000);
-    };
-
-    // Écouter les signaux d'arrêt
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
-    // Gestion des erreurs non capturées
-    process.on('uncaughtException', (error) => {
-      console.error('❌ Exception non capturée:', error);
-      gracefulShutdown('uncaughtException');
-    });
-    
-    process.on('unhandledRejection', (reason, promise) => {
-      console.error('❌ Promesse rejetée non gérée:', reason);
-      gracefulShutdown('unhandledRejection');
-    });
-    
-  } catch (error) {
-    console.error('❌ Erreur fatale lors du démarrage:', error);
-    process.exit(1);
-  }
-}
-
-// Démarrer le serveur
-startServer();

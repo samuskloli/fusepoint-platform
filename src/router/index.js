@@ -82,6 +82,7 @@ import Changelog from '../views/Changelog.vue'
 
 // Test Chat
 import TestChat from '../views/TestChat.vue'
+import AuthDebug from '../views/AuthDebug.vue'
 
 const routes = [
   {
@@ -147,9 +148,15 @@ const routes = [
     beforeEnter: requireAuth
   },
   {
-    path: '/projects/:id',
+    path: '/projects/:id/:tab?',
     name: 'ProjectDetails',
     component: () => import('../views/ProjectDetailDashboard.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/projects/:id/widgets/:type/:widgetId?',
+    name: 'ProjectWidgetView',
+    component: () => import('../views/ProjectWidgetView.vue'),
     beforeEnter: requireAuth
   },
   {
@@ -287,6 +294,12 @@ const routes = [
     beforeEnter: requireAgent
   },
   {
+    path: '/agent/widgets-library',
+    name: 'WidgetsLibrary',
+    component: () => import('../views/WidgetsLibrary.vue'),
+    beforeEnter: requireAgent
+  },
+  {
       path: '/agent/projects',
       name: 'AgentProjects',
       component: () => import('../views/AgentProjects.vue'),
@@ -311,9 +324,15 @@ const routes = [
       beforeEnter: requireAgent
     },
     {
-      path: '/agent/clients/:clientId/projects/:projectId',
+      path: '/agent/clients/:clientId/projects/:projectId/:tab?',
       name: 'ProjectDetailDashboard',
       component: () => import('../views/ProjectDetailDashboard.vue'),
+      meta: { requiresAuth: true, requiresAgent: true },
+    },
+    {
+      path: '/agent/clients/:clientId/projects/:projectId/widgets/:type/:widgetId?',
+      name: 'AgentProjectWidgetView',
+      component: () => import('../views/ProjectWidgetView.vue'),
       beforeEnter: requireAgent
     },
   {
@@ -414,6 +433,12 @@ const routes = [
     path: '/test-chat',
     name: 'TestChat',
     component: TestChat
+  },
+  // Route de debug pour l'authentification
+  {
+    path: '/auth-debug',
+    name: 'AuthDebug',
+    component: AuthDebug
   }
 ]
 

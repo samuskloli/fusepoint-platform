@@ -38,18 +38,22 @@ const authMiddleware = (req, res, next) => {
     // Vérifier le token avec le même secret que l'authService
     const authService = require('../services/authService');
     const jwtSecret = authService.jwtSecret;
-    console.log('🔑 Auth middleware - Vérification token avec secret:', jwtSecret.substring(0, 10) + '...');
+    const previewSecret = typeof jwtSecret === 'string' ? (jwtSecret.length > 10 ? jwtSecret.slice(0, 10) + '...' : jwtSecret) : '[secret indisponible]';
+    console.log('🔑 Auth middleware - Vérification token avec secret:', previewSecret);
     const decoded = jwt.verify(token, jwtSecret);
     
-    console.log('✅ Auth middleware - Token valide:', { userId: decoded.id || decoded.userId, email: decoded.email });
+    console.log('✅ Auth middleware - Token valide:', { userId: decoded.id || decoded.userId, tenantId: decoded.tenantId, email: decoded.email });
     
-    // Ajouter les informations utilisateur à la requête
+    // Ajouter les informations utilisateur et tenant à la requête
     req.user = {
       id: decoded.id || decoded.userId, // Support des deux formats
       email: decoded.email,
       role: decoded.role,
       company_id: decoded.company_id
     };
+    // Exposer userId et tenantId de manière explicite pour les contrôles d'accès
+    req.userId = decoded.id || decoded.userId;
+    req.tenantId = decoded.tenantId || decoded.company_id; // Fallback sur company_id si tenantId absent
     
     next();
     
@@ -70,9 +74,10 @@ const authMiddleware = (req, res, next) => {
       });
     }
     
-    return res.status(500).json({
+    // Par défaut, éviter une 500 due à l'auth et retourner 401
+    return res.status(401).json({
       success: false,
-      message: 'Erreur serveur lors de l\'authentification'
+      message: 'Erreur d\'authentification'
     });
   }
 };

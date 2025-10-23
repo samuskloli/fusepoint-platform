@@ -230,7 +230,7 @@
                     
                     <button 
                       v-if="project.agent_id"
-                      @click.stop="contactAgent(project.agent_id)"
+                      @click.stop="contactAgent(project.id, project.agent_id)"
                       class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200"
                     >
                       Contacter l'agent
@@ -342,9 +342,10 @@ export default {
       this.$router.push(`/projects/${projectId}`)
     },
     
-    contactAgent(agentId) {
-      // Contacter l'agent
-        this.$toast.info('La fonctionnalité de contact direct n\'est plus disponible.')
+    contactAgent(projectId, agentId) {
+      // Ouvrir l'onglet Équipe du projet pour contacter l'agent
+      this.$router.push({ name: 'ProjectDetails', params: { id: projectId, tab: 'team' } })
+      this.toast.info("Ouverture de l'équipe du projet pour contacter l'agent")
     },
     
     formatDate(date) {

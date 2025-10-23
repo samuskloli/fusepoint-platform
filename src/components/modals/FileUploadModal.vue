@@ -1,81 +1,196 @@
 <template>
-  <div  class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50' @click="closeModal=relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1 2 shadow-lg rounded-lg bg-white(flex items-center justify-between pb-4 border-b border-gray-200'>
-        <h3 class="text-lg font-medium text-gray-900>{{ t('files.uploadFiles === closeModal=text-gray-400 hover:text-gray-600'>
-          <i class === fas fa-times text-xl=mt-6">
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click.self="closeModal">
+    <div class="relative top-10 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-lg bg-white">
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+        <h3 class="text-lg font-medium text-gray-900">{{ t('files.uploadFiles') }}</h3>
+        <button @click="closeModal" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="mt-6">
         <div 
-          @drop === handleDrop=handleDragLeave='handleDragEnter(border-2 border-dashed rounded-lg p-8 text-center transition-colors=isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400'
+          @drop="handleDrop"
+          @dragover.prevent
+          @dragenter="handleDragEnter"
+          @dragleave="handleDragLeave"
+          :class="['border-2 border-dashed rounded-lg p-8 text-center transition-colors', isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-gray-400']"
         >
-          <div  class === flex flex-col items-center=w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4'>
-              <i class === fas fa-cloud-upload-alt text-2xl text-gray-500></i>
+          <div class="flex flex-col items-center">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <i class="fas fa-cloud-upload-alt text-2xl text-gray-500"></i>
             </div>
-            <h 4 class === text-lg font-medium text-gray-900 mb-2'>{{ t('files.dropFilesHere === text-gray-600 mb-4>{{ t('files.orClickToSelect === triggerFileInput=px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors='fileInput === file=handleFileSelect === hidden='acceptedTypes=mt-4 text-center === text-sm text-gray-500">{{ t('files.acceptedTypes === text-sm text-gray-500'>{{ t('files.maxSize === selectedFiles.length &gt; 0" class === mt-6'>
-        <h4 class === text-md font-medium text-gray-900 mb-3">{{ t('files.selectedFiles === space-y-3 max-h-64 overflow-y-auto=(file, index) in selectedFiles='index === flex items-center justify-between p-3 bg-gray-50 rounded-lg=flex items-center space-x-3 flex-1">
-              <div  class === flex-shrink-0'>
-                <i :class === [getFileIcon(file.type), getFileColor(file.type), 'text-xl=flex-1 min-w-0>
-                <p  class === text-sm font-medium text-gray-900 truncate=text-sm text-gray-500'>{{ formatFileSize(file.size) }}</p>
-                
-                <!-- Barre de progression -->
-                <div v-if="file.uploading=mt-2>
-                  <div  class="flex items-center justify-between text-xs text-gray-600 mb-1'>
-                    <span>{{ t('files.uploading="w-full bg-gray-200 rounded-full h-2>
-                    <div 
-                      class="bg-blue-600 h-2 rounded-full transition-all duration-300'
-                      :style="{ width: file.progress + '%' }
-                    ></div>
-                  </div>
-                </div>
-                
-                <!-- Statut -->
-                <div  v-if: file.status=mt-1'>
-                  <span
-                    class: inline-flex items-center px-2 py-1 rounded-full text-xs font-medium=getStatusClass(file.status)
-                  >
-                    <i  :class="getStatusIcon(file.status)' class: mr-1></i>
-                    {{ t(`files.status.${file.status}`) }}
-                  </span>
-                </div>
-              </div>
+            <h4 class="text-lg font-medium text-gray-900 mb-2">{{ t('files.dropFilesHere') }}</h4>
+            <p class="text-gray-600 mb-4">{{ t('files.orClickToSelect') }}</p>
+            <button @click="triggerFileInput" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              {{ t('files.selectFiles') }}
+            </button>
+            <input 
+              ref="fileInput" 
+              type="file" 
+              @change="handleFileSelect" 
+              multiple 
+              class="hidden" 
+              :accept="acceptedTypes"
+            >
+          </div>
+          <div class="mt-4 text-center">
+            <p class="text-sm text-gray-500">{{ t('files.acceptedTypes') }}: {{ acceptedTypesText }}</p>
+            <p class="text-sm text-gray-500">{{ t('files.maxSize') }}: {{ maxSizeText }}</p>
+          </div>
+        </div>
+        
+        <div v-if="selectedFiles.length > 0" class="mt-6">
+           <h4 class="text-md font-medium text-gray-900 mb-3">{{ t('files.selectedFiles') }}</h4>
+           <div class="space-y-3 max-h-64 overflow-y-auto">
+             <div v-for="(file, index) in selectedFiles" :key="index" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+               <div class="flex items-center space-x-3 flex-1">
+                 <div class="flex-shrink-0">
+                   <i :class="[getFileIcon(file.type), getFileColor(file.type), 'text-xl']"></i>
+                 </div>
+                 <div class="flex-1 min-w-0">
+                   <p class="text-sm font-medium text-gray-900 truncate">{{ file.name }}</p>
+                   <p class="text-sm text-gray-500">{{ formatFileSize(file.size) }}</p>
+                   
+                   <!-- Barre de progression -->
+                   <div v-if="file.uploading" class="mt-2">
+                     <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                       <span>{{ t('files.uploading') }}</span>
+                       <span>{{ file.progress }}%</span>
+                     </div>
+                     <div class="w-full bg-gray-200 rounded-full h-2">
+                       <div 
+                         class="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                         :style="{ width: file.progress + '%' }"
+                       ></div>
+                     </div>
+                   </div>
+                   
+                   <!-- Statut -->
+                   <div v-if="file.status" class="mt-1">
+                     <span
+                       :class="['inline-flex items-center px-2 py-1 rounded-full text-xs font-medium', getStatusClass(file.status)]"
+                     >
+                       <i :class="[getStatusIcon(file.status), 'mr-1']"></i>
+                       {{ t(`files.status.${file.status}`) }}
+                     </span>
+                   </div>
+                 </div>
+               </div>
+               
+               <!-- Actions -->
+               <div class="flex items-center space-x-2">
+                 <button 
+                   v-if="!file.uploading && file.status !== 'uploaded'"
+                   @click="removeFile(index)"
+                   class="text-red-500 hover:text-red-700"
+                 >
+                   <i class="fas fa-trash"></i>
+                 </button>
+               </div>
+             </div>
+        </div>
+      </div>
+    </div>
+        
+    <!-- Options d'upload -->
+    <div v-if="selectedFiles.length > 0" class="mt-6">
+      <h4 class="text-md font-medium text-gray-900 mb-3">{{ t('files.uploadOptions') }}</h4>
+      <div class="space-y-4">
+        <div class="mb-4">
+           <label class="block text-sm font-medium text-gray-700 mb-2">
+             {{ t('files.destinationFolder') }}
+           </label>
+           <select 
+             v-model="selectedFolder"
+             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+           >
+             <option value="">{{ t('files.rootFolder') }}</option>
+             <option v-for="folder in folders" :key="folder.id" :value="folder.id">
+               {{ folder.name }}
+             </option>
+           </select>
+         </div>
+         
+         <div class="mb-4">
+           <label class="block text-sm font-medium text-gray-700 mb-2">
+             {{ t('files.tags') }}
+           </label>
+           <div class="flex flex-wrap gap-2 mb-2">
+             <span 
+               v-for="tag in fileTags" 
+               :key="tag"
+               class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+             >
+               {{ tag }}
+               <button 
+                 @click="removeTag(tag)"
+                 type="button"
+                 class="ml-1 text-blue-600 hover:text-blue-800"
+               >
+                 <i class="fas fa-times text-xs"></i>
+               </button>
+             </span>
+           </div>
+           <div class="flex">
+             <input 
+               v-model="newTag"
+               @keyup.enter="addTag"
+               type="text"
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+               :placeholder="t('files.addTag')"
+             >
+             <button 
+               @click="addTag"
+               type="button"
+               class="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
+             >
+               <i class="fas fa-plus"></i>
+             </button>
+           </div>
+         </div>
+         
+         <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ t('files.privacy') }}</label>
+            <div class="space-y-2">
+              <label class="flex items-center">
+                <input 
+                  v-model="isPublic" 
+                  type="radio" 
+                  :value="false" 
+                  class="mr-2"
+                >
+                <span class="text-sm text-gray-700">{{ t('files.private') }}</span>
+              </label>
+              <label class="flex items-center">
+                <input 
+                  v-model="isPublic" 
+                  type="radio" 
+                  :value="true" 
+                  class="mr-2"
+                >
+                <span class="text-sm text-gray-700">{{ t('files.public') }}</span>
+              </label>
             </div>
-            
-            <!-- Actions -->
-            <div  class="flex items-center space-x-2'>
-              <button 
-                v-if="!file.uploading && file.status !== 'uploaded=removeFile(index)
-                class="text-red-500 hover:text-red-700'
-              >
-                <i  class=""fas fa-trash=selectedFiles.length &gt; 0" class="mt-6'>
-        <h4 class="text-md font-medium text-gray-900 mb-3>{{ t('files.uploadOptions === mb-4'>
-          <label class === block text-sm font-medium text-gray-700 mb-2">
-            {{ t('files.destinationFolder === selectedFolder=w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'
-          >
-            <option value === ">{{ t('files.rootFolder === folder in folders=folder.id='folder.id">
-          <label  class === block text-sm font-medium text-gray-700 mb-2'>
-            {{ t('files.tags === flex flex-wrap gap-2 mb-2>
-            <span 
-              v-for === tag in fileTags=tag=inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800'
-            >
-              {{ tag }}
-              <button 
-                @click="removeTag(tag)
-                type(button=ml-1 text-blue-600 hover:text-blue-800'
-              >
-                <i  class=""fas fa-times text-xs=flex="newTag='addTag=text="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              :placeholder="t('files.addTag=button=px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700'
-            >
-              <i class="fas fa-plus=mb-4>
-          <label  class="block text-sm font-medium text-gray-700 mb-2'>
-            {{ t('files.privacy="space-y-2>
-            <label  class="flex items-center=isPublic='radio="false=mr-2
-              >
-              <span  class="text-sm text-gray-700'>{{ t('files.private="flex items-center=isPublic=radio='true=mr-2"
-              >
-              <span  class="text-sm text-gray-700'>{{ t('files.public="flex justify-end space-x-3 pt-4 border-t border-gray-200>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Actions -->
+      <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <button
-          @click="closeModal=button='px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+          @click="closeModal"
+          type="button"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
         >
-          {{ t('common.cancel="uploadFiles=selectedFiles.length === 0 || uploading='px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
+          {{ t('common.cancel') }}
+        </button>
+        <button
+          @click="uploadFiles"
+          :disabled="selectedFiles.length === 0 || uploading"
+          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50"
         >
-          <i v-if="uploading=fas fa-spinner fa-spin mr-2"></i>
+          <i v-if="uploading" class="fas fa-spinner fa-spin mr-2"></i>
           {{ t('files.upload') }} ({{ selectedFiles.length }})
         </button>
       </div>
@@ -84,8 +199,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import projectManagementService from '@/services/projectManagementService'
+import { ref, computed } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 
@@ -99,9 +213,13 @@ export default {
     folderId: {
       type: [String, Number],
       default: null
+    },
+    currentPath: {
+      type: Array,
+      default: () => []
     }
   },
-  emits: ['close', 'uploaded'],
+  emits: ['close', 'upload'],
   setup(props, { emit }) {
     const { success, error: showError } = useNotifications()
     const { t } = useTranslation()
@@ -117,7 +235,14 @@ export default {
     const uploading = ref(false)
     
     const maxFileSize = 50 * 1024 * 1024 // 50MB
-    const acceptedTypes = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.svg,.zip,.rar'
+    const acceptedTypes = '.jpeg,.jpg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar'
+    const MAX_FILES = 10
+    const allowedExtensions = ['jpeg','jpg','png','gif','pdf','doc','docx','xls','xlsx','ppt','pptx','txt','zip','rar']
+    const isAllowedFile = (file) => {
+    const name = (file?.name || '').toLowerCase()
+    const ext = name.includes('.') ? name.split('.').pop() : ''
+    return !!ext && allowedExtensions.includes(ext)
+    }
     
     const acceptedTypesText = computed(() => {
       return 'PDF, Word, Excel, PowerPoint, Images, Archives'
@@ -159,12 +284,19 @@ export default {
     }
     
     const addFiles = (files) => {
-      files.forEach(file => {
+      for (const file of files) {
+        if (selectedFiles.value.length >= MAX_FILES) {
+          showError(t('files.tooManyFiles', { max: MAX_FILES }))
+          break
+        }
+        if (!isAllowedFile(file)) {
+          showError(t('files.fileTypeNotAllowed', { name: file.name }))
+          continue
+        }
         if (file.size > maxFileSize) {
           showError(t('files.fileTooLarge', { name: file.name }))
-          return
+          continue
         }
-        
         const fileObj = {
           file,
           name: file.name,
@@ -174,9 +306,8 @@ export default {
           status: 'pending',
           uploading: false
         }
-        
         selectedFiles.value.push(fileObj)
-      })
+      }
     }
     
     const removeFile = (index) => {
@@ -247,75 +378,20 @@ export default {
     }
     
     const uploadFiles = async () => {
+      if (selectedFiles.value.length === 0) return
       uploading.value = true
       
       try {
-        for (const fileObj of selectedFiles.value) {
-          if (fileObj.status === 'uploaded') continue
-          
-          fileObj.uploading = true
-          fileObj.status = 'uploading'
-          fileObj.progress = 0
-          
-          const formData = new FormData()
-          formData.append('file', fileObj.file)
-          formData.append('project_id', props.projectId)
-          formData.append('folder_id', selectedFolder.value || '')
-          formData.append('tags', JSON.stringify(fileTags.value))
-          formData.append('is_public', isPublic.value)
-          
-          try {
-            const response = await projectManagementService.uploadFile(formData, {
-              onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-                fileObj.progress = percentCompleted
-              }
-            })
-            
-            if (response.success) {
-              fileObj.status = 'uploaded'
-              fileObj.uploading = false
-              fileObj.progress = 100
-            } else {
-              fileObj.status = 'error'
-              fileObj.uploading = false
-            }
-          } catch (err) {
-            fileObj.status = 'error'
-            fileObj.uploading = false
-            showError(t('files.uploadError', { name: fileObj.name }))
-          }
-        }
-        
-        const uploadedCount = selectedFiles.value.filter(f => f.status === 'uploaded').length
-        if (uploadedCount > 0) {
-          success(t('files.filesUploaded', { count: uploadedCount }))
-          emit('uploaded')
-          
-          // Fermer le modal après un délai
-          setTimeout(() => {
-            closeModal()
-          }, 2000)
-        }
+        const filesToUpload = selectedFiles.value.map(f => f.file)
+        emit('upload', filesToUpload)
+        // Removed premature success notification; parent will handle result
+        closeModal()
       } finally {
         uploading.value = false
       }
     }
     
-    const loadFolders = async () => {
-      try {
-        const response = await projectManagementService.getProjectFolders(props.projectId)
-        if (response.success) {
-          folders.value = response.data
-        }
-      } catch (err) {
-        console.error('Erreur lors du chargement des dossiers:', err)
-      }
-    }
-    
-    onMounted(() => {
-      loadFolders()
-    })
+    // Dossier selection loading removed; parent context handles folder path for multi-tenant
     
     return {
       fileInput,
@@ -344,8 +420,7 @@ export default {
       getFileColor,
       getStatusClass,
       getStatusIcon,
-      uploadFiles,
-      t
+      uploadFiles
     }
   }
 }

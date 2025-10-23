@@ -1,19 +1,5 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
-    <!-- Sidebar -->
-    <div
-      class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:inset-0"
-      :class="{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }"
-    >
-      <AgentSidebar @close-sidebar="sidebarOpen = false" />
-    </div>
-
-    <!-- Overlay for mobile -->
-    <div
-      v-if="sidebarOpen"
-      class="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 md:hidden"
-      @click="sidebarOpen = false"
-    ></div>
+  <RoleLayout>
 
     <!-- Main content -->
     <div class="flex-1 flex flex-col overflow-hidden">
@@ -22,16 +8,8 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="flex justify-between items-center py-6">
             <div class="flex items-center">
-              <!-- Bouton menu mobile -->
-              <button
-                @click="sidebarOpen = !sidebarOpen"
-                class="md:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 mr-4"
-              >
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <div>
+              <!-- Sidebar toggle handled by RoleLayout -->
+               <div>
                 <h1 class="text-2xl font-bold text-gray-900">{{ messages.title }}</h1>
                 <p class="mt-1 text-sm text-gray-500">{{ messages.subtitle }}</p>
               </div>
@@ -137,7 +115,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </RoleLayout>
 
   <!-- Modal d'attribution d'agent -->
   <AgentAssignmentModal
@@ -226,7 +204,7 @@
 <script>
 import { ref, computed, onMounted, watch } from 'vue'
 import { PlusIcon, TrashIcon } from '@heroicons/vue/24/outline'
-import AgentSidebar from '@/components/AgentSidebar.vue'
+import RoleLayout from '@/components/RoleLayout.vue'
 import SearchAndFilters from '@/components/clients/SearchAndFilters.vue'
 import ClientsTable from '@/components/clients/ClientsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -247,7 +225,7 @@ import { MESSAGES } from '@/constants/clientMessages'
 export default {
   name: 'AgentClients',
   components: {
-    AgentSidebar,
+    RoleLayout,
     SearchAndFilters,
     ClientsTable,
     Pagination,
@@ -292,7 +270,7 @@ export default {
     } = useClientStatus()
 
     // État réactif
-    const sidebarOpen = ref(false)
+    // sidebarOpen is managed internally by RoleLayout
     const searchQuery = ref('')
     const showFilters = ref(false)
     const filters = ref({
@@ -643,7 +621,8 @@ export default {
           return
         }
         
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/agent/available`, {
+        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+        const response = await fetch(`${base}/api/agent/available`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
@@ -669,7 +648,8 @@ export default {
       
       assigningAgent.value = true
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/client/${selectedClientForAssignment.value.id}/assign-agent`, {
+        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+        const response = await fetch(`${base}/api/client/${selectedClientForAssignment.value.id}/assign-agent`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
@@ -811,7 +791,6 @@ export default {
       messages,
       
       // État
-      sidebarOpen,
       searchQuery,
       showFilters,
       filters,

@@ -1,8 +1,8 @@
-const MariaDBService = require('./mariadbService');
+const databaseService = require('./databaseService');
 
 class PlatformSettingsService {
   constructor() {
-    this.mariadb = new MariaDBService();
+    this.db = databaseService;
     console.log('🔧 Initialisation PlatformSettingsService');
     this.initializeDefaultSettings();
   }
@@ -29,7 +29,7 @@ class PlatformSettingsService {
   async createSettingIfNotExists(key, value, type = 'string', category = 'general', description = '') {
     try {
       // Vérifier si le paramètre existe déjà
-      const row = await this.mariadb.get(
+      const row = await this.db.get(
         'SELECT id FROM platform_settings WHERE `key` = ?',
         [key]
       );
@@ -39,7 +39,7 @@ class PlatformSettingsService {
         return { exists: true, id: row.id };
       } else {
         // Créer le paramètre
-        const result = await this.mariadb.run(
+        const result = await this.db.run(
           `INSERT INTO platform_settings (\`key\`, value, type, category, description) 
            VALUES (?, ?, ?, ?, ?)`,
           [key, value, type, category, description]
@@ -51,67 +51,56 @@ class PlatformSettingsService {
     }
   }
 
-  // Obtenir tous les paramètres
+  // Récupérer tous les paramètres
   async getAllSettings() {
     try {
-      const rows = await this.mariadb.all(
-        'SELECT * FROM platform_settings ORDER BY category, `key`'
-      );
-      console.log('✅ getAllSettings - Nombre de paramètres:', rows.length);
-      return rows;
+      const settings = await this.db.query('SELECT * FROM platform_settings ORDER BY category, `key`');
+      return settings;
     } catch (err) {
-      console.error('❌ Erreur getAllSettings:', err.message);
+      console.error('Erreur lors de la récupération des paramètres:', err);
       throw err;
     }
   }
 
-  // Obtenir les paramètres par catégorie
+  // Récupérer les paramètres par catégorie
   async getSettingsByCategory(category) {
     try {
-      const rows = await this.mariadb.all(
-        'SELECT * FROM platform_settings WHERE category = ? ORDER BY `key`',
-        [category]
-      );
-      return rows;
+      const settings = await this.db.query('SELECT * FROM platform_settings WHERE category = ? ORDER BY `key`', [category]);
+      return settings;
     } catch (err) {
-      console.error('❌ Erreur getSettingsByCategory:', err.message);
+      console.error('Erreur lors de la récupération des paramètres par catégorie:', err);
       throw err;
     }
   }
 
-  // Obtenir un paramètre spécifique
+  // Récupérer un paramètre spécifique
   async getSetting(key) {
     try {
-      const row = await this.mariadb.get(
-        'SELECT * FROM platform_settings WHERE `key` = ?',
-        [key]
-      );
-      return row;
+      const setting = await this.db.get('SELECT * FROM platform_settings WHERE `key` = ?', [key]);
+      return setting;
     } catch (err) {
-      console.error('❌ Erreur getSetting:', err.message);
+      console.error('Erreur lors de la récupération du paramètre:', err);
       throw err;
     }
   }
 
-  // Mettre à jour un paramètre
+  // Mettre à jour un paramètre existant
   async updateSetting(key, value, type = 'string', category = 'general', description = '', updatedBy = null) {
     try {
-      const result = await this.mariadb.run(
+      const result = await this.db.run(
         `UPDATE platform_settings 
-         SET value = ?, type = ?, category = ?, description = ?, updated_at = CURRENT_TIMESTAMP
+         SET value = ?, type = ?, category = ?, description = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP 
          WHERE \`key\` = ?`,
-        [value, type, category, description, key]
+        [value, type, category, description, updatedBy, key]
       );
       
-      if (result.affectedRows === 0) {
-        // Si le paramètre n'existe pas, le créer
-        throw new Error('Paramètre non trouvé');
-      } else {
-        console.log('✅ Paramètre mis à jour:', key);
-        return { key, value, updated: true };
+      if (result.changes === 0) {
+        throw new Error(`Paramètre '${key}' non trouvé`);
       }
+      
+      return { success: true, changes: result.changes };
     } catch (err) {
-      console.error('❌ Erreur updateSetting:', err.message);
+      console.error('Erreur lors de la mise à jour du paramètre:', err);
       throw err;
     }
   }
@@ -119,89 +108,82 @@ class PlatformSettingsService {
   // Mettre à jour ou créer un paramètre
   async updateOrCreateSetting(key, value, type = 'string', category = 'general', description = '', updatedBy = null) {
     try {
-      return await this.updateSetting(key, value, type, category, description, updatedBy);
-    } catch (error) {
-      if (error.message === 'Paramètre non trouvé') {
+      const existing = await this.getSetting(key);
+      if (existing) {
+        return await this.updateSetting(key, value, type, category, description, updatedBy);
+      } else {
         return await this.createSetting(key, value, type, category, description, false, updatedBy);
       }
-      throw error;
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour/création du paramètre:', err);
+      throw err;
     }
   }
 
   // Créer un nouveau paramètre
   async createSetting(key, value, type = 'string', category = 'general', description = '', isSensitive = false, createdBy = null) {
     try {
-      const result = await this.mariadb.run(
-        `INSERT INTO platform_settings (\`key\`, value, type, category, description, is_sensitive)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [key, value, type, category, description, isSensitive ? 1 : 0]
+      const result = await this.db.run(
+        `INSERT INTO platform_settings (\`key\`, value, type, category, description, is_sensitive, created_by) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [key, value, type, category, description, isSensitive ? 1 : 0, createdBy]
       );
       
-      console.log('✅ Paramètre créé:', key);
-      return { id: result.insertId, key, value, created: true };
+      return { 
+        success: true, 
+        id: result.insertId,
+        key,
+        value,
+        type,
+        category,
+        description
+      };
     } catch (err) {
-      if (err.code === 'ER_DUP_ENTRY') {
-        throw new Error('Un paramètre avec cette clé existe déjà');
-      } else {
-        console.error('❌ Erreur createSetting:', err.message);
-        throw err;
-      }
+      console.error('Erreur lors de la création du paramètre:', err);
+      throw err;
     }
   }
 
   // Supprimer un paramètre
   async deleteSetting(key, deletedBy = null) {
     try {
-      const result = await this.mariadb.run(
-        'DELETE FROM platform_settings WHERE `key` = ?',
-        [key]
-      );
-      
-      if (result.affectedRows === 0) {
-        throw new Error('Paramètre non trouvé');
-      } else {
-        console.log('✅ Paramètre supprimé:', key);
-        return { key, deleted: true };
+      // Log de suppression avant suppression
+      if (deletedBy) {
+        console.log(`Suppression du paramètre '${key}' par l'utilisateur ${deletedBy}`);
       }
+      
+      const result = await this.db.run('DELETE FROM platform_settings WHERE `key` = ?', [key]);
+      
+      if (result.changes === 0) {
+        throw new Error(`Paramètre '${key}' non trouvé`);
+      }
+      
+      return { success: true, changes: result.changes };
     } catch (err) {
-      console.error('❌ Erreur deleteSetting:', err.message);
+      console.error('Erreur lors de la suppression du paramètre:', err);
       throw err;
     }
   }
 
-  // Obtenir les statistiques de la plateforme
+  // Récupérer les statistiques de la plateforme
   async getPlatformStats() {
     try {
-      const queries = [
-        'SELECT COUNT(*) as total_users FROM users',
-        'SELECT COUNT(*) as total_companies FROM companies',
-        'SELECT COUNT(*) as total_settings FROM platform_settings'
-      ];
-
-      const results = await Promise.all(queries.map(async (query) => {
-        try {
-          const row = await this.mariadb.get(query);
-          return row;
-        } catch (err) {
-          console.error('❌ Erreur requête stats:', query, err.message);
-          return { error: err.message };
-        }
-      }));
-
-      const stats = {
-        totalUsers: results[0]?.total_users || 0,
-        totalCompanies: results[1]?.total_companies || 0,
-        totalSettings: results[2]?.total_settings || 0,
-        timestamp: new Date().toISOString()
-      };
+      const stats = await this.db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM users WHERE role = 'user') as total_clients,
+          (SELECT COUNT(*) FROM users WHERE role = 'agent') as total_agents,
+          (SELECT COUNT(*) FROM projects) as total_projects,
+          (SELECT COUNT(*) FROM projects WHERE status = 'active') as active_projects,
+          (SELECT COUNT(*) FROM tasks) as total_tasks,
+          (SELECT COUNT(*) FROM tasks WHERE status = 'completed') as completed_tasks
+      `);
       
-      console.log('✅ getPlatformStats - Stats générées:', stats);
-      return stats;
+      return stats[0] || {};
     } catch (err) {
+      console.error('Erreur lors de la récupération des statistiques:', err);
       throw err;
     }
   }
 }
 
-// Exporter la classe au lieu d'une instance pour éviter les initialisations multiples
 module.exports = PlatformSettingsService;

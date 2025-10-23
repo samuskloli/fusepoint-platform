@@ -33,7 +33,7 @@ class ResponseService {
    * @param {string} messageKey - Clé de traduction du message d'erreur
    * @param {number} statusCode - Code de statut HTTP (défaut: 400)
    * @param {Object} messageParams - Paramètres pour l'interpolation du message
-   * @param {Array} errors - Liste détaillée des erreurs
+   * @param {Array|Object|string} errors - Liste détaillée des erreurs
    */
   error(res, messageKey, statusCode = 400, messageParams = {}, errors = null) {
     const response = {
@@ -49,9 +49,20 @@ class ResponseService {
   }
 
   /**
+   * Envoie une réponse 400 (Bad Request)
+   * @param {Object} res - Objet de réponse Express
+   * @param {string} customMessageKey - Clé de message personnalisée
+   * @param {Object} messageParams - Paramètres pour l'interpolation du message
+   * @param {Array|Object|string} errors - Détails d'erreur
+   */
+  badRequest(res, customMessageKey = 'errors.badRequest', messageParams = {}, errors = null) {
+    return this.error(res, customMessageKey, 400, messageParams, errors);
+  }
+
+  /**
    * Envoie une réponse de validation échouée
    * @param {Object} res - Objet de réponse Express
-   * @param {Array} validationErrors - Liste des erreurs de validation
+   * @param {Array|Object|string} validationErrors - Liste des erreurs de validation
    */
   validationError(res, validationErrors) {
     return this.error(

@@ -23,41 +23,11 @@
 
       <!-- Navigation -->
       <div class="mb-6">
-        <nav class="flex space-x-8" aria-label="Tabs">
-          <button
-            @click="activeTab = 'settings'"
-            :class="[
-              activeTab === 'settings'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
-            ]"
-          >
-            Configuration
-          </button>
-          <button
-            @click="activeTab = 'preview'"
-            :class="[
-              activeTab === 'preview'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
-            ]"
-          >
-            Aperçu
-          </button>
-          <button
-            @click="activeTab = 'history'"
-            :class="[
-              activeTab === 'history'
-                ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-              'whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm'
-            ]"
-          >
-            Historique
-          </button>
-        </nav>
+        <TabsComponent
+          :tabs="tabs"
+          :active-tab="activeTab"
+          @tab-change="activeTab = $event"
+        />
       </div>
 
       <!-- Contenu des onglets -->
@@ -158,15 +128,22 @@
 
 <script>
 import CurrencySettings from '@/components/CurrencySettings.vue'
+import TabsComponent from '@/components/ui/TabsComponent.vue'
 
 export default {
   name: 'CurrencyConfig',
   components: {
-    CurrencySettings
+    CurrencySettings,
+    TabsComponent
   },
   data() {
     return {
       activeTab: 'settings',
+      tabs: [
+        { id: 'settings', label: 'Configuration', icon: 'fas fa-cog' },
+        { id: 'preview', label: 'Aperçu', icon: 'fas fa-eye' },
+        { id: 'history', label: 'Historique', icon: 'fas fa-history' }
+      ],
       currencyHistory: [
         {
           from: 'EUR',

@@ -1,10 +1,8 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
-    <!-- Menu latéral de l'agent -->
-    <AgentSidebar />
+  <RoleLayout>
     
     <!-- Contenu principal -->
-    <div class="flex-1 flex flex-col overflow-hidden ml-64">
+    <div class="flex-1 flex flex-col overflow-hidden">
       <!-- En-tête -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
         <div class="flex items-center justify-between">
@@ -298,13 +296,13 @@
       @close="showBulkDeleteModal = false"
       @confirm="confirmBulkDeleteProjects"
     />
-  </div>
+  </RoleLayout>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import AgentSidebar from '../components/AgentSidebar.vue'
+import RoleLayout from '../components/RoleLayout.vue'
 import CreateProjectModal from '../components/modals/CreateProjectModal.vue'
 import EditProjectModal from '../components/ProjectManagement/EditProjectModal.vue'
 import ConfirmDeleteModal from '../components/ConfirmDeleteModal.vue'
@@ -314,7 +312,7 @@ import { useProjectsStore } from '@/stores/projects'
 export default {
   name: 'ClientProjectDashboard',
   components: {
-    AgentSidebar,
+    RoleLayout,
     CreateProjectModal,
     EditProjectModal,
     ConfirmDeleteModal

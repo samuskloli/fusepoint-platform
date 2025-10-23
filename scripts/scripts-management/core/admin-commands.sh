@@ -95,7 +95,8 @@ restart_servers() {
     
     # Redémarrer
     echo "🚀 Redémarrage en cours..."
-    ./start-all-servers.sh
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    bash "$SCRIPT_DIR/start-all-servers.sh"
 }
 
 # Fonction pour arrêter les serveurs
