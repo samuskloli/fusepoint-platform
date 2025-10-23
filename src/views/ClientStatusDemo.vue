@@ -1,248 +1,236 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <Header />
-    
-    <div class="flex">
-      <!-- Sidebar -->
-      <AgentSidebar :open="sidebarOpen" @toggle="sidebarOpen = !sidebarOpen" />
-      
-      <!-- Contenu principal -->
-      <div class="flex-1 p-6">
-        <div class="max-w-6xl mx-auto">
-          <!-- Titre -->
-          <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">
-              Démonstration du Système de Statuts Client
-            </h1>
-            <p class="text-gray-600">
-              Test et validation du nouveau système de gestion des statuts clients
-            </p>
-          </div>
-          
-          <!-- Statistiques des statuts -->
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-            <div 
-              v-for="status in allStatuses" 
-              :key="status.key"
-              class="bg-white rounded-lg shadow p-6"
-            >
-              <div class="flex items-center">
-                <div 
-                  :class="[
-                    'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
-                    status.bgColor
-                  ]"
-                >
-                  <component 
-                    :is="status.icon" 
-                    :class="['w-4 h-4', status.textColor]"
-                  />
-                </div>
-                <div class="ml-4">
-                  <p class="text-sm font-medium text-gray-600">{{ status.label }}</p>
-                  <p class="text-2xl font-bold text-gray-900">
-                    {{ statusStats[status.key] || 0 }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Clients de démonstration -->
-          <div class="bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h2 class="text-lg font-medium text-gray-900">
-                Clients de Démonstration
-              </h2>
-              <p class="text-sm text-gray-500 mt-1">
-                Testez les changements de statut avec ces clients fictifs
-              </p>
-            </div>
-            
-            <div class="p-6">
-              <!-- Boutons d'actions en masse -->
-              <div class="mb-6 flex flex-wrap gap-3">
-                <button
-                  @click="generateDemoClients"
-                  class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-                >
-                  Générer des clients de test
-                </button>
-                <button
-                  @click="clearDemoClients"
-                  class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
-                >
-                  Vider la liste
-                </button>
-                <button
-                  @click="activateAllClients"
-                  :disabled="isChangingStatus"
-                  class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  Activer tous
-                </button>
-                <button
-                  @click="deactivateAllClients"
-                  :disabled="isChangingStatus"
-                  class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  Désactiver tous
-                </button>
-              </div>
-              
-              <!-- Liste des clients -->
-              <div class="space-y-4">
-                <div 
-                  v-for="client in demoClients" 
-                  :key="client.id"
-                  class="border border-gray-200 rounded-lg p-4"
-                >
-                  <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                      <!-- Avatar -->
-                      <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
-                        <span class="text-sm font-medium text-gray-700">
-                          {{ getInitials(client.first_name, client.last_name) }}
-                        </span>
-                      </div>
-                      
-                      <!-- Informations client -->
-                      <div>
-                        <h3 class="text-sm font-medium text-gray-900">
-                          {{ client.first_name }} {{ client.last_name }}
-                        </h3>
-                        <p class="text-sm text-gray-500">{{ client.email }}</p>
-                        <p class="text-xs text-gray-400">{{ client.company_name }}</p>
-                      </div>
-                    </div>
-                    
-                    <div class="flex items-center space-x-4">
-                      <!-- Badge de statut -->
-                      <ClientStatusBadge :client="client" />
-                      
-                      <!-- Menu de changement de statut -->
-                      <ClientStatusMenu
-                        :client="client"
-                        @status-change="handleStatusChange"
-                      />
-                      
-                      <!-- Actions rapides -->
-                      <div class="flex space-x-2">
-                        <button
-                          @click="toggleClientStatus(client)"
-                          :disabled="isClientStatusChanging(client.id)"
-                          class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors disabled:opacity-50"
-                        >
-                          {{ getToggleText(client) }}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Actions disponibles -->
-                  <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <p class="text-xs text-gray-500 mb-1">Actions disponibles:</p>
-                        <div class="flex flex-wrap gap-1">
-                          <span 
-                            v-for="action in getAvailableActions(client)"
-                            :key="action"
-                            class="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-50 text-blue-700"
-                          >
-                            {{ action }}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div class="text-right">
-                        <p class="text-xs text-gray-500">Statut actuel:</p>
-                        <p class="text-sm font-medium">{{ getCurrentStatusLabel(client) }}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Message si aucun client -->
+  <RoleLayout>
+    <div class="p-6">
+      <div class="max-w-6xl mx-auto">
+        <!-- Titre -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            Démonstration du Système de Statuts Client
+          </h1>
+          <p class="text-gray-600">
+            Test et validation du nouveau système de gestion des statuts clients
+          </p>
+        </div>
+        
+        <!-- Statistiques des statuts -->
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div 
+            v-for="status in allStatuses" 
+            :key="status.key"
+            class="bg-white rounded-lg shadow p-6"
+          >
+            <div class="flex items-center">
               <div 
-                v-if="demoClients.length === 0"
-                class="text-center py-12"
+                :class="[
+                  'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
+                  status.bgColor
+                ]"
               >
-                <p class="text-gray-500 mb-4">
-                  Aucun client de démonstration. Cliquez sur "Générer des clients de test" pour commencer.
+                <component 
+                  :is="status.icon" 
+                  :class="['w-4 h-4', status.textColor]"
+                />
+              </div>
+              <div class="ml-4">
+                <p class="text-sm font-medium text-gray-600">{{ status.label }}</p>
+                <p class="text-2xl font-bold text-gray-900">
+                  {{ statusStats[status.key] || 0 }}
                 </p>
               </div>
             </div>
           </div>
+        </div>
+        
+        <!-- Clients de démonstration -->
+        <div class="bg-white rounded-lg shadow">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">
+              Clients de Démonstration
+            </h2>
+            <p class="text-sm text-gray-500 mt-1">
+              Testez les changements de statut avec ces clients fictifs
+            </p>
+          </div>
           
-          <!-- Logs des changements -->
-          <div class="mt-8 bg-white rounded-lg shadow">
-            <div class="px-6 py-4 border-b border-gray-200">
-              <h2 class="text-lg font-medium text-gray-900">
-                Journal des Changements
-              </h2>
+          <div class="p-6">
+            <!-- Boutons d'actions en masse -->
+            <div class="mb-6 flex flex-wrap gap-3">
               <button
-                @click="clearLogs"
-                class="text-sm text-gray-500 hover:text-gray-700"
+                @click="generateDemoClients"
+                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
-                Vider le journal
+                Générer des clients de test
+              </button>
+              <button
+                @click="clearDemoClients"
+                class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                Vider la liste
+              </button>
+              <button
+                @click="activateAllClients"
+                :disabled="isChangingStatus"
+                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                Activer tous
+              </button>
+              <button
+                @click="deactivateAllClients"
+                :disabled="isChangingStatus"
+                class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                Désactiver tous
               </button>
             </div>
             
-            <div class="p-6">
-              <div class="space-y-2 max-h-64 overflow-y-auto">
-                <div 
-                  v-for="(log, index) in statusLogs" 
-                  :key="index"
-                  class="text-sm p-3 bg-gray-50 rounded border-l-4"
-                  :class="{
-                    'border-green-400': log.type === 'success',
-                    'border-red-400': log.type === 'error',
-                    'border-blue-400': log.type === 'info'
-                  }"
-                >
-                  <div class="flex justify-between items-start">
-                    <span>{{ log.message }}</span>
-                    <span class="text-xs text-gray-500 ml-4">{{ log.timestamp }}</span>
+            <!-- Liste des clients -->
+            <div class="space-y-4">
+              <div 
+                v-for="client in demoClients" 
+                :key="client.id"
+                class="border border-gray-200 rounded-lg p-4"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-4">
+                    <!-- Avatar -->
+                    <div class="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+                      <span class="text-sm font-medium text-gray-700">
+                        {{ getInitials(client.first_name, client.last_name) }}
+                      </span>
+                    </div>
+                    
+                    <!-- Informations client -->
+                    <div>
+                      <h3 class="text-sm font-medium text-gray-900">
+                        {{ client.first_name }} {{ client.last_name }}
+                      </h3>
+                      <p class="text-sm text-gray-500">{{ client.email }}</p>
+                      <p class="text-xs text-gray-400">{{ client.company_name }}</p>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center space-x-4">
+                    <!-- Badge de statut -->
+                    <ClientStatusBadge :client="client" />
+                    
+                    <!-- Menu de changement de statut -->
+                    <ClientStatusMenu
+                      :client="client"
+                      @status-change="handleStatusChange"
+                    />
+                    
+                    <!-- Actions rapides -->
+                    <div class="flex space-x-2">
+                      <button
+                        @click="toggleClientStatus(client)"
+                        :disabled="isClientStatusChanging(client.id)"
+                        class="text-sm bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded transition-colors disabled:opacity-50"
+                      >
+                        {{ getToggleText(client) }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Actions disponibles -->
+                <div class="mt-3 pt-3 border-t border-gray-100">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-xs text-gray-500 mb-1">Actions disponibles:</p>
+                      <div class="flex flex-wrap gap-1">
+                        <span 
+                          v-for="action in getAvailableActions(client)"
+                          :key="action"
+                          class="inline-flex items-center px-2 py-1 rounded text-xs bg-blue-50 text-blue-700"
+                        >
+                          {{ action }}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div class="text-right">
+                      <p class="text-xs text-gray-500">Statut actuel:</p>
+                      <p class="text-sm font-medium">{{ getCurrentStatusLabel(client) }}</p>
+                    </div>
                   </div>
                 </div>
               </div>
-              
+            </div>
+            
+            <!-- Message si aucun client -->
+            <div 
+              v-if="demoClients.length === 0"
+              class="text-center py-12"
+            >
+              <p class="text-gray-500 mb-4">
+                Aucun client de démonstration. Cliquez sur "Générer des clients de test" pour commencer.
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Logs des changements -->
+        <div class="mt-8 bg-white rounded-lg shadow">
+          <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-medium text-gray-900">
+              Journal des Changements
+            </h2>
+            <button
+              @click="clearLogs"
+              class="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Vider le journal
+            </button>
+          </div>
+          
+          <div class="p-6">
+            <div class="space-y-2 max-h-64 overflow-y-auto">
               <div 
-                v-if="statusLogs.length === 0"
-                class="text-center py-8 text-gray-500"
+                v-for="(log, index) in statusLogs" 
+                :key="index"
+                class="text-sm p-3 bg-gray-50 rounded border-l-4"
+                :class="{
+                  'border-green-400': log.type === 'success',
+                  'border-red-400': log.type === 'error',
+                  'border-blue-400': log.type === 'info'
+                }"
               >
-                Aucun changement enregistré
+                <div class="flex justify-between items-start">
+                  <span>{{ log.message }}</span>
+                  <span class="text-xs text-gray-500 ml-4">{{ log.timestamp }}</span>
+                </div>
               </div>
+            </div>
+            
+            <div 
+              v-if="statusLogs.length === 0"
+              class="text-center py-8 text-gray-500"
+            >
+              Aucun changement enregistré
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </RoleLayout>
 </template>
 
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { useClientStatus } from '@/composables/useClientStatus'
 import { ClientStatusUtils } from '@/constants/clientStatus'
-import AgentSidebar from '@/components/AgentSidebar.vue'
-import Header from '@/components/Header.vue'
+import RoleLayout from '@/components/RoleLayout.vue'
 import ClientStatusBadge from '@/components/clients/ClientStatusBadge.vue'
 import ClientStatusMenu from '@/components/clients/ClientStatusMenu.vue'
 
 export default {
   name: 'ClientStatusDemo',
   components: {
-    AgentSidebar,
-    Header,
+    RoleLayout,
     ClientStatusBadge,
     ClientStatusMenu
   },
   setup() {
-    const sidebarOpen = ref(false)
     const demoClients = ref([])
     const statusLogs = ref([])
     
@@ -412,13 +400,12 @@ export default {
     })
     
     return {
-      // État
-      sidebarOpen,
+      // sidebarOpen removed
       demoClients,
       statusLogs,
+      isChangingStatus,
       allStatuses,
       statusStats,
-      isChangingStatus,
       
       // Actions
       generateDemoClients,
@@ -438,3 +425,6 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+</style>
