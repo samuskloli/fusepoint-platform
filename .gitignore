@@ -80,3 +80,22 @@ server/uploads/
 *.njsproj
 *.sln
 *.sw?
+# Ensure env files are ignored except example
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Uploads and previews
+uploads/
+public/uploads/
+server/tmp-preview/
