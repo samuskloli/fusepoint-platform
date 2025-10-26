@@ -92,9 +92,56 @@ export default {
   "header.goodMorning": "Good morning {userName}, ready for a productive day?",
   "header.goodAfternoon": "Good afternoon {userName}, how are your campaigns going?",
   "header.goodEvening": "Good evening {userName}, let's analyze your day's performance",
-  // Added generic keys to cover missing translations reported
+  // Generic keys to cover missing translations
   "label": "Label",
   "p": "Paragraph",
   "actions.save": "Save",
-  "actions.cancel": "Cancel"
+  "actions.cancel": "Cancel",
+  
+  // Confirmation and alert messages
+  "confirmations": {
+    "deleteWidget": "Are you sure you want to delete the widget \"{widgetName}\"?",
+    "addWidgetsToDatabase": "Add {count} widgets to the database?",
+    "deleteEvent": "Are you sure you want to delete this event?",
+    "deleteAssociation": "Are you sure you want to delete this association?",
+    "deleteTask": "Are you sure you want to delete this task?",
+    "deleteSetting": "Are you sure you want to delete this setting?",
+    "stopCampaign": "Are you sure you want to stop this campaign?",
+    "cancelInvitation": "Are you sure you want to cancel this invitation?",
+    "removeMember": "Are you sure you want to remove {name} from the project?",
+    "initializeBlocks": "Are you sure you want to initialize all blocks with their default values?",
+    "deleteFolder": "Are you sure you want to delete this folder and all its contents?",
+    "deleteFile": "Are you sure you want to delete this file?",
+    "deleteMultipleFiles": "Are you sure you want to delete {count} file(s)?",
+    "resetBlock": "Are you sure you want to reset the \"{blockTitle}\" block?",
+    "initializeAllBlocks": "Are you sure you want to initialize all blocks with their default values?",
+    "reloadPage": "Do you want to reload the page now to apply the changes?"
+  },
+  
+  "socialMedia": {
+    "confirmAutoRepair": "Issues detected:\n{issues}\n\nDo you want to attempt automatic repair?"
+  },
+  
+  // Alert and notification messages
+  "alerts": {
+    "error": "Error",
+    "success": "Success",
+    "profileUpdated": "Profile updated successfully!",
+    "passwordMismatch": "Passwords do not match",
+    "passwordUpdated": "Password updated successfully!",
+    "accountDeleted": "Account deleted successfully",
+    "optimizationSuggestions": "Optimization suggestions available in the AI Agents section",
+    "invitationSent": "Invitation sent successfully!",
+    "invitationCanceled": "Invitation cancelled successfully!",
+    "invitationResent": "Invitation resent successfully!",
+    "roleUpdateError": "Error updating role",
+    "permissionsUpdateError": "Error updating permissions",
+    "eventUpdateError": "Error updating event",
+    "eventCreateError": "Error creating event",
+    "providerInviteError": "Error inviting provider",
+    "progressUpdateError": "Error updating progress. Please try again.",
+    "invitationSendError": "Error sending invitation",
+    "invitationCancelError": "Error cancelling invitation",
+    "invitationResendError": "Error resending invitation"
+  }
 };

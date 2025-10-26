@@ -208,7 +208,7 @@ class EmailService implements IEmailService {
       return this.frontendUrl;
     }
 
-    this.frontendUrl = 'http://localhost:3000';
+    this.frontendUrl = 'http://localhost:5173';
     console.log('⚠️ Utilisation de l\'URL frontend par défaut:', this.frontendUrl);
     return this.frontendUrl;
   }

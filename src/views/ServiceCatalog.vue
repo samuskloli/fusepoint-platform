@@ -104,6 +104,14 @@
                   </span>
                 </div>
               </div>
+              <div class="flex items-center gap-2">
+                <span 
+                  :class="service.is_available ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'" 
+                  class="text-xs px-2 py-1 rounded-full"
+                >
+                  {{ service.is_available ? 'Disponible' : 'Indisponible' }}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -171,9 +179,10 @@
             <div class="flex space-x-3">
               <button 
                 @click="requestService(service)"
-                class="flex-1 bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                :disabled="!service.is_available"
+                class="flex-1 bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Demander cette prestation
+                {{ service.is_available ? 'Demander cette prestation' : 'Service indisponible' }}
               </button>
               <button 
                 @click="viewServiceDetails(service)"
@@ -209,7 +218,7 @@
 import { ref, computed, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import authService from '@/services/authService'
+import accompagnementService from '@/services/accompagnementService'
 import ServiceRequestModal from '@/components/accompagnement/ServiceRequestModal.vue'
 import ServiceDetailsModal from '@/components/accompagnement/ServiceDetailsModal.vue'
 import {
@@ -276,9 +285,9 @@ export default {
         loading.value = true
         error.value = null
         
-        const response = await authService.getApiInstance().get('/accompagnement/services')
+        const response = await accompagnementService.getServices()
         
-        services.value = Array.isArray(response.data.services) ? response.data.services : []
+        services.value = Array.isArray(response.data) ? response.data : []
       } catch (err) {
         if (err.response?.status === 401) {
           router.push('/login')
@@ -294,6 +303,10 @@ export default {
 
     // Demander une prestation
     const requestService = (service) => {
+      if (!service?.is_available) {
+        showToast('Ce service est actuellement indisponible.', 'warning')
+        return
+      }
       selectedService.value = service
       showRequestModal.value = true
     }
@@ -354,9 +367,9 @@ export default {
     const getCategoryClass = (category) => {
       const classes = {
         strategy: 'bg-purple-100 text-purple-800',
-        creation: 'bg-green-100 text-green-800',
-        advertising: 'bg-blue-100 text-blue-800',
-        analysis: 'bg-orange-100 text-orange-800',
+        creation: 'bg-pink-100 text-pink-800',
+        advertising: 'bg-yellow-100 text-yellow-800',
+        analysis: 'bg-blue-100 text-blue-800',
         technical: 'bg-gray-100 text-gray-800'
       }
       return classes[category] || 'bg-gray-100 text-gray-800'
@@ -373,16 +386,12 @@ export default {
       return labels[category] || category
     }
 
-    const formatPrice = (price, priceType) => {
-      if (priceType === 'custom') return 'Sur devis'
-      if (!price) return `À partir de 0${getCurrencySymbol()}`
-      return formatCurrency(price)
+    const formatPrice = (price, type) => {
+      if (!formatCurrency) return `${price} ${getCurrencySymbol ? getCurrencySymbol() : '€'}`
+      return formatCurrency(price, type)
     }
 
-    // Lifecycle
-    onMounted(() => {
-      loadServices()
-    })
+    onMounted(loadServices)
 
     return {
       services,
@@ -391,13 +400,9 @@ export default {
       selectedCategory,
       selectedPriceRange,
       filteredServices,
-      showRequestModal,
-      showDetailsModal,
-      selectedService,
       loadServices,
       requestService,
       viewServiceDetails,
-      handleServiceRequest,
       getServiceIcon,
       getServiceColorClass,
       getCategoryClass,

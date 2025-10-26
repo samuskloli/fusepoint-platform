@@ -93,7 +93,9 @@ export default {
       passwordReset: 'Password reset successfully',
       userActivated: 'User activated successfully',
       userDeactivated: 'User deactivated successfully',
-      dataRefreshed: 'Data refreshed successfully'
+      dataRefreshed: 'Data refreshed successfully',
+      subscriptionUpgraded: 'Subscription upgraded successfully',
+      subscriptionDowngraded: 'Subscription downgraded successfully'
     },
     errors: {
       loadUsers: 'Error loading users',
@@ -136,5 +138,51 @@ export default {
     userActions: 'User actions',
     errorLogs: 'Error logs',
     auditTrail: 'Audit trail'
+  },
+  widget_management: {
+    title: 'Widget Management',
+    description: 'Analyze and manage developed widgets and database widgets',
+    bulk_actions: 'Bulk Actions',
+    add_missing_widgets: 'Add Missing Widgets',
+    generate_manifests: 'Generate Missing Manifests',
+    overview: {
+      title: 'Overview',
+      total_developed: 'Developed Widgets',
+      total_database: 'Database Widgets',
+      missing_in_db: 'Missing in DB',
+      missing_manifests: 'Missing Manifests'
+    },
+    filters: {
+      all_categories: 'All Categories',
+      all_statuses: 'All Statuses',
+      search_placeholder: 'Search for a widget...'
+    },
+    status: {
+      in_database: 'In Database',
+      missing_in_db: 'Missing in DB',
+      has_manifest: 'Has Manifest',
+      missing_manifest: 'Missing Manifest'
+    },
+    categories: {
+      productivity: 'Productivity',
+      analytics: 'Analytics',
+      communication: 'Communication',
+      management: 'Management',
+      security: 'Security',
+      integration: 'Integration',
+      other: 'Other'
+    },
+    actions: {
+      add_to_db: 'Add to DB',
+      update: 'Update',
+      delete: 'Delete',
+      generate_manifest: 'Generate Manifest'
+    },
+    messages: {
+      loading: 'Loading analysis...',
+      no_widgets: 'No widgets found',
+      analysis_complete: 'Analysis complete',
+      error_loading: 'Error loading'
+    }
   }
 };

@@ -323,6 +323,13 @@ router.get('/clients/:clientId/projects', RouteHandlerService.validateIdParam('c
     status: req.query.status,
     priority: req.query.priority
   };
+
+  // Enregistrer la consultation du client par l'agent
+  try {
+    await agentService.recordClientInteraction(req.user.id, clientId);
+  } catch (e) {
+    // Ne pas bloquer la route en cas d'erreur de suivi
+  }
   
   const projects = await ProjectManagementService.getClientProjectsPaginated(clientId, req.user.id, options);
   

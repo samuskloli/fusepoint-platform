@@ -19,21 +19,37 @@
 
       <!-- Contenu -->
       <div class="py-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Indicateur de chargement -->
+        <div v-if="loading" class="flex items-center justify-center py-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span class="ml-3 text-gray-600">{{ t('common.loading') }}...</span>
+        </div>
+        
+        <!-- Message si aucun widget disponible -->
+        <div v-else-if="!loading && availableWidgets.length === 0" class="text-center py-8">
+          <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-puzzle-piece text-gray-400 text-2xl"></i>
+          </div>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">{{ t('widgets.noAvailableWidgets') }}</h3>
+          <p class="text-gray-600">{{ t('widgets.allWidgetsAdded') }}</p>
+        </div>
+        
+        <!-- Liste des widgets -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div 
             v-for="widget in availableWidgets" 
-            :key="widget.type"
+            :key="widget.id"
             @click="selectWidget(widget)"
             class="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            :class="{ 'border-blue-500 bg-blue-50': selectedWidget?.type === widget.type }"
+            :class="{ 'border-blue-500 bg-blue-50': selectedWidget?.id === widget.id }"
           >
             <div class="flex items-center space-x-3">
               <div class="w-12 h-12 rounded-lg flex items-center justify-center" :style="{ backgroundColor: widget.color + '20', color: widget.color }">
                 <i :class="widget.icon" class="text-xl"></i>
               </div>
               <div class="flex-1">
-                <h4 class="font-medium text-gray-900">{{ t(widget.titleKey) }}</h4>
-                <p class="text-sm text-gray-600">{{ t(widget.descriptionKey) }}</p>
+                <h4 class="font-medium text-gray-900">{{ widget.name || t(widget.titleKey) }}</h4>
+                <p class="text-sm text-gray-600">{{ widget.description || t(widget.descriptionKey) }}</p>
               </div>
             </div>
           </div>
@@ -63,8 +79,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import widgetsCatalogService from '@/services/widgetsCatalogService'
+import { componentNameToType, SUPPORTED_COMPONENTS_SET } from '@/utils/widgetsMap'
 
 const { t } = useI18n()
 
@@ -82,63 +100,112 @@ const props = defineProps({
 const emit = defineEmits(['close', 'add-widget'])
 
 const selectedWidget = ref(null)
+const allWidgets = ref([])
+const loading = ref(false)
+
+// Fonction pour obtenir l'icône d'un widget basé sur sa catégorie ou son nom
+const getWidgetIcon = (widget) => {
+  if (widget.icon) return widget.icon
+  
+  // Icônes par défaut basées sur la catégorie
+  const categoryIcons = {
+    'project-management': 'fas fa-tasks',
+    'analytics': 'fas fa-chart-bar',
+    'files': 'fas fa-folder',
+    'team-management': 'fas fa-users',
+    'planning': 'fas fa-calendar',
+    'communication': 'fas fa-comments',
+    'ai': 'fas fa-robot',
+    'productivity': 'fas fa-sticky-note',
+    'development': 'fas fa-code',
+    'finance': 'fas fa-dollar-sign',
+    'security': 'fas fa-shield-alt',
+    'system': 'fas fa-cog'
+  }
+  
+  return categoryIcons[widget.category] || 'fas fa-puzzle-piece'
+}
+
+// Fonction pour obtenir la couleur d'un widget basé sur sa catégorie
+const getWidgetColor = (widget) => {
+  const categoryColors = {
+    'project-management': '#3B82F6',
+    'analytics': '#10B981',
+    'files': '#F59E0B',
+    'team-management': '#8B5CF6',
+    'planning': '#EF4444',
+    'communication': '#06B6D4',
+    'ai': '#EC4899',
+    'productivity': '#84CC16',
+    'development': '#6366F1',
+    'finance': '#F97316',
+    'security': '#DC2626',
+    'system': '#6B7280'
+  }
+  
+  return categoryColors[widget.category] || '#6B7280'
+}
+
+// Charger les widgets depuis l'API
+const loadWidgets = async () => {
+  loading.value = true
+  try {
+    const result = await widgetsCatalogService.getWidgets()
+    if (result.success) {
+      allWidgets.value = result.data.map(widget => {
+        const cname = widget.component_name || widget.name
+        const resolvedType = componentNameToType(cname)
+        return {
+          id: widget.id,
+          type: resolvedType,
+          widget_type: resolvedType,
+          name: widget.name,
+          titleKey: `widgets.${(widget.component_name?.toLowerCase() || widget.name.toLowerCase())}.title`,
+          descriptionKey: `widgets.${(widget.component_name?.toLowerCase() || widget.name.toLowerCase())}.description`,
+          icon: getWidgetIcon(widget),
+          color: getWidgetColor(widget),
+          category: widget.category,
+          description: widget.description,
+          component_name: cname,
+          is_active: widget.is_active
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des widgets:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
 const availableWidgets = computed(() => {
-  const allWidgets = [
-    {
-      type: 'tasks',
-      titleKey: 'widgets.tasks.title',
-      descriptionKey: 'widgets.tasks.description',
-      icon: 'fas fa-tasks',
-      color: '#3B82F6'
-    },
-    {
-      type: 'stats',
-      titleKey: 'widgets.stats.title',
-      descriptionKey: 'widgets.stats.description',
-      icon: 'fas fa-chart-bar',
-      color: '#10B981'
-    },
-    {
-      type: 'files',
-      titleKey: 'widgets.files.title',
-      descriptionKey: 'widgets.files.description',
-      icon: 'fas fa-folder',
-      color: '#F59E0B'
-    },
-    {
-      type: 'team',
-      titleKey: 'widgets.team.title',
-      descriptionKey: 'widgets.team.description',
-      icon: 'fas fa-users',
-      color: '#8B5CF6'
-    },
-    {
-      type: 'calendar',
-      titleKey: 'widgets.calendar.title',
-      descriptionKey: 'widgets.calendar.description',
-      icon: 'fas fa-calendar',
-      color: '#EF4444'
-    },
-    {
-      type: 'notes',
-      titleKey: 'widgets.notes.title',
-      descriptionKey: 'widgets.notes.description',
-      icon: 'fas fa-sticky-note',
-      color: '#06B6D4'
-    },
-    {
-      type: 'deliverables',
-      titleKey: 'widgets.deliverables.title',
-      descriptionKey: 'widgets.deliverables.description',
-      icon: 'fas fa-clipboard-check',
-      color: '#22C55E'
-    }
-  ]
+  if (!allWidgets.value.length) return []
   
   // Filtrer les widgets déjà ajoutés (utiliser widget_type du projet)
-  const existingTypes = props.existingWidgets.map(w => w.widget_type)
-  return allWidgets.filter(widget => !existingTypes.includes(widget.type))
+  const existingTypes = props.existingWidgets.map(w => w.widget_type || w.component_name)
+  return allWidgets.value.filter(widget => {
+    const compName = (widget.component_name || widget.name || '').toLowerCase()
+    return (
+      widget.is_active &&
+      !!widget.type &&
+      SUPPORTED_COMPONENTS_SET.has(compName) &&
+      !existingTypes.includes(widget.type) &&
+      !existingTypes.includes(widget.component_name)
+    )
+  })
+})
+
+// Charger les widgets quand le modal s'ouvre
+watch(() => props.isOpen, (isOpen) => {
+  if (isOpen && allWidgets.value.length === 0) {
+    loadWidgets()
+  }
+})
+
+onMounted(() => {
+  if (props.isOpen) {
+    loadWidgets()
+  }
 })
 
 const selectWidget = (widget) => {

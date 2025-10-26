@@ -1,6 +1,16 @@
 class AIChatService {
   constructor() {
-    this.baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const apiEnv = import.meta.env.VITE_API_URL
+    const backendEnv = import.meta.env.VITE_BACKEND_URL
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
+    this.baseUrl = isLocalNetworkHost
+      ? ''
+      : (apiEnv && apiEnv.startsWith('http')
+          ? apiEnv.replace(/\/+$/, '')
+          : backendEnv && backendEnv.startsWith('http')
+            ? backendEnv.replace(/\/+$/, '')
+            : '')
     this.authToken = this.getAuthToken();
   }
 
@@ -201,12 +211,13 @@ class AIChatService {
     }
   }
 
-  // Méthode pour formater l'historique de conversation
   formatConversationHistory(messages) {
+    if (!Array.isArray(messages)) return [];
+
     return messages.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'assistant',
+      role: msg.role || (msg.isUser ? 'user' : 'assistant'),
       content: msg.content,
-      timestamp: msg.timestamp
+      timestamp: msg.timestamp || new Date().toISOString()
     }));
   }
 }

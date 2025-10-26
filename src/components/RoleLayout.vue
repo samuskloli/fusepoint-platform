@@ -1,11 +1,10 @@
 <template>
-  <div class="flex h-screen bg-gray-50">
+  <div class="flex min-h-screen bg-gray-50">
     <!-- Sidebar -->
     <div
-      class="fixed inset-y-0 left-0 z-50 bg-gray-900 transform transition-all duration-300 ease-in-out md:translate-x-0 md:static md:inset-0"
-      :class="[{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }, sidebarWidthClass]"
+      class="fixed inset-y-0 left-0 z-50 bg-gray-900 transform transition-all duration-300 ease-in-out md:translate-x-0 md:static md:inset-0 w-full"
+      :class="[{ '-translate-x-full': !sidebarOpen, 'translate-x-0': sidebarOpen }, sidebarWidthClassMd]"
     >
-      <!-- Unifier: toujours Sidebar -->
       <Sidebar
         @close-sidebar="sidebarOpen = false"
         @toggle-collapse="handleSidebarCollapse"
@@ -26,18 +25,21 @@
 
       <!-- Main content area -->
       <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50">
-        <div class="container mx-auto px-6 py-8 max-w-7xl">
+        <div class="container mx-auto px-6 pt-8 pb-24 md:pb-8 max-w-7xl">
           <slot />
         </div>
       </main>
     </div>
+
+    <!-- Barre de navigation collante mobile (rôles non-client) -->
+    <MobileBottomNav v-if="!isClient" />
   </div>
 </template>
 
 <script>
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
-// import AgentSidebar from './AgentSidebar.vue' // supprimé: on unifie sur Sidebar
+import MobileBottomNav from './MobileBottomNav.vue'
 import { useAuthStore } from '@/stores/auth'
 import { ref, computed } from 'vue'
 
@@ -46,11 +48,12 @@ export default {
   components: {
     Header,
     Sidebar,
-    // AgentSidebar
+    MobileBottomNav
   },
   setup() {
     const authStore = useAuthStore()
     const isAgent = computed(() => authStore.isAgent)
+    const isClient = computed(() => authStore.userRole === 'client' || authStore.user?.role === 'client')
 
     const sidebarOpen = ref(false)
     const sidebarCollapsed = ref(false)
@@ -59,17 +62,19 @@ export default {
       sidebarCollapsed.value = !!isCollapsed
     }
 
-    const sidebarWidthClass = computed(() => {
-      if (isAgent.value) return 'w-64'
-      return sidebarCollapsed.value ? 'w-16' : 'w-64'
+    // Sur mobile: plein écran (w-full); sur desktop: largeur contrôlée
+    const sidebarWidthClassMd = computed(() => {
+      if (isAgent.value) return 'md:w-64'
+      return sidebarCollapsed.value ? 'md:w-16' : 'md:w-64'
     })
 
     return {
       isAgent,
+      isClient,
       sidebarOpen,
       sidebarCollapsed,
       handleSidebarCollapse,
-      sidebarWidthClass
+      sidebarWidthClassMd
     }
   }
 }

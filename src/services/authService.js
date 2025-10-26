@@ -1,4 +1,5 @@
 import axios from 'axios';
+import tokenManager from './tokenManager.js';
 
 /**
  * Service d'authentification côté client
@@ -6,7 +7,11 @@ import axios from 'axios';
  */
 class AuthService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    // Base relative '/api' pour supporter l'accès via IP locale (proxy Vite)
+    const rawBase = import.meta.env.VITE_API_URL || '/api';
+    this.baseURL = rawBase.startsWith('http')
+      ? `${rawBase.replace(/\/+$/, '')}/api`
+      : rawBase; // e.g., '/api'
     console.log('🔍 Base URL utilisée:', this.baseURL);
     this.api = axios.create({
       baseURL: this.baseURL,
@@ -16,19 +21,8 @@ class AuthService {
       }
     });
 
-    // Intercepteur pour ajouter le token aux requêtes
-    this.api.interceptors.request.use(
-      (config) => {
-        const token = this.getAccessToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+    // Abonner cette instance au gestionnaire de tokens centralisé
+    tokenManager.subscribe(this.api, 'authService.js');
 
     // Intercepteur pour gérer les erreurs d'authentification
     this.api.interceptors.response.use(
@@ -75,7 +69,7 @@ class AuthService {
         throw new Error('Le mot de passe doit contenir au moins 8 caractères');
       }
 
-      const response = await this.api.post('/api/auth/login', {
+      const response = await this.api.post('/auth/login', {
         email,
         password
       });
@@ -145,7 +139,7 @@ class AuthService {
         throw new Error('Les mots de passe ne correspondent pas');
       }
 
-      const response = await this.api.post('/api/auth/register', {
+      const response = await this.api.post('/auth/register', {
         email,
         password,
         firstName,
@@ -170,7 +164,7 @@ class AuthService {
     try {
       const sessionToken = this.getSessionToken();
       if (sessionToken) {
-        await this.api.post('/api/auth/logout', { sessionToken });
+        await this.api.post('/auth/logout', { sessionToken });
       }
     } catch (error) {
       console.error('❌ Erreur déconnexion:', error);
@@ -191,7 +185,7 @@ class AuthService {
         throw new Error('Token de rafraîchissement non disponible');
       }
 
-      const response = await axios.post(`${this.baseURL}/api/auth/refresh`, {
+      const response = await this.api.post('/auth/refresh', {
         refreshToken
       });
 
@@ -216,7 +210,7 @@ class AuthService {
    */
   async completeOnboarding(companyData) {
     try {
-      const response = await this.api.post('/api/auth/complete-onboarding', companyData);
+      const response = await this.api.post('/auth/complete-onboarding', companyData);
       return response.data;
     } catch (error) {
       console.error('❌ Erreur completion onboarding:', error);
@@ -226,7 +220,7 @@ class AuthService {
 
   async getCurrentUser() {
     try {
-      const response = await this.api.get('/api/auth/me');
+      const response = await this.api.get('/auth/me');
       const { user, companies } = response.data;
       
       this.setUser(user);
@@ -283,21 +277,20 @@ class AuthService {
    * Gestion des tokens
    */
   setTokens(tokens) {
-    localStorage.setItem('accessToken', tokens.accessToken);
-    localStorage.setItem('refreshToken', tokens.refreshToken);
-    localStorage.setItem('sessionToken', tokens.sessionToken);
+    // Utiliser le gestionnaire centralisé pour synchroniser toutes les instances Axios
+    tokenManager.setTokens(tokens);
   }
 
   getAccessToken() {
-    return localStorage.getItem('accessToken');
+    return tokenManager.getAccessToken();
   }
 
   getRefreshToken() {
-    return localStorage.getItem('refreshToken');
+    return tokenManager.getRefreshToken();
   }
 
   getSessionToken() {
-    return localStorage.getItem('sessionToken');
+    return tokenManager.getSessionToken();
   }
 
   setTokenExpiration(expiresAt) {
@@ -307,9 +300,8 @@ class AuthService {
   }
 
   clearTokens() {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('sessionToken');
+    // Utiliser le gestionnaire centralisé pour synchroniser toutes les instances Axios
+    tokenManager.clearTokens();
     localStorage.removeItem('tokenExpiresAt');
   }
 

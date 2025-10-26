@@ -16,11 +16,21 @@ export default {
     platformSettings: 'Paramètres de la plateforme',
     systemLogs: 'Journaux système',
     overview: 'Vue d\'ensemble',
-    quickActions: 'Actions rapides'
+    quickActions: 'Actions rapides',
+    tabs: {
+      users: 'Utilisateurs',
+      statistics: 'Statistiques',
+      settings: 'Paramètres',
+      logs: 'Journaux'
+    }
   },
   userManagement: {
     title: 'Gestion des utilisateurs',
     subtitle: 'Administrer les comptes utilisateurs et leurs permissions',
+    totalUsers: 'Total Utilisateurs',
+    activeUsers: 'Utilisateurs Actifs',
+    newUsers: 'Nouveaux Utilisateurs',
+    pendingInvitations: 'Invitations en Attente',
     searchPlaceholder: 'Rechercher par nom, email ou rôle...',
     filterByRole: 'Filtrer par rôle',
     filterByStatus: 'Filtrer par statut',
@@ -38,11 +48,52 @@ export default {
     toggleStatus: 'Basculer le statut',
     confirmDelete: 'Confirmer la suppression',
     actions: 'Actions',
+    filters: {
+      all: 'Tous',
+      active: 'Actifs',
+      inactive: 'Inactifs',
+      role: 'Rôle',
+      subscription: 'Abonnement'
+    },
+    table: {
+      name: 'Nom',
+      email: 'Email',
+      role: 'Rôle',
+      status: 'Statut',
+      lastLogin: 'Dernière Connexion',
+      actions: 'Actions',
+      subscription: 'Abonnement',
+      createdAt: 'Date de création',
+      updatedAt: 'Dernière modification'
+    },
+    pagination: {
+      showing: 'Affichage de {start} à {end} sur {total} utilisateurs',
+      previous: 'Précédent',
+      next: 'Suivant',
+      page: 'Page',
+      of: 'sur',
+      itemsPerPage: 'Éléments par page'
+    },
+    messages: {
+      noUsers: 'Aucun utilisateur trouvé',
+      loadingUsers: 'Chargement des utilisateurs...',
+      userUpdated: 'Utilisateur mis à jour avec succès',
+      userDeleted: 'Utilisateur supprimé avec succès',
+      userActivated: 'Utilisateur activé avec succès',
+      userDeactivated: 'Utilisateur désactivé avec succès',
+      passwordReset: 'Mot de passe réinitialisé avec succès',
+      subscriptionUpdated: 'Statut d\'abonnement mis à jour avec succès',
+      errorLoadingUsers: 'Erreur lors du chargement des utilisateurs',
+      errorUpdatingUser: 'Erreur lors de la mise à jour de l\'utilisateur',
+      errorDeletingUser: 'Erreur lors de la suppression de l\'utilisateur',
+      errorUpdatingSubscription: 'Erreur lors de la mise à jour de l\'abonnement'
+    },
     columns: {
       name: 'Nom',
       email: 'Email',
       role: 'Rôle',
       status: 'Statut',
+      subscription: 'Abonnement',
       lastLogin: 'Dernière connexion',
       createdAt: 'Créé le',
       actions: 'Actions'
@@ -53,9 +104,64 @@ export default {
       admin: 'Administrateur',
       super_admin: 'Super Administrateur'
     },
-    status: {
+    // Informations personnelles
+    personalInfo: 'Informations personnelles',
+    firstName: 'Prénom',
+    lastName: 'Nom',
+    email: 'Email',
+    phone: 'Téléphone',
+    name: 'Nom',
+    role: 'Rôle',
+    status: 'Statut',
+    createdAt: 'Date de création',
+    lastLogin: 'Dernière connexion',
+    
+    statuses: {
       active: 'Actif',
-      inactive: 'Inactif'
+      inactive: 'Inactif',
+      allRoles: 'Tous les rôles',
+      allStatuses: 'Tous les statuts',
+    },
+    actions: {
+      editUser: 'Modifier l\'utilisateur',
+      activate: 'Activer',
+      deactivate: 'Désactiver',
+      confirmActivate: 'Confirmer l\'activation',
+      confirmDeactivate: 'Confirmer la désactivation',
+      activateWarning: 'Cet utilisateur sera réactivé et pourra accéder à la plateforme.',
+      deactivateWarning: 'Cet utilisateur sera désactivé et ne pourra plus accéder à la plateforme.',
+      userDetails: 'Détails de l\'utilisateur',
+      noUsers: 'Aucun utilisateur trouvé',
+    },
+    passwordManagement: {
+      passwordManagement: 'Gestion du mot de passe',
+      newPassword: 'Nouveau mot de passe',
+      confirmPassword: 'Confirmer le mot de passe',
+      updatePassword: 'Mettre à jour le mot de passe',
+    },
+    subscription: {
+      paid: 'Payé',
+      free: 'Gratuit',
+      unpaid: 'Non payé',
+      makePaid: 'Marquer comme payé',
+      makeFree: 'Marquer comme gratuit'
+    },
+    
+    // Messages d'erreur
+    errors: {
+      loadUsers: 'Erreur lors du chargement des utilisateurs',
+      loadUserDetails: 'Erreur lors du chargement des détails de l\'utilisateur',
+      updateUser: 'Erreur lors de la mise à jour de l\'utilisateur',
+      updateStatus: 'Erreur lors de la mise à jour du statut',
+      updatePassword: 'Erreur lors de la mise à jour du mot de passe',
+      updateSubscription: 'Erreur lors de la mise à jour de l\'abonnement',
+      noUserSelected: 'Aucun utilisateur sélectionné',
+      invalidUser: 'Utilisateur invalide',
+      requiredFields: 'Veuillez remplir tous les champs obligatoires',
+      invalidEmail: 'Adresse email invalide',
+      passwordFieldsRequired: 'Veuillez remplir tous les champs de mot de passe',
+      passwordMismatch: 'Les mots de passe ne correspondent pas',
+      passwordTooShort: 'Le mot de passe doit contenir au moins 8 caractères'
     },
     modals: {
       editUser: {
@@ -93,13 +199,18 @@ export default {
       passwordReset: 'Mot de passe réinitialisé avec succès',
       userActivated: 'Utilisateur activé avec succès',
       userDeactivated: 'Utilisateur désactivé avec succès',
-      dataRefreshed: 'Données actualisées avec succès'
+      dataRefreshed: 'Données actualisées avec succès',
+      subscriptionUpdated: 'Statut d\'abonnement mis à jour avec succès',
+      subscriptionUpgraded: 'Abonnement mis à niveau avec succès',
+      subscriptionDowngraded: 'Abonnement rétrogradé avec succès'
     },
     errors: {
       loadUsers: 'Erreur lors du chargement des utilisateurs',
       updateUser: 'Erreur lors de la mise à jour de l\'utilisateur',
       resetPassword: 'Erreur lors de la réinitialisation du mot de passe',
       updateStatus: 'Erreur lors de la mise à jour du statut',
+      updateSubscription: 'Erreur lors de la mise à jour de l\'abonnement',
+      loadSubscription: 'Erreur lors du chargement du statut d\'abonnement',
       invalidEmail: 'Adresse email invalide',
       passwordMismatch: 'Les mots de passe ne correspondent pas',
       passwordTooShort: 'Le mot de passe doit contenir au moins 8 caractères',
@@ -136,5 +247,51 @@ export default {
     userActions: 'Actions utilisateur',
     errorLogs: 'Journaux d\'erreur',
     auditTrail: 'Piste d\'audit'
+  },
+  widget_management: {
+    title: 'Gestion des Widgets',
+    description: 'Analysez et gérez les widgets développés et ceux en base de données',
+    bulk_actions: 'Actions groupées',
+    add_missing_widgets: 'Ajouter les widgets manquants',
+    generate_manifests: 'Générer les manifestes manquants',
+    overview: {
+      title: 'Vue d\'ensemble',
+      total_developed: 'Widgets développés',
+      total_database: 'Widgets en base',
+      missing_in_db: 'Manquants en base',
+      missing_manifests: 'Manifestes manquants'
+    },
+    filters: {
+      all_categories: 'Toutes les catégories',
+      all_statuses: 'Tous les statuts',
+      search_placeholder: 'Rechercher un widget...'
+    },
+    status: {
+      in_database: 'En base',
+      missing_in_db: 'Manquant en base',
+      has_manifest: 'Avec manifeste',
+      missing_manifest: 'Sans manifeste'
+    },
+    categories: {
+      productivity: 'Productivité',
+      analytics: 'Analytique',
+      communication: 'Communication',
+      management: 'Gestion',
+      security: 'Sécurité',
+      integration: 'Intégration',
+      other: 'Autre'
+    },
+    actions: {
+      add_to_db: 'Ajouter en base',
+      update: 'Mettre à jour',
+      delete: 'Supprimer',
+      generate_manifest: 'Générer manifeste'
+    },
+    messages: {
+      loading: 'Chargement de l\'analyse...',
+      no_widgets: 'Aucun widget trouvé',
+      analysis_complete: 'Analyse terminée',
+      error_loading: 'Erreur lors du chargement'
+    }
   }
 };

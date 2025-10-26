@@ -71,6 +71,7 @@
 <script>
 import { ref, computed } from 'vue'
 import { projectManagementService } from '@/services/projectManagementService'
+import { useTranslation } from '@/composables/useTranslation'
 
 export default {
   name: 'EditRoleModal',
@@ -82,6 +83,7 @@ export default {
   },
   emits: ['close', 'updated'],
   setup(props, { emit }) {
+    const { t } = useTranslation()
     const loading = ref(false)
     const selectedRole = ref(props.member.role || '')
 
@@ -109,11 +111,11 @@ export default {
           emit('updated', { ...props.member, role: selectedRole.value })
           closeModal()
         } else {
-          alert('Erreur lors de la mise à jour du rôle')
+          alert(t('common.alerts.roleUpdateError'))
         }
       } catch (error) {
         console.error('Erreur:', error)
-        alert('Erreur lors de la mise à jour du rôle')
+        alert(t('common.alerts.roleUpdateError'))
       } finally {
         loading.value = false
       }
@@ -124,6 +126,7 @@ export default {
     }
 
     return {
+      t,
       loading,
       selectedRole,
       getRoleDescription,

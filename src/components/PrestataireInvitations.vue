@@ -214,10 +214,12 @@
 <script>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { useTranslation } from '@/composables/useTranslation'
 
 export default {
   name: 'PrestataireInvitations',
   setup() {
+    const { t } = useTranslation()
     const activeTab = ref('prestataires')
     const showInviteModal = ref(false)
     const loading = ref(false)
@@ -286,7 +288,7 @@ export default {
     }
 
     const cancelInvitation = async (invitationId) => {
-      if (!confirm('Êtes-vous sûr de vouloir annuler cette invitation ?')) {
+      if (!confirm(t('common.confirmations.cancelInvitation'))) {
         return
       }
       
@@ -362,7 +364,8 @@ export default {
       resendInvitation,
       viewPrestataire,
       formatDate,
-      getStatusLabel
+      getStatusLabel,
+      t
     }
   }
 }

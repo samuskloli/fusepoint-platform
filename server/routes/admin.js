@@ -5,6 +5,8 @@ const roleAuth = require('../middleware/roleAuth');
 const databaseService = require('../services/databaseService');
 const bcrypt = require('bcryptjs');
 const systemLogsService = require('../services/systemLogsService');
+const PlatformSettingsService = require('../services/platformSettingsService');
+const platformSettingsService = new PlatformSettingsService();
 
 // Middleware pour toutes les routes admin - accessible aux admin et super_admin
 router.use(authMiddleware);
@@ -360,6 +362,95 @@ router.put('/users/:userId/password', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la modification du mot de passe',
+      details: error.message
+    });
+  }
+});
+
+// Récupérer le statut d'abonnement d'un utilisateur
+router.get('/users/:userId/subscription', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Récupérer les entreprises de l'utilisateur
+    const companies = await databaseService.getUserCompanies(userId);
+    
+    if (!companies || companies.length === 0) {
+      return res.json({
+        success: true,
+        isPaid: false,
+        message: 'Aucune entreprise trouvée pour cet utilisateur'
+      });
+    }
+
+    // Vérifier le statut de paiement de la première entreprise
+    const companyId = companies[0].id;
+    const paidStatus = await databaseService.getPlatformSetting(`company_paid_${companyId}`);
+    
+    res.json({
+      success: true,
+      isPaid: paidStatus === 'true',
+      companyId: companyId
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération statut abonnement:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la récupération du statut d\'abonnement',
+      details: error.message
+    });
+  }
+});
+
+// Mettre à jour le statut d'abonnement d'un utilisateur
+router.put('/users/:userId/subscription', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isPaid } = req.body;
+
+    if (typeof isPaid !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        error: 'Le paramètre isPaid doit être un booléen'
+      });
+    }
+
+    // Récupérer les entreprises de l'utilisateur
+    const companies = await databaseService.getUserCompanies(userId);
+    
+    if (!companies || companies.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Aucune entreprise trouvée pour cet utilisateur'
+      });
+    }
+
+    // Mettre à jour le statut de paiement de la première entreprise
+    const companyId = companies[0].id;
+    await platformSettingsService.updateOrCreateSetting(`company_paid_${companyId}`, isPaid.toString(), 'boolean', 'subscription', `Statut d'abonnement pour l'entreprise ${companyId}`);
+
+    // Log de l'action
+    await systemLogsService.info(
+      `Statut d'abonnement mis à jour pour l'utilisateur ${userId} (entreprise ${companyId}): ${isPaid ? 'payant' : 'gratuit'}`,
+      'subscription',
+      req.user.id,
+      null,
+      { targetUserId: userId, companyId: companyId, isPaid: isPaid }
+    );
+
+    res.json({
+      success: true,
+      message: `Statut d'abonnement mis à jour: ${isPaid ? 'payant' : 'gratuit'}`,
+      isPaid: isPaid,
+      companyId: companyId
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur mise à jour statut abonnement:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la mise à jour du statut d\'abonnement',
       details: error.message
     });
   }

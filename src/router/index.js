@@ -4,6 +4,8 @@ import Register from '../views/Register.vue'
 import ConfirmAccount from '../views/ConfirmAccount.vue'
 import SetPassword from '../views/SetPassword.vue'
 import ClientDashboard from '../views/ClientDashboard.vue'
+import LandingFusepoint from '../views/LandingFusepoint.vue'
+import LinkPointPublic from '../views/LinkPointPublic.vue'
 
 // Store d'authentification
 import { useAuthStore } from '../stores/auth.js'
@@ -83,6 +85,7 @@ import Changelog from '../views/Changelog.vue'
 // Test Chat
 import TestChat from '../views/TestChat.vue'
 import AuthDebug from '../views/AuthDebug.vue'
+import AuthDebugTemp from '../views/AuthDebugTemp.vue'
 
 const routes = [
   {
@@ -99,6 +102,16 @@ const routes = [
         return '/login';
       }
     }
+  },
+  {
+    path: '/landing',
+    name: 'LandingFusepoint',
+    component: LandingFusepoint
+  },
+  {
+    path: '/l/:slug',
+    name: 'LinkPointPublic',
+    component: LinkPointPublic
   },
   {
     path: '/login',
@@ -127,6 +140,18 @@ const routes = [
     path: '/dashboard',
     name: 'Dashboard',
     component: ClientDashboard,
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/linkpoints',
+    name: 'LinkPoints',
+    component: () => import('../views/LinkPoints.vue'),
+    beforeEnter: requireAuth
+  },
+  {
+    path: '/linkpoints/status',
+    name: 'LinkPointsStatus',
+    component: () => import('../views/LinkPointsStatus.vue'),
     beforeEnter: requireAuth
   },
   {
@@ -391,9 +416,22 @@ const routes = [
     beforeEnter: requireAdmin
   },
   {
+    path: '/admin/widgets',
+    name: 'AdminWidgetManagement',
+    component: () => import('../views/Admin/WidgetManagement.vue'),
+    beforeEnter: requireAdmin
+  },
+  {
     path: '/admin/agent-view',
     name: 'AdminAgentView',
     component: AgentDashboard,
+    beforeEnter: requireAdminOrAgent
+  },
+  // Route Management Services (admin ou agent)
+  {
+    path: '/management/services',
+    name: 'ServicesManagement',
+    component: () => import('../views/Management/ServicesManagement.vue'),
     beforeEnter: requireAdminOrAgent
   },
   // Routes Super Admin
@@ -439,6 +477,11 @@ const routes = [
     path: '/auth-debug',
     name: 'AuthDebug',
     component: AuthDebug
+  },
+  {
+    path: '/auth-debug-temp',
+    name: 'AuthDebugTemp',
+    component: AuthDebugTemp
   }
 ]
 

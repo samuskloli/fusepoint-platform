@@ -5,12 +5,23 @@
 
 import { useI18n } from 'vue-i18n'
 
+// Helper pour parser en sécurité l'argument JSON
+function safeParseArg(arg) {
+  if (!arg) return {}
+  try {
+    return JSON.parse(arg)
+  } catch (e) {
+    console.warn('i18n directive: invalid JSON arg, fallback to empty object', arg, e)
+    return {}
+  }
+}
+
 // Directive v-t pour traduire le contenu textuel
 export const vT = {
   mounted(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.textContent = t(key, params)
@@ -22,7 +33,7 @@ export const vT = {
   updated(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.textContent = t(key, params)
@@ -37,7 +48,7 @@ export const vTPlaceholder = {
   mounted(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.placeholder = t(key, params)
@@ -49,7 +60,7 @@ export const vTPlaceholder = {
   updated(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.placeholder = t(key, params)
@@ -64,7 +75,7 @@ export const vTTitle = {
   mounted(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.title = t(key, params)
@@ -76,7 +87,7 @@ export const vTTitle = {
   updated(el, binding) {
     const { t } = useI18n()
     const key = binding.value
-    const params = binding.arg ? JSON.parse(binding.arg) : {}
+    const params = safeParseArg(binding.arg)
     
     if (typeof key === 'string') {
       el.title = t(key, params)

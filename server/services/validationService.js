@@ -295,6 +295,65 @@ class ValidationService {
 
     return { isValid: true, message: null };
   }
+
+  /**
+   * Valide les données d'un modèle de projet
+   * @param {Object} templateData - Données du modèle à valider
+   * @returns {Object} - {isValid: boolean, errors: Array}
+   */
+  validateProjectTemplate(templateData) {
+    const errors = [];
+    
+    if (!templateData) {
+      errors.push('Les données du modèle sont requises');
+      return { isValid: false, errors };
+    }
+
+    const { name, description, category, estimated_duration, estimated_budget, tags } = templateData;
+
+    // Validation du nom (requis)
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      errors.push('Le nom du modèle est requis');
+    } else if (name.trim().length > 100) {
+      errors.push('Le nom du modèle ne peut pas dépasser 100 caractères');
+    }
+
+    // Validation de la description (optionnelle)
+    if (description && typeof description === 'string' && description.length > 500) {
+      errors.push('La description ne peut pas dépasser 500 caractères');
+    }
+
+    // Validation de la catégorie (optionnelle)
+    if (category && typeof category === 'string' && category.length > 50) {
+      errors.push('La catégorie ne peut pas dépasser 50 caractères');
+    }
+
+    // Validation de la durée estimée (optionnelle, mais doit être un nombre positif si fournie)
+    if (estimated_duration !== undefined && estimated_duration !== null) {
+      const duration = parseInt(estimated_duration);
+      if (isNaN(duration) || duration < 1 || duration > 365) {
+        errors.push('La durée estimée doit être un nombre entre 1 et 365 jours');
+      }
+    }
+
+    // Validation du budget estimé (optionnel, mais doit être un nombre positif si fourni)
+    if (estimated_budget !== undefined && estimated_budget !== null) {
+      const budget = parseFloat(estimated_budget);
+      if (isNaN(budget) || budget < 0) {
+        errors.push('Le budget estimé doit être un nombre positif');
+      }
+    }
+
+    // Validation des tags (optionnel, mais doit être un tableau si fourni)
+    if (tags !== undefined && tags !== null && !Array.isArray(tags)) {
+      errors.push('Les tags doivent être un tableau');
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
 }
 
 module.exports = new ValidationService();

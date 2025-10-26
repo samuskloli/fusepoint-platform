@@ -156,7 +156,8 @@ export default {
       activeClients: 0,
       pendingRequests: 0,
       resolvedToday: 0,
-      unreadMessages: 0
+      unreadMessages: 0,
+      priorityCounts: { high: 0, medium: 0, low: 0 }
     })
     
     const filteredClients = ref([])
@@ -169,6 +170,15 @@ export default {
         const statsResponse = await api.get('/api/agent/stats')
         if (statsResponse.data.success) {
           Object.assign(stats, statsResponse.data.data)
+          // Harmoniser d'éventuels formats côté backend
+          const data = statsResponse.data.data
+          if (data.priorityCounts) {
+            stats.priorityCounts = data.priorityCounts
+          } else if (data.priorityBreakdown) {
+            stats.priorityCounts = data.priorityBreakdown
+          } else if (data.priorities) {
+            stats.priorityCounts = data.priorities
+          }
         }
         
         // Charger les clients récents
@@ -184,6 +194,7 @@ export default {
         stats.pendingRequests = 7
         stats.resolvedToday = 12
         stats.unreadMessages = 3
+        stats.priorityCounts = { high: 2, medium: 3, low: 2 }
         
         filteredClients.value = [
           {
@@ -221,6 +232,12 @@ export default {
       return Math.floor(stats.unreadMessages / 2)
     }
 
+    const getPriorityCount = (priority) => {
+      const key = String(priority || '').toLowerCase()
+      const counts = stats.priorityCounts || {}
+      return counts[key] || 0
+    }
+
     const viewClientDetails = (client) => {
       // Action simulée pour afficher les détails du client
       console.log('Voir les détails du client:', client)
@@ -237,6 +254,7 @@ export default {
       filteredClients,
       getClientInitials,
       getActiveConversations,
+      getPriorityCount,
       viewClientDetails,
       totalNotifications
     }

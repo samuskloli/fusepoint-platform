@@ -231,10 +231,19 @@ export default {
       loadTemplates()
     }, 300)
     
-    const editTemplate = (template) => {
-      selectedTemplate.value = JSON.parse(JSON.stringify(template))
-      modalKey.value++
-      showEditModal.value = true
+    const editTemplate = async (template) => {
+      try {
+        const result = await projectTemplateService.getProjectTemplate(template.id)
+        if (result.success) {
+          selectedTemplate.value = result.data
+          modalKey.value++
+          showEditModal.value = true
+        } else {
+          showError(result.error || t('projectTemplates.loadError'))
+        }
+      } catch (error) {
+        showError(t('projectTemplates.loadError'))
+      }
     }
     
     const duplicateTemplate = async (templateId) => {

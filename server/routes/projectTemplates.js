@@ -89,7 +89,13 @@ router.post('/', authenticateToken, requireRole(['agent', 'admin', 'super_admin'
     if (result.success) {
       responseService.success(res, 'projectTemplates.templateCreated', result.data, 201);
     } else {
-      responseService.error(res, result.error, 400);
+      // Si c'est une erreur de validation, on utilise la méthode validationError
+      // Sinon on utilise une clé de traduction générique
+      if (typeof result.error === 'string' && result.error.includes('requis')) {
+        responseService.validationError(res, result.error);
+      } else {
+        responseService.error(res, 'projectTemplates.templateCreateError', 400, {}, result.error);
+      }
     }
   } catch (error) {
     responseService.error(res, 'projectTemplates.templateCreateError', 500);
@@ -116,7 +122,13 @@ router.put('/:id', authenticateToken, requireRole(['agent', 'admin', 'super_admi
     if (result.success) {
       responseService.success(res, 'projectTemplates.templateUpdated', result.data);
     } else {
-      responseService.error(res, result.error, 400);
+      // Si c'est une erreur de validation, on utilise la méthode validationError
+      // Sinon on utilise une clé de traduction générique
+      if (typeof result.error === 'string' && result.error.includes('requis')) {
+        responseService.validationError(res, result.error);
+      } else {
+        responseService.error(res, 'projectTemplates.templateUpdateError', 400, {}, result.error);
+      }
     }
   } catch (error) {
     responseService.error(res, 'projectTemplates.templateUpdateError', 500);
@@ -146,6 +158,28 @@ router.delete('/:id', authenticateToken, requireRole(['agent', 'admin', 'super_a
     }
   } catch (error) {
     responseService.error(res, 'projectTemplates.templateDeleteError', 500);
+  }
+});
+
+/**
+ * @route POST /api/project-templates/:id/duplicate
+ * @desc Dupliquer un modèle de projet
+ * @access Agent
+ */
+router.post('/:id/duplicate', authenticateToken, requireRole(['agent', 'admin', 'super_admin']), async (req, res) => {
+  try {
+    const templateId = req.params.id;
+    const agentId = req.user.id;
+    
+    const result = await projectTemplateService.duplicateTemplate(templateId, agentId);
+    
+    if (result.success) {
+      responseService.success(res, 'projectTemplates.duplicated', result.data);
+    } else {
+      responseService.error(res, result.error, 400);
+    }
+  } catch (error) {
+    responseService.error(res, 'projectTemplates.duplicateError', 500);
   }
 });
 

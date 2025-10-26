@@ -54,11 +54,11 @@
           >
             <i class="fas fa-eye"></i>
           </button>
-          <label class="select-checkbox">
+          <label class="select-checkbox" @click.stop="toggleSelection(file.id, idx, true)">
             <input
               type="checkbox"
               :checked="selectedIdsLocal.has(String(file.id))"
-              @change.stop="toggleSelection(file.id)"
+              @change.stop
             />
           </label>
         </div>
@@ -152,6 +152,9 @@ let io: IntersectionObserver | null = null
 const toAbsoluteUrl = (u?: string): string => {
   if (!u) return ''
   try {
+    // Recognize signed token like "<base64url>.<hex>" and wrap into API path
+    const tokenPattern = /^[A-Za-z0-9_-]+\.[0-9a-f]{64}$/
+    if (tokenPattern.test(u)) return `/api/files/signed/${u}`
     if (u.startsWith('/uploads')) return u
     if (u.startsWith('data:') || /^https?:\/\//.test(u)) return u
     const base = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL || (http as any)?.defaults?.baseURL || window.location.origin
@@ -164,9 +167,7 @@ const toAbsoluteUrl = (u?: string): string => {
 
 const buildThumbnailUrl = (file: FileItem, size: number = 256): string => {
   const id = String((file as any).id)
-  const base = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL || (http as any)?.defaults?.baseURL || window.location.origin
-  const cleanBase = String(base || '').replace(/\/$/, '')
-  return `${cleanBase}/api/thumbnails/${encodeURIComponent(id)}?size=${size}`
+  return `/api/thumbnails/${encodeURIComponent(id)}?size=${size}`
 }
 
 const shouldShowThumbnail = (file: FileItem): boolean => {
@@ -404,6 +405,12 @@ const toggleSelection = (id: string | number, idx?: number, additive?: boolean):
 }
 
 const onTileClick = (e: MouseEvent, file: FileItem, idx: number): void => {
+  // Si c'est un dossier, l'ouvrir directement
+  if (isFolder(file)) {
+    emit('open', file)
+    return
+  }
+  
   const additive = e.metaKey || e.ctrlKey
   const range = e.shiftKey
   if (range && lastSelectedIndex.value !== null) {
@@ -538,9 +545,23 @@ onUnmounted(() => {
 .action-btn:hover {
   background: white;
 }
+.select-checkbox {
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.select-checkbox:hover {
+  background: white;
+}
 .select-checkbox input {
   width: 1rem;
   height: 1rem;
+  cursor: pointer;
 }
 .file-info {
   margin-top: 0.5rem;

@@ -1,9 +1,17 @@
 import api from './api'
 import axios from 'axios'
+import tokenManager from './tokenManager.js'
 
 class ProjectTemplateService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+    const apiEnv = import.meta.env.VITE_API_URL
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
+    this.baseURL = isLocalNetworkHost
+      ? ''
+      : (apiEnv && apiEnv.startsWith('http')
+          ? apiEnv.replace(/\/+$/, '')
+          : '')
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 10000,
@@ -12,19 +20,8 @@ class ProjectTemplateService {
       }
     })
 
-    // Intercepteur pour ajouter le token aux requêtes
-    this.api.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('accessToken')
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`
-        }
-        return config
-      },
-      (error) => {
-        return Promise.reject(error)
-      }
-    )
+    // Abonner cette instance au gestionnaire de tokens centralisé
+    tokenManager.subscribe(this.api, 'projectTemplateService.js')
   }
 
   // Gestion des modèles de projets
@@ -177,7 +174,8 @@ class ProjectTemplateService {
   // Gestion des widgets
   async getWidgets() {
     try {
-      const response = await this.api.get('/api/agent/widgets')
+      // Utiliser la route publique des widgets avec contrôle de rôle côté serveur
+      const response = await this.api.get('/api/widgets')
       return { success: true, data: response.data.data || [] }
     } catch (error) {
       console.error('Erreur lors de la récupération des widgets:', error)

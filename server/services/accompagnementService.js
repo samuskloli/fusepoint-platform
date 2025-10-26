@@ -14,6 +14,9 @@ class AccompagnementService {
             await this.mariadb.createPool();
             console.log('Base de données accompagnement connectée');
             await this.createTables();
+            await this.ensureIsAvailableColumn();
+            // Ajout: s'assurer du lien conversations.request_id
+            await this.ensureConversationsRequestIdColumn();
             this.initialized = true;
         } catch (error) {
             console.error('Erreur connexion base de données accompagnement:', error);
@@ -47,6 +50,49 @@ class AccompagnementService {
             console.error('Message d\'erreur détaillé:', err.message);
             console.error('Code d\'erreur:', err.code);
             throw err;
+        }
+    }
+
+    // Ajout: assurer la présence de la colonne is_available
+    async ensureIsAvailableColumn() {
+        let conn;
+        try {
+            conn = await this.mariadb.getConnection();
+            const rows = await conn.query("SHOW COLUMNS FROM agency_services LIKE 'is_available'");
+            if (!rows || rows.length === 0) {
+                await conn.query("ALTER TABLE agency_services ADD COLUMN is_available TINYINT(1) NOT NULL DEFAULT 1 AFTER is_active");
+                console.log('Colonne is_available ajoutée à agency_services');
+            }
+        } catch (err) {
+            // Log sans bloquer l'app au cas où les droits empêchent l'ALTER
+            console.warn('ensureIsAvailableColumn: impossible de vérifier/ajouter la colonne is_available:', err.message);
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    // Ajout: garantir la colonne request_id dans conversations
+    async ensureConversationsRequestIdColumn() {
+        let conn;
+        try {
+            conn = await this.mariadb.getConnection();
+            const cols = await conn.query("SHOW COLUMNS FROM conversations LIKE 'request_id'");
+            if (!cols || cols.length === 0) {
+                await conn.query("ALTER TABLE conversations ADD COLUMN request_id INT NULL AFTER agent_id");
+                console.log('Colonne request_id ajoutée à conversations');
+            }
+            try {
+                await conn.query("CREATE INDEX idx_conversations_request_id ON conversations(request_id)");
+            } catch (e) {
+                const msg = String(e.message || '').toLowerCase();
+                if (!msg.includes('exists') && !msg.includes('duplicate')) {
+                    console.warn('⚠️ Erreur création index conversations.request_id:', e.message);
+                }
+            }
+        } catch (err) {
+            console.warn('ensureConversationsRequestIdColumn: impossible de vérifier/ajouter la colonne request_id:', err.message);
+        } finally {
+            if (conn) conn.release();
         }
     }
 
@@ -114,6 +160,107 @@ class AccompagnementService {
         }
     }
 
+    // === AJOUT: CRUD des agency_services ===
+    async createAgencyService(data) {
+        let conn;
+        try {
+            const {
+                name,
+                description = null,
+                category = null,
+                price_type = null,
+                base_price = null,
+                duration_estimate = null,
+                deliverables = [],
+                requirements = [],
+                is_active = 1,
+                is_available = 1,
+                display_order = 0,
+                icon = null,
+                color = null
+            } = data;
+
+            if (!name) {
+                const err = new Error('Le champ name est requis');
+                err.code = 'VALIDATION_ERROR';
+                throw err;
+            }
+
+            conn = await this.mariadb.getConnection();
+            const result = await conn.query(
+                `INSERT INTO agency_services 
+                 (name, description, category, price_type, base_price, duration_estimate, deliverables, requirements, is_active, is_available, display_order, icon, color)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    name,
+                    description,
+                    category,
+                    price_type,
+                    base_price,
+                    duration_estimate,
+                    JSON.stringify(deliverables || []),
+                    JSON.stringify(requirements || []),
+                    is_active,
+                    is_available,
+                    display_order,
+                    icon,
+                    color
+                ]
+            );
+            return await this.getServiceById(result.insertId);
+        } catch (err) {
+            throw err;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    async updateAgencyService(id, data) {
+        let conn;
+        try {
+            const allowed = ['name','description','category','price_type','base_price','duration_estimate','deliverables','requirements','is_active','is_available','display_order','icon','color'];
+            const set = [];
+            const values = [];
+            for (const key of allowed) {
+                if (data[key] !== undefined) {
+                    if (key === 'deliverables' || key === 'requirements') {
+                        set.push(`${key} = ?`);
+                        values.push(JSON.stringify(data[key] || []));
+                    } else {
+                        set.push(`${key} = ?`);
+                        values.push(data[key]);
+                    }
+                }
+            }
+            if (set.length === 0) {
+                const err = new Error('Aucune donnée à mettre à jour');
+                err.code = 'VALIDATION_ERROR';
+                throw err;
+            }
+            set.push('updated_at = CURRENT_TIMESTAMP');
+            conn = await this.mariadb.getConnection();
+            await conn.query(`UPDATE agency_services SET ${set.join(', ')} WHERE id = ?`, [...values, id]);
+            return await this.getServiceById(id);
+        } catch (err) {
+            throw err;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
+    async deleteAgencyService(id) {
+        let conn;
+        try {
+            conn = await this.mariadb.getConnection();
+            await conn.query('DELETE FROM agency_services WHERE id = ?', [id]);
+            return { success: true };
+        } catch (err) {
+            throw err;
+        } finally {
+            if (conn) conn.release();
+        }
+    }
+
     // ==================== GESTION DES DEMANDES ====================
 
     async createServiceRequest(requestData) {
@@ -143,7 +290,7 @@ class AccompagnementService {
                 JSON.stringify(brief_data), budget_range, deadline, priority
             ]);
             
-            return { id: result.insertId, ...requestData };
+            return result.insertId;
         } catch (err) {
             throw err;
         } finally {
@@ -356,10 +503,22 @@ class AccompagnementService {
             let conn;
             try {
                 conn = await this.mariadb.getConnection();
+                const safeData = (data === undefined || data === null)
+                  ? null
+                  : JSON.stringify(data, (_k, v) => (typeof v === 'bigint' ? Number(v) : v));
                 const result = await conn.query(query, [
                     user_id, company_id, type, title, message,
-                    JSON.stringify(data || {}), action_url
+                    safeData, action_url
                 ]);
+
+                // Envoi push non bloquant
+                try {
+                    const pushService = require('./pushService');
+                    const payload = { title, body: message, url: action_url || '/' };
+                    pushService.sendToUser(user_id, payload).catch(() => {});
+                } catch (e) {
+                    // Ignorer toute erreur push pour ne pas bloquer la création
+                }
                 
                 return result.insertId;
             } finally {
@@ -408,6 +567,84 @@ class AccompagnementService {
             }
         } catch (err) {
             throw err;
+        }
+    }
+
+    // ==================== GESTION DES CONVERSATIONS ====================
+
+    async createConversation(companyId, requestId = null, type = 'general', title = 'Discussion') {
+        let conn;
+        try {
+            conn = await this.mariadb.getConnection();
+
+            let clientId = null;
+            let agentId = null;
+
+            // Si une demande est fournie, récupérer le client et l'agent associé
+            if (requestId) {
+                const rows = await conn.query(
+                    `SELECT sr.user_id AS client_id, u.agent_id AS agent_id
+                     FROM service_requests sr
+                     LEFT JOIN users u ON u.id = sr.user_id
+                     WHERE sr.id = ?`,
+                    [requestId]
+                );
+                if (rows && rows[0]) {
+                    clientId = rows[0].client_id || null;
+                    agentId = rows[0].agent_id || null;
+                }
+            }
+
+            // Si pas de client trouvé, essayer d'en déduire un via la company
+            if (!clientId && companyId) {
+                const rows = await conn.query(
+                    `SELECT id AS client_id, agent_id FROM users 
+                     WHERE company_id = ? AND role IN ('client','user')
+                     ORDER BY id LIMIT 1`,
+                    [companyId]
+                );
+                if (rows && rows[0]) {
+                    clientId = rows[0].client_id || null;
+                    if (!agentId) agentId = rows[0].agent_id || null;
+                }
+            }
+
+            // Fallback: si aucun agent associé, choisir un agent/admin de l'entreprise
+            if (!agentId && companyId) {
+                const rows = await conn.query(
+                    `SELECT id FROM users 
+                     WHERE company_id = ? AND role IN ('agent','admin')
+                     ORDER BY id LIMIT 1`,
+                    [companyId]
+                );
+                if (rows && rows[0]) {
+                    agentId = rows[0].id;
+                }
+            }
+
+            // Dernier recours: si aucun agent trouvé, associer au client pour éviter NULL
+            if (!agentId && clientId) {
+                agentId = clientId;
+            }
+
+            // Vérifications minimales pour éviter une erreur
+            if (!clientId) {
+                const err = new Error('Impossible de déterminer le client pour la conversation');
+                err.code = 'CLIENT_NOT_FOUND';
+                throw err;
+            }
+
+            const result = await conn.query(
+                `INSERT INTO conversations (client_id, agent_id, request_id, title, status, last_message_at)
+                 VALUES (?, ?, ?, ?, 'active', CURRENT_TIMESTAMP)`,
+                [clientId, agentId, requestId || null, title || 'Discussion']
+            );
+
+            return result.insertId;
+        } catch (err) {
+            throw err;
+        } finally {
+            if (conn) conn.release();
         }
     }
 

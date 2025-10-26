@@ -24,7 +24,7 @@ const accompagnementService = require('./services/accompagnementService');
 const authService = require('./services/authService');
 const PlatformSettingsService = require('./services/platformSettingsService');
 const platformSettingsService = new PlatformSettingsService();
-
+const linkpointsPublicRoutes = require('./routes/linkpointsPublic');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -49,10 +49,16 @@ const projectDashboardRoutes = require('./routes/projectDashboard');
 const projectFilesRoutes = require('./routes/projectFiles');
 const projectTasksRoutes = require('./routes/projectTasks');
 const projectWidgetsRoutes = require('./routes/projectWidgets');
-
+const linkpointsRoutes = require('./routes/linkpoints');
+const pushRoutes = require('./routes/push');
+const geoService = require('./services/geoService');
+const backupSvc = require('./services/linkpointBackup');
+const fallbackStats = require('./services/fallbackStats');
 
 const app = express();
 app.set('etag', 'strong');
+// Assurer que req.protocol reflète X-Forwarded-Proto en prod derrière proxy
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 3000;
 
 // Middleware de sécurité - CSP désactivée pour éviter les blocages
@@ -62,7 +68,7 @@ app.use(helmet({
 
 // Configuration CORS optimisée pour production et développement
 // Liste d'origines autorisées depuis l'env, avec valeurs par défaut pour dev et prod
-const defaultOrigins = 'https://beta.fusepoint.ch,https://fusepoint.ch,https://www.fusepoint.ch,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173'
+const defaultOrigins = 'https://beta.fusepoint.ch,https://fusepoint.ch,https://www.fusepoint.ch,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175,http://localhost:5176,http://127.0.0.1:5176,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001,http://localhost:3002,http://127.0.0.1:3002,http://localhost:3004,http://127.0.0.1:3004'
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
@@ -82,6 +88,15 @@ const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+
+    // Autoriser automatiquement les IP locales en développement (10.x, 192.168.x, 172.16-31.x)
+    if (process.env.NODE_ENV !== 'production') {
+      const lanOriginRegex = /^https?:\/\/(localhost|127\.0\.0\.1|10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[0-1])\.[0-9]{1,3}\.[0-9]{1,3}):[0-9]{2,5}$/;
+      if (lanOriginRegex.test(origin)) {
+        return callback(null, true);
+      }
+    }
+
     console.log('❌ CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -240,6 +255,7 @@ async function initializeDatabase() {
 // Configuration des routes
 // Routes publiques (sans authentification)
 app.use('/api/auth', authRoutes);
+app.use('/api/linkpoints/public', linkpointsPublicRoutes);
 
 // Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth et GET /api/files/signed)
 app.use('/api', (req, res, next) => {
@@ -247,12 +263,17 @@ app.use('/api', (req, res, next) => {
   if (req.method === 'OPTIONS') {
     return next();
   }
-  // Exclure les routes d'authentification
-  if (req.path.startsWith('/auth')) {
+  // Exclure les routes d'authentification (gère req.path et req.originalUrl)
+  const urlPath = (req.path || req.originalUrl || '');
+  if (urlPath.startsWith('/auth') || urlPath.startsWith('/api/auth')) {
     return next();
   }
   // Exclure UNIQUEMENT la consommation GET des URL signées
   if (req.method === 'GET' && req.path.startsWith('/files/signed')) {
+    return next();
+  }
+  // Exclure la génération de QR publique pour LinkPoints
+  if (req.method === 'GET' && /^\/linkpoints\/\d+\/qr$/.test(req.path)) {
     return next();
   }
   // Appliquer le middleware d'authentification pour toutes les autres routes
@@ -283,6 +304,8 @@ app.use('/api/agent/widgets', widgetsRoutes);
 app.use('/api/clients', multiTenantWidgetsRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/thumbnails', thumbnailsRoutes);
+app.use('/api/linkpoints', linkpointsRoutes);
+app.use('/api/push', pushRoutes);
 app.use('/api/debug', debugRoutes);
 
 
@@ -496,6 +519,206 @@ app.get('/login', (req, res) => {
 // Route de servir les fichiers uploadés
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// Redirection publique traquée (QR dynamique)
+app.get('/r/:slug', async (req, res) => {
+  const { slug } = req.params;
+  try {
+    const lp = await databaseService.get(
+      'SELECT id, type, external_url, company_id FROM linkpoints WHERE slug=? AND archived=0',
+      [slug]
+    );
+    if (!lp) return res.status(404).send('Introuvable');
+
+    // Si external, redirection immédiate
+    if (lp.type === 'external' && lp.external_url) {
+      const normalized = normalizeUrl(lp.external_url);
+      res.setHeader('Cache-Control', 'no-store');
+      return res.redirect(302, normalized);
+    }
+
+    // Déterminer si l’entreprise est payante
+    let isPaid = false;
+    try {
+      if (lp.company_id) {
+        const setting = await platformSettingsService.getSetting(`company_paid_${lp.company_id}`);
+        const val = setting?.value;
+        isPaid = val === 'true' || val === '1' || val === 'yes' || val === 'on';
+      }
+    } catch (e) {
+      // non bloquant
+    }
+
+    // Sinon, rediriger vers la page publique /l/:slug (frontend ou fallback serveur)
+    let origin = `${req.protocol}://${req.get('host')}`;
+    const devPublic = (process.env.DEV_PUBLIC_URL || process.env.FRONTEND_URL || '').trim();
+    if (process.env.NODE_ENV !== 'production' && devPublic && /^https?:\/\//.test(devPublic)) {
+      origin = devPublic.replace(/\/+$/, '');
+    }
+    // Conserver uniquement les paramètres de requête (ne pas exposer d’indicateurs internes)
+    const qs = new URLSearchParams(req.query || {});
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+
+    // Poser cookie fp_paid pour détection early côté frontend
+    const cookieOpts = { path: '/', httpOnly: false, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 24 * 60 * 60 * 1000 };
+    if (isPaid) {
+      try { res.cookie('fp_paid', '1', cookieOpts); } catch {}
+    } else {
+      try { res.clearCookie('fp_paid', { path: '/' }); } catch {}
+    }
+
+    res.setHeader('Cache-Control', 'no-store');
+    return res.redirect(302, `${origin}/l/${slug}${suffix}`);
+  } catch (e) {
+    console.error('GET /r/:slug error', e);
+    res.status(500).send('Erreur serveur');
+  }
+});
+
+// ===== Nouveau: endpoint public /l/:slug avec fallback local =====
+app.get('/l/:slug', async (req, res) => {
+  const { slug } = req.params;
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+  const ua = req.headers['user-agent'] || '';
+  const ref = req.headers['referer'] || '';
+  const normalizeUrl = (u) => {
+    if (!u) return u;
+    const t = u.trim();
+    if (/^https?:\/\//i.test(t)) return t;
+    if (t.startsWith('//')) return 'https:' + t;
+    return 'https://' + t;
+  };
+
+  let fromDb = null;
+  let dbErr = null;
+  try {
+    const lp = await databaseService.get(
+      'SELECT id, name, type, slug, logo_url, theme, external_url, updated_at FROM linkpoints WHERE slug=? AND archived=0',
+      [slug]
+    );
+    if (lp) {
+      const links = await databaseService.query(
+        'SELECT label, url, sort_order FROM linkpoint_links WHERE linkpoint_id=? ORDER BY sort_order ASC, id ASC',
+        [lp.id]
+      );
+      const updatedAt = new Date(lp.updated_at || Date.now()).toISOString();
+      let type = 'generated_page';
+      let destination = null;
+      if (lp.type === 'external' && lp.external_url) {
+        type = 'external_url';
+        destination = { url: lp.external_url };
+      } else if (Array.isArray(links) && links.length > 0) {
+        type = 'links_hub';
+        destination = links.map(l => ({ label: l.label, url: l.url }));
+      } else {
+        type = 'generated_page';
+        destination = { title: lp.name || lp.slug };
+      }
+      const publicOptions = {
+        logo_url: lp.logo_url || null,
+        theme: lp.theme || null,
+        title: lp.name || lp.slug,
+        labels: { primary: 'Ouvrir', secondary: 'Voir plus' }
+      };
+      fromDb = { slug, type, destination, publicOptions, updatedAt };
+    }
+  } catch (e) {
+    dbErr = e;
+  }
+
+  const fromBackup = backupSvc.read(slug);
+
+  // Choisir la source la plus fraîche
+  let chosen = null;
+  let mode = 'fallback_local';
+  if (fromDb && fromBackup) {
+    const a = new Date(fromDb.updatedAt || 0).getTime();
+    const b = new Date(fromBackup.updatedAt || 0).getTime();
+    if (a >= b) { chosen = fromDb; mode = 'primary'; } else { chosen = fromBackup; mode = 'fallback_local'; }
+  } else if (fromDb) { chosen = fromDb; mode = 'primary'; } else if (fromBackup) { chosen = fromBackup; mode = 'fallback_local'; }
+
+  console.info(`[LP] /l/${slug} mode=${mode}${dbErr ? ' db_error' : ''}`);
+
+  if (!chosen) {
+    return res.status(404).send('LinkPoint introuvable');
+  }
+
+  // Tracking minimal en mode fallback
+  if (mode === 'fallback_local') {
+    fallbackStats.recordScan(slug, { ip, ua, ref });
+  }
+
+  if (chosen.type === 'external_url' && chosen.destination?.url) {
+    const target = normalizeUrl(chosen.destination.url);
+    if (mode === 'fallback_local') {
+      // Enregistrer aussi click fallback pour redirection externe directe
+      fallbackStats.recordClick(slug, { url: target, ip, ua, ref });
+    }
+    res.setHeader('Cache-Control', 'no-store');
+    return res.redirect(302, target);
+  }
+
+  // Rendre une page minimale
+  const themeBg = (chosen.publicOptions?.theme && chosen.publicOptions.theme.bg) || '#f7f7f7';
+  const themePrimary = (chosen.publicOptions?.theme && chosen.publicOptions.theme.primary) || '#0b5fff';
+  const logoUrl = chosen.publicOptions?.logo_url || '';
+  const title = chosen.publicOptions?.title || slug;
+  const btnLabel = (chosen.publicOptions?.labels && chosen.publicOptions.labels.primary) || 'Ouvrir';
+  const links = Array.isArray(chosen.destination) ? chosen.destination : [];
+
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.send(`<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>${title}</title>
+  <style>
+    :root { --bg: ${themeBg}; --primary: ${themePrimary}; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 20px; background: var(--bg); color: #222; }
+    .wrap { max-width: 560px; margin: 0 auto; background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .logo { text-align: center; margin-bottom: 16px; }
+    .logo img { max-width: 120px; }
+    .title { font-size: 20px; font-weight: 600; text-align: center; margin: 8px 0 16px; }
+    .btn { display: block; padding: 14px 16px; margin: 10px 0; text-align: center; background: var(--primary); color: #fff; text-decoration: none; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    ${logoUrl ? `<div class="logo"><img src="${logoUrl}" alt=""/></div>` : ''}
+    <div class="title">${title}</div>
+    ${links.length === 0 ? `<p style="text-align:center;">Aucun lien disponible.</p>` : links.map(l => {
+      const url = normalizeUrl(l.url);
+      const href = `/l/${slug}/click?url=` + encodeURIComponent(url);
+      return `<a class="btn" href="${href}">${l.label || btnLabel}</a>`;
+    }).join('')}
+  </div>
+</body>
+</html>`);
+});
+
+// Click en mode fallback (enregistre et redirige)
+app.get('/l/:slug/click', async (req, res) => {
+  const { slug } = req.params;
+  const urlParam = (req.query.url || '').toString();
+  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').toString();
+  const ua = req.headers['user-agent'] || '';
+  const ref = req.headers['referer'] || '';
+  const normalizeUrl = (u) => {
+    if (!u) return u;
+    const t = u.trim();
+    if (/^https?:\/\//i.test(t)) return t;
+    if (t.startsWith('//')) return 'https:' + t;
+    return 'https://' + t;
+  };
+  const target = normalizeUrl(urlParam);
+  if (!target) return res.status(400).send('URL manquante');
+  try {
+    fallbackStats.recordClick(slug, { url: target, ip, ua, ref });
+  } catch {}
+  res.setHeader('Cache-Control', 'no-store');
+  return res.redirect(302, target);
+});
+
 // Route de monitoring système
 app.get('/api/system/status', authMiddleware, async (req, res) => {
   try {
@@ -542,9 +765,12 @@ initializeDatabase().then(() => {
     console.log('\n🚀 ===== FUSEPOINT PLATFORM API =====');
     console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
     console.log(`🌐 Port: ${PORT}`);
-    console.log(`🔧 Environnement: ${process.env.NODE_ENV}`);
+    console.log(`🔧 Environnement: ${process.env.NODE_ENV} | Node ${process.version} | PID ${process.pid}`);
     console.log('💾 Base de données: MariaDB (initialisée)');
     console.log(`📧 Service email: ${emailTransporter ? 'Configuré' : 'Non configuré'}`);
+    if (emailTransporter) {
+      console.log(`   • SMTP: host=${process.env.SMTP_HOST}, port=${process.env.SMTP_PORT || 587}, secure=${process.env.SMTP_SECURE === 'true'}, user=${process.env.SMTP_USER}, from=${process.env.SMTP_FROM || process.env.SMTP_USER}`);
+    }
     console.log('🔐 Authentification: JWT');
     console.log('📊 Analytics: Google Analytics proxy');
     console.log('🛡️ Sécurité: Helmet, CORS, Rate limiting');
@@ -561,8 +787,17 @@ initializeDatabase().then(() => {
 
     if (emailTransporter) {
       emailTransporter.verify()
-        .then(() => console.log('✅ Connexion SMTP vérifiée avec succès'))
-        .catch(() => console.log('⚠️ Échec vérification SMTP'));
+        .then(() => console.log('📧 SMTP: connexion vérifiée'))
+        .catch((err) => console.log('⚠️ SMTP: vérification échouée:', err && err.message ? err.message : 'inconnue'));
     }
   });
 });
+
+// Route /r dupliquée supprimée (fusionnée avec le handler principal plus haut)
+(async () => {
+  try {
+    await geoService.initMaxMind();
+  } catch (e) {
+    console.warn('GeoService init warning:', e.message);
+  }
+})();

@@ -366,7 +366,7 @@ export class MultiTenantApiService {
     page: number = 1,
     limit: number = 50
   ): Promise<PaginatedResponse<{ files: FileItem[] }>> {
-    const url = `/api/projects/${projectId}/files?path=${encodeURIComponent(path)}&page=${page}&limit=${limit}`;
+    const url = `${this.buildUrl(clientId, projectId, '/files')}?path=${encodeURIComponent(path)}&page=${page}&limit=${limit}`;
     return this.request<PaginatedResponse<{ files: FileItem[] }>>('GET', url);
   }
 
@@ -404,7 +404,7 @@ export class MultiTenantApiService {
     parentPath: string = '/'
   ): Promise<ApiResponse<{ folder: FileItem }>> {
     const url = this.buildUrl(clientId, projectId, '/files/folders');
-    return this.request<ApiResponse<{ folder: FileItem }>>('POST', url, { name: folderName, folder_path: parentPath });
+    return this.request<ApiResponse<{ folder: FileItem }>>('POST', url, { name: folderName, parent_path: parentPath });
   }
 
   async renameFolder(
@@ -486,7 +486,7 @@ export class MultiTenantApiService {
       }
     });
 
-    const url = `/api/projects/${projectId}/tasks?${params.toString()}`;
+    const url = `${this.buildUrl(clientId, projectId, '/tasks')}?${params.toString()}`;
     return this.request<ApiResponse<{ tasks: TaskItem[]; stats: Record<string, number> }>>('GET', url);
   }
 

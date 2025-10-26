@@ -8,6 +8,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Ports configurables via variables d'environnement (défauts: 3002 backend, 5173 frontend)
+BACKEND_PORT="${BACKEND_PORT:-3002}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
+
 echo "🚀 ================================"
 echo "📱 DÉMARRAGE AUTOMATIQUE FUSEPOINT"
 echo "🚀 ================================"
@@ -32,11 +36,11 @@ stop_port() {
 
 # Nettoyage des ports si nécessaire
 echo "🧹 Nettoyage des ports..."
-if check_port 3002; then
-    stop_port 3002
+if check_port "$BACKEND_PORT"; then
+    stop_port "$BACKEND_PORT"
 fi
-if check_port 5173; then
-    stop_port 5173
+if check_port "$FRONTEND_PORT"; then
+    stop_port "$FRONTEND_PORT"
 fi
 # Proxy mobile supprimé
 
@@ -53,7 +57,7 @@ sleep 2
 # Démarrage du backend (port 3002)
 echo "🔧 Démarrage du backend..."
 cd server
-PORT=3002 FRONTEND_URL=http://localhost:5173 npm run dev > ../logs/backend.log 2>&1 &
+PORT=$BACKEND_PORT FRONTEND_URL=http://localhost:$FRONTEND_PORT npm run dev > ../logs/backend.log 2>&1 &
 BACKEND_PID=$!
 echo $BACKEND_PID > ../logs/backend.pid
 cd ..
@@ -63,15 +67,15 @@ echo "⏳ Attente du backend..."
 sleep 5
 
 # Vérifier que le backend fonctionne
-if ! check_port 3002; then
+if ! check_port "$BACKEND_PORT"; then
     echo "❌ Échec du démarrage du backend"
     exit 1
 fi
-echo "✅ Backend démarré sur le port 3002"
+echo "✅ Backend démarré sur le port $BACKEND_PORT"
 
 # Démarrage du frontend (port 5173)
 echo "🎨 Démarrage du frontend..."
-npm run dev > logs/frontend.log 2>&1 &
+VITE_API_URL=http://localhost:$BACKEND_PORT npm run dev > logs/frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo $FRONTEND_PID > logs/frontend.pid
 
@@ -80,12 +84,12 @@ echo "⏳ Attente du frontend..."
 sleep 5
 
 # Vérifier que le frontend fonctionne
-if ! check_port 5173; then
+if ! check_port "$FRONTEND_PORT"; then
     echo "❌ Échec du démarrage du frontend"
     kill $BACKEND_PID 2>/dev/null || true
     exit 1
 fi
-echo "✅ Frontend démarré sur le port 5173"
+echo "✅ Frontend démarré sur le port $FRONTEND_PORT"
 
 # Proxy mobile supprimé
 
@@ -97,11 +101,11 @@ echo "🚀 ================================"
 echo "✅ TOUS LES SERVEURS SONT DÉMARRÉS"
 echo "🚀 ================================"
 echo "🔧 Backend:"
-echo "   📍 Local:     http://localhost:3002"
-echo "   🌐 Réseau:    http://$LOCAL_IP:3002"
+echo "   📍 Local:     http://localhost:$BACKEND_PORT"
+echo "   🌐 Réseau:    http://$LOCAL_IP:$BACKEND_PORT"
 echo "🎨 Frontend:"
-echo "   📍 Local:     http://localhost:5173"
-echo "   🌐 Réseau:    http://$LOCAL_IP:5173"
+echo "   📍 Local:     http://localhost:$FRONTEND_PORT"
+echo "   🌐 Réseau:    http://$LOCAL_IP:$FRONTEND_PORT"
 echo "🚀 ================================"
 echo ""
 

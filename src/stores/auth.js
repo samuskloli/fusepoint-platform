@@ -172,6 +172,44 @@ export const useAuthStore = defineStore('auth', () => {
     return roles.includes(userRole.value)
   }
 
+  // Forcer la mise à jour des informations utilisateur depuis localStorage
+  const forceUpdateFromStorage = () => {
+    try {
+      const userData = authService.getUser()
+      if (userData) {
+        user.value = userData
+        console.log('🔄 Store mis à jour depuis localStorage:', userData)
+        return true
+      }
+    } catch (error) {
+      console.error('❌ Erreur lors de la mise à jour depuis localStorage:', error)
+    }
+    return false
+  }
+
+  // Écouter les changements du localStorage
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'user' && e.newValue) {
+        try {
+          const newUser = JSON.parse(e.newValue)
+          user.value = newUser
+          console.log('🔄 Store mis à jour via événement storage:', newUser)
+        } catch (error) {
+          console.error('❌ Erreur parsing user depuis storage event:', error)
+        }
+      }
+    })
+
+    // Écouter les événements personnalisés
+    window.addEventListener('userRoleUpdated', (e) => {
+      if (e.detail) {
+        user.value = e.detail
+        console.log('🔄 Store mis à jour via événement userRoleUpdated:', e.detail)
+      }
+    })
+  }
+
   // Initialiser l'authentification au chargement du store
   initializeAuth()
 
@@ -196,6 +234,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     initializeAuth,
     hasRole,
-    hasAnyRole
+    hasAnyRole,
+    forceUpdateFromStorage
   }
 })

@@ -316,6 +316,7 @@
 
 <script>
 import { ref, computed } from 'vue'
+import { useTranslation } from '@/composables/useTranslation'
 import CreateTaskModal from './CreateTaskModal.vue'
 
 export default {
@@ -338,6 +339,7 @@ export default {
     }
   },
   setup(props, { emit }) {
+    const { t } = useTranslation()
     const loading = ref(false)
     const showCreateTask = ref(false)
     const selectedTask = ref(null)
@@ -430,7 +432,7 @@ export default {
     }
 
     const deleteTask = (taskId) => {
-      if (confirm('Êtes-vous sûr de vouloir supprimer cette tâche ?')) {
+      if (confirm(t('common.confirmations.deleteTask'))) {
         emit('delete-task', taskId)
       }
     }
@@ -466,7 +468,8 @@ export default {
       editTask,
       deleteTask,
       closeTaskModal,
-      saveTask
+      saveTask,
+      t
     }
   }
 }

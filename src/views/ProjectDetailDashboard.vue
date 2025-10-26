@@ -1,46 +1,62 @@
 <template>
   <RoleLayout>
-    <!-- En-tête du projet -->
-    <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
+    <!-- En-tête du projet (mobile-friendly) -->
+    <div class="bg-white shadow-sm border-b border-gray-200 px-3 sm:px-6 py-3 sm:py-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <!-- Ligne d’actions (haut) -->
+        <div class="flex items-center justify-between sm:justify-start">
           <button
             @click="$router.go(-1)"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            class="inline-flex items-center p-2 sm:px-3 sm:py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-label="Retour"
           >
-            <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-4 w-4 sm:-ml-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
-            Retour
+            <span class="hidden sm:inline">Retour</span>
           </button>
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ project?.name || 'Projet' }}</h1>
-            <p class="text-gray-600">{{ project?.description || 'Description du projet' }}</p>
+          <div class="hidden sm:flex items-center ml-3">
+            <button
+              @click="showProjectSettings = true"
+              class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <i class="fas fa-cog sm:mr-2"></i>
+              <span>Paramètres</span>
+            </button>
+          </div>
+          <div class="sm:hidden">
+            <button
+              @click="showProjectSettings = true"
+              class="inline-flex items-center p-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              aria-label="Paramètres"
+            >
+              <i class="fas fa-cog"></i>
+            </button>
           </div>
         </div>
-        <div class="flex items-center space-x-3">
+
+        <!-- Titre, description et statut -->
+        <div class="flex items-start sm:items-center sm:space-x-4">
+          <div class="flex-1">
+            <h1 class="text-lg sm:text-2xl font-semibold text-gray-900 truncate">{{ (project && project.name) ? project.name : 'Projet' }}</h1>
+            <p class="text-xs sm:text-sm text-gray-600 truncate">{{ (project && project.description) ? project.description : 'Description du projet' }}</p>
+          </div>
           <span :class="[
-            'px-3 py-1 rounded-full text-sm font-medium',
-            project?.status === 'active' ? 'bg-green-100 text-green-800' :
-            project?.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-            project?.status === 'on_hold' ? 'bg-yellow-100 text-yellow-800' :
+            'px-2 py-0.5 text-xs sm:px-3 sm:py-1 sm:text-sm rounded-full font-medium',
+            (project && project.status === 'active') ? 'bg-green-100 text-green-800' :
+            (project && project.status === 'completed') ? 'bg-blue-100 text-blue-800' :
+            (project && project.status === 'on_hold') ? 'bg-yellow-100 text-yellow-800' :
             'bg-gray-100 text-gray-800'
           ]">
-            {{ getStatusLabel(project?.status) }}
+            {{ getStatusLabel(project && project.status) }}
           </span>
-          <button
-            @click="showProjectSettings = true"
-            class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            Paramètres
-          </button>
         </div>
       </div>
     </div>
 
     <!-- Onglets -->
     <div class="bg-white border-b border-gray-200">
-      <nav class="-mb-px flex space-x-8 px-6">
+      <nav class="-mb-px flex space-x-4 sm:space-x-8 px-3 sm:px-6">
         <router-link
           v-for="tab in tabs"
           :key="tab.id"
@@ -61,13 +77,15 @@
     </div>
 
     <!-- Contenu des onglets -->
-    <div class="flex-1 overflow-auto p-6">
+    <div class="flex-1 overflow-auto p-3 sm:p-6">
       <div v-if="activeTab === 'overview'">
         <OverviewTab 
           :project-id="projectId"
         />
       </div>
 
+      <!-- Retrait de l’onglet Tâches -->
+      <!--
       <div v-if="activeTab === 'tasks'">
         <TasksTab 
           :tasks="tasks"
@@ -79,14 +97,9 @@
           @assign-task="assignTask"
         />
       </div>
+      -->
 
-      <div v-if="activeTab === 'calendar'">
-        <CalendarTab 
-          :project-id="projectId"
-          @create-task="createTask"
-          @edit-task="editTask"
-        />
-      </div>
+      <!-- Calendrier retiré -->
 
       <div v-if="activeTab === 'files'">
         <FilesTab :project-id="projectId" />
@@ -102,44 +115,42 @@
       </div>
 
       <div v-if="activeTab === 'reports'">
-        <ReportsTab 
-          :project-id="projectId"
-        />
+        <ReportsTab :project-id="projectId" />
       </div>
     </div>
 
-    <!-- Modales -->
-    <EditProjectModal 
+    <EditProjectModal
       v-if="showProjectSettings"
       :project="project"
-      @close="showProjectSettings = false"
       @update="updateProject"
+      @delete="deleteProject"
+      @close="showProjectSettings = false"
     />
+
   </RoleLayout>
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import RoleLayout from '../components/RoleLayout.vue'
-import { useAuthStore } from '../stores/auth'
+import RoleLayout from '@/components/RoleLayout.vue'
 import OverviewTab from '../components/ProjectManagement/OverviewTab.vue'
 import TasksTab from '../components/ProjectManagement/TasksTab.vue'
-import CalendarTab from '../components/ProjectManagement/CalendarTab.vue'
 import TeamTab from '../components/ProjectManagement/TeamTab.vue'
 import ReportsTab from '../components/ProjectManagement/ReportsTab.vue'
 import EditProjectModal from '../components/ProjectManagement/EditProjectModal.vue'
-import projectManagementService from '../services/projectManagementService'
 import FilesTab from '../components/ProjectManagement/FilesTab.vue'
-import { useProjectsStore } from '../stores/projects'
+import projectManagementService from '@/services/projectManagementService'
+import { useAuthStore } from '@/stores/auth'
+import { useProjectsStore } from '@/stores/projects'
 
 export default {
   name: 'ProjectDetailDashboard',
   components: {
     RoleLayout,
     OverviewTab,
-    TasksTab,
-    CalendarTab,
+    // TasksTab,
+    // CalendarTab removed
     TeamTab,
     ReportsTab,
     EditProjectModal,
@@ -163,8 +174,7 @@ export default {
     
     const tabs = ref([
       { id: 'overview', name: 'Aperçu', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z' },
-      { id: 'tasks', name: 'Tâches', icon: 'M9 12h6m-6 4h6m-6-8h6M5 6h14M5 6a2 2 0 012-2h10a2 2 0 012 2M5 6v12a2 2 0 002 2h10a2 2 0 002-2V6' },
-      { id: 'calendar', name: 'Calendrier', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+      // { id: 'tasks', name: 'Tâches', icon: 'M9 12h6m-6 4h6m-6-8h6M5 6h14M5 6a2 2 0 012-2h10a2 2 0 012 2M5 6v12a2 2 0 002 2h10a2 2 0 002-2V6' },
       { id: 'team', name: 'Équipe', icon: 'M17 20h5v-2a4 4 0 00-5-4M12 12a4 4 0 100-8 4 4 0 000 8zm-6 8h12v-2a6 6 0 00-12 0v2z' },
       { id: 'reports', name: 'Rapports', icon: 'M11 17a4 4 0 004-4V5a4 4 0 10-8 0v8a4 4 0 004 4zm-4 0h8' }
     ])

@@ -14,6 +14,9 @@ import CurrencyPlugin from './plugins/currency.js'
 // i18n plugin
 import VueI18nPlugin from './plugins/i18n.js'
 
+// Token Manager plugin
+import TokenManagerPlugin from './plugins/tokenManager.js'
+
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -60,7 +63,15 @@ import {
   // Icônes spécifiques aux templates de projet
   faBullhorn, faShareAlt, faPenFancy, faMobileAlt,
   faCheckSquare, faListCheck, faBrain, faHistory, faSwatchbook,
-  faCodeBranch, faCheckCircle
+  faCodeBranch, faCheckCircle,
+  // Ajouts requis par NotificationCenter et actions
+  faUserPlus, faCheckDouble,
+  // Icônes manquantes identifiées
+  faTimesCircle, faExclamationCircle, faAngleDoubleLeft, faAngleLeft, 
+  faAngleRight, faAngleDoubleRight, faArrowLeft, faArrowUp, faArrowDown,
+  faShieldAlt, faUserCheck, faUserSlash, faUserTag, faHandHoldingDollar,
+  faHeartbeat, faTachometerAlt, faMicrochip, faMemory, faHdd, faNetworkWired,
+  faSave as faSaveIcon
 } from '@fortawesome/free-solid-svg-icons'
 
 // Ajouter les icônes à la bibliothèque
@@ -107,7 +118,15 @@ library.add(
   // Icônes spécifiques aux templates de projet
   faBullhorn, faShareAlt, faPenFancy, faMobileAlt,
   faCheckSquare, faListCheck, faBrain, faHistory, faSwatchbook,
-  faCodeBranch, faCheckCircle
+  faCodeBranch, faCheckCircle,
+  // Ajouts requis
+  faUserPlus, faCheckDouble,
+  // Icônes manquantes ajoutées
+  faTimesCircle, faExclamationCircle, faAngleDoubleLeft, faAngleLeft, 
+  faAngleRight, faAngleDoubleRight, faArrowLeft, faArrowUp, faArrowDown,
+  faShieldAlt, faUserCheck, faUserSlash, faUserTag, faHandHoldingDollar,
+  faHeartbeat, faTachometerAlt, faMicrochip, faMemory, faHdd, faNetworkWired,
+  faSaveIcon
 )
 
 const app = createApp(App)
@@ -137,4 +156,14 @@ app.use(router)
 app.use(Toast, toastOptions)
 app.use(CurrencyPlugin)
 app.use(VueI18nPlugin)
+app.use(TokenManagerPlugin)
 app.mount('#app')
+
+// Enregistrer le service worker pour notifications push
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Service worker registration failed:', err);
+    });
+  });
+}

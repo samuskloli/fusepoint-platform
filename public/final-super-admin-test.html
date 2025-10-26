@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Super Admin Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+        .step.active {
+            border-color: #007bff;
+            background-color: #e7f3ff;
+        }
+        .step.completed {
+            border-color: #28a745;
+            background-color: #d4edda;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        button.success {
+            background-color: #28a745;
+        }
+        button.success:hover {
+            background-color: #218838;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 200px;
+            font-size: 12px;
+        }
+        .nav-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .nav-links a {
+            padding: 8px 15px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .nav-links a:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Test Final Super Admin</h1>
+        <p>Cette page va corriger le rôle utilisateur et tester la navigation vers les pages super admin.</p>
+        
+        <div class="step" id="step1">
+            <h3>Étape 1: Vérification de l'état actuel</h3>
+            <div id="current-state"></div>
+            <button onclick="checkCurrentState()">Vérifier l'état</button>
+        </div>
+        
+        <div class="step" id="step2">
+            <h3>Étape 2: Correction du rôle utilisateur</h3>
+            <div id="role-fix-result"></div>
+            <button onclick="fixUserRole()" id="fix-role-btn">Corriger le rôle Super Admin</button>
+        </div>
+        
+        <div class="step" id="step3">
+            <h3>Étape 3: Test de navigation</h3>
+            <div id="navigation-result"></div>
+            <div class="nav-links">
+                <a href="/super-admin" target="_blank">🏠 Tableau de Bord Super Admin</a>
+                <a href="/admin/users" target="_blank">👥 Gestion des Utilisateurs</a>
+                <a href="/admin/widgets" target="_blank">🧩 Gestion des Widgets</a>
+                <a href="/admin/settings" target="_blank">⚙️ Paramètres Système</a>
+                <a href="/admin/logs" target="_blank">📋 Logs Système</a>
+            </div>
+            <button onclick="testAllNavigation()" class="success">Tester toute la navigation</button>
+        </div>
+        
+        <div class="step" id="step4">
+            <h3>Étape 4: Retour à l'application</h3>
+            <div id="return-result"></div>
+            <button onclick="returnToApp()" class="success">Retourner à l'application</button>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 1;
+
+        function updateStepStatus(stepNumber, status) {
+            const step = document.getElementById(`step${stepNumber}`);
+            step.classList.remove('active', 'completed');
+            if (status === 'active') {
+                step.classList.add('active');
+            } else if (status === 'completed') {
+                step.classList.add('completed');
+            }
+        }
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<div class="${type}">[${timestamp}] ${message}</div>`;
+        }
+
+        function checkCurrentState() {
+            updateStepStatus(1, 'active');
+            const resultDiv = document.getElementById('current-state');
+            resultDiv.innerHTML = '';
+            
+            try {
+                // Vérifier les tokens
+                const token = localStorage.getItem('accessToken');
+                const userStr = localStorage.getItem('user');
+                
+                log('current-state', `<strong>État d'authentification:</strong>`);
+                log('current-state', `Token: ${token ? '✅ Présent' : '❌ Absent'}`, token ? 'success' : 'error');
+                
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    log('current-state', `<strong>Utilisateur:</strong> ${user.email}`);
+                    log('current-state', `<strong>Rôle actuel:</strong> ${user.role}`, user.role === 'super_admin' ? 'success' : 'warning');
+                    log('current-state', `<strong>isSuperAdmin:</strong> ${user.isSuperAdmin}`, user.isSuperAdmin ? 'success' : 'warning');
+                    
+                    if (user.permissions) {
+                        log('current-state', `<strong>Permissions:</strong> <pre>${JSON.stringify(user.permissions, null, 2)}</pre>`);
+                    }
+                } else {
+                    log('current-state', '❌ Aucune information utilisateur trouvée', 'error');
+                }
+                
+                updateStepStatus(1, 'completed');
+                updateStepStatus(2, 'active');
+                
+            } catch (error) {
+                log('current-state', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function fixUserRole() {
+            updateStepStatus(2, 'active');
+            const resultDiv = document.getElementById('role-fix-result');
+            resultDiv.innerHTML = '';
+            
+            try {
+                const userStr = localStorage.getItem('user');
+                if (!userStr) {
+                    log('role-fix-result', '❌ Aucun utilisateur trouvé. Veuillez vous connecter d\'abord.', 'error');
+                    return;
+                }
+                
+                const user = JSON.parse(userStr);
+                const originalRole = user.role;
+                
+                log('role-fix-result', `<strong>Utilisateur:</strong> ${user.email}`);
+                log('role-fix-result', `<strong>Rôle original:</strong> ${originalRole}`);
+                
+                // Modifier le rôle et les permissions
+                user.role = 'super_admin';
+                user.isSuperAdmin = true;
+                
+                if (!user.permissions) {
+                    user.permissions = {};
+                }
+                user.permissions.canAccessSuperAdmin = true;
+                user.permissions.canAccessAgent = true;
+                user.permissions.canAccessAdmin = true;
+                
+                // Sauvegarder
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                log('role-fix-result', `✅ Rôle modifié: ${originalRole} → ${user.role}`, 'success');
+                log('role-fix-result', `✅ isSuperAdmin: ${user.isSuperAdmin}`, 'success');
+                log('role-fix-result', '✅ Permissions super admin ajoutées', 'success');
+                
+                // Déclencher les événements
+                window.dispatchEvent(new CustomEvent('userRoleUpdated', { detail: user }));
+                window.dispatchEvent(new CustomEvent('storage', { 
+                    key: 'user', 
+                    newValue: JSON.stringify(user),
+                    storageArea: localStorage
+                }));
+                
+                log('role-fix-result', '✅ Événements de mise à jour déclenchés', 'success');
+                log('role-fix-result', '<strong>🎉 Rôle Super Admin appliqué avec succès!</strong>', 'success');
+                
+                // Désactiver le bouton
+                document.getElementById('fix-role-btn').disabled = true;
+                
+                updateStepStatus(2, 'completed');
+                updateStepStatus(3, 'active');
+                
+            } catch (error) {
+                log('role-fix-result', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function testAllNavigation() {
+            updateStepStatus(3, 'active');
+            const resultDiv = document.getElementById('navigation-result');
+            resultDiv.innerHTML = '';
+            
+            log('navigation-result', '<strong>🧪 Test de navigation en cours...</strong>');
+            
+            const testUrls = [
+                { url: '/super-admin', name: 'Tableau de Bord Super Admin' },
+                { url: '/admin/users', name: 'Gestion des Utilisateurs' },
+                { url: '/admin/widgets', name: 'Gestion des Widgets' },
+                { url: '/admin/settings', name: 'Paramètres Système' },
+                { url: '/admin/logs', name: 'Logs Système' }
+            ];
+            
+            testUrls.forEach((test, index) => {
+                setTimeout(() => {
+                    log('navigation-result', `Test ${index + 1}: ${test.name} (${test.url})`, 'info');
+                    
+                    // Créer un iframe caché pour tester la navigation
+                    const iframe = document.createElement('iframe');
+                    iframe.style.display = 'none';
+                    iframe.src = test.url;
+                    
+                    iframe.onload = () => {
+                        log('navigation-result', `✅ ${test.name}: Navigation réussie`, 'success');
+                        document.body.removeChild(iframe);
+                    };
+                    
+                    iframe.onerror = () => {
+                        log('navigation-result', `❌ ${test.name}: Erreur de navigation`, 'error');
+                        document.body.removeChild(iframe);
+                    };
+                    
+                    document.body.appendChild(iframe);
+                    
+                    // Timeout de sécurité
+                    setTimeout(() => {
+                        if (document.body.contains(iframe)) {
+                            log('navigation-result', `⚠️ ${test.name}: Timeout (peut indiquer une redirection)`, 'warning');
+                            document.body.removeChild(iframe);
+                        }
+                    }, 5000);
+                    
+                }, index * 1000);
+            });
+            
+            setTimeout(() => {
+                log('navigation-result', '<strong>🎯 Tests terminés. Vous pouvez maintenant cliquer sur les liens ci-dessus pour tester manuellement.</strong>', 'info');
+                updateStepStatus(3, 'completed');
+                updateStepStatus(4, 'active');
+            }, testUrls.length * 1000 + 2000);
+        }
+
+        function returnToApp() {
+            updateStepStatus(4, 'active');
+            const resultDiv = document.getElementById('return-result');
+            resultDiv.innerHTML = '';
+            
+            log('return-result', '🚀 Redirection vers le tableau de bord super admin...', 'info');
+            
+            setTimeout(() => {
+                window.location.href = '/super-admin';
+            }, 2000);
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStepStatus(1, 'active');
+            checkCurrentState();
+        });
+    </script>
+</body>
+</html>

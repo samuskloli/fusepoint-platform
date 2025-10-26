@@ -239,6 +239,7 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import { projectManagementService } from '@/services/projectManagementService'
+import { useTranslation } from '@/composables/useTranslation'
 import InviteMemberModal from './InviteMemberModal.vue'
 import EditRoleModal from './EditRoleModal.vue'
 import PermissionsModal from './PermissionsModal.vue'
@@ -259,6 +260,7 @@ export default {
     }
   },
   setup(props) {
+    const { t } = useTranslation()
     const members = ref([])
     const loading = ref(false)
     const searchQuery = ref('')
@@ -340,7 +342,7 @@ export default {
     }
 
     const removeMember = async (member) => {
-      if (!confirm(`Êtes-vous sûr de vouloir retirer ${member.name} du projet ?`)) {
+      if (!confirm(t('common.confirmations.removeMember', { name: member.name }))) {
         return
       }
 
@@ -460,7 +462,8 @@ export default {
       getRoleLabel,
       getStatusClass,
       getStatusLabel,
-      formatDate
+      formatDate,
+      t
     }
   }
 }

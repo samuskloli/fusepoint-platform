@@ -20,20 +20,21 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 5173,
-      clientPort: 5173
-    },
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3002',
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://localhost:3002',
+        changeOrigin: true,
+        secure: false
+      },
+      '/r': {
+        target: process.env.VITE_API_URL || 'http://localhost:3002',
         changeOrigin: true,
         secure: false
       }

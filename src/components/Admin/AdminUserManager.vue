@@ -76,93 +76,146 @@
         {{ $t('admin.userManagement.noUsers') }}
       </div>
       
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
+      <div v-else class="w-full">
+        <table class="w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.name') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.email') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.role') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.status') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.createdAt') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('admin.userManagement.lastLogin') }}
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                {{ $t('admin.userManagement.table.subscription') }}
+              </th>
+              <th class="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 {{ $t('common.actions') }}
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-3 sm:px-6 py-4">
                 <div class="flex items-center">
-                  <div class="flex-shrink-0 h-10 w-10">
-                    <div class="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                  <div class="flex-shrink-0 h-8 w-8 sm:h-10 sm:w-10">
+                    <div class="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium text-xs sm:text-sm">
                       {{ getInitials(user.first_name, user.last_name) }}
                     </div>
                   </div>
-                  <div class="ml-4">
-                    <div class="text-sm font-medium text-gray-900">
+                  <div class="ml-2 sm:ml-4">
+                    <div class="text-xs sm:text-sm font-medium text-gray-900">
                       {{ user.first_name }} {{ user.last_name }}
+                    </div>
+                    <div class="sm:hidden text-xs text-gray-500 mt-1">
+                      {{ user.email }}
                     </div>
                   </div>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="hidden sm:table-cell px-6 py-4 text-sm text-gray-900">
                 {{ user.email }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-3 sm:px-6 py-4">
                 <span :class="getRoleColorClass(user.role)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
                   {{ getRoleLabel(user.role) }}
                 </span>
+                <div class="md:hidden mt-1">
+                  <span :class="user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ user.is_active ? $t('admin.userManagement.active') : $t('admin.userManagement.inactive') }}
+                  </span>
+                </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="hidden md:table-cell px-6 py-4">
                 <span :class="user.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
                   {{ user.is_active ? $t('admin.userManagement.active') : $t('admin.userManagement.inactive') }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="hidden lg:table-cell px-6 py-4 text-sm text-gray-900">
                 {{ formatDate(user.created_at) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td class="hidden xl:table-cell px-6 py-4 text-sm text-gray-900">
                 {{ formatDate(user.last_login) }}
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                <button
-                  @click="handleEditUser(user)"
-                  class="text-blue-600 hover:text-blue-900 transition-colors"
-                  :title="$t('common.edit')"
-                >
-                  <font-awesome-icon icon="edit" class="w-4 h-4" />
-                </button>
+              <td class="hidden lg:table-cell px-6 py-4">
+                <div class="flex items-center space-x-2">
+                  <span :class="getSubscriptionStatus(user) === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                    {{ getSubscriptionStatus(user) === 'paid' ? $t('admin.userManagement.subscription.paid') : $t('admin.userManagement.subscription.free') }}
+                  </span>
+                  <button
+                    @click="toggleSubscription(user)"
+                    :class="getSubscriptionStatus(user) === 'paid' ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'"
+                    class="transition-colors"
+                    :title="getSubscriptionStatus(user) === 'paid' ? $t('admin.userManagement.subscription.makeFree') : $t('admin.userManagement.subscription.makePaid')"
+                  >
+                    <font-awesome-icon :icon="getSubscriptionStatus(user) === 'paid' ? 'credit-card' : 'hand-holding-dollar'" class="w-4 h-4" />
+                  </button>
+                </div>
+              </td>
+              <td class="px-3 sm:px-6 py-4 text-sm font-medium">
+                <!-- Informations mobiles -->
+                <div class="lg:hidden mb-2 space-y-1">
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-gray-500">{{ $t('admin.userManagement.table.subscription') }}:</span>
+                    <div class="flex items-center space-x-1">
+                      <span :class="getSubscriptionStatus(user) === 'paid' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                        {{ getSubscriptionStatus(user) === 'paid' ? $t('admin.userManagement.subscription.paid') : $t('admin.userManagement.subscription.free') }}
+                      </span>
+                      <button
+                        @click="toggleSubscription(user)"
+                        :class="getSubscriptionStatus(user) === 'paid' ? 'text-orange-600 hover:text-orange-900' : 'text-green-600 hover:text-green-900'"
+                        class="transition-colors"
+                        :title="getSubscriptionStatus(user) === 'paid' ? $t('admin.userManagement.subscription.makeFree') : $t('admin.userManagement.subscription.makePaid')"
+                      >
+                        <font-awesome-icon :icon="getSubscriptionStatus(user) === 'paid' ? 'credit-card' : 'hand-holding-dollar'" class="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  <div class="xl:hidden flex justify-between text-xs">
+                    <span class="text-gray-500">{{ $t('admin.userManagement.lastLogin') }}:</span>
+                    <span class="text-gray-700">{{ formatDate(user.last_login) }}</span>
+                  </div>
+                </div>
                 
-                <button
-                  @click="handleViewDetails(user)"
-                  class="text-green-600 hover:text-green-900 transition-colors"
-                  :title="$t('common.view')"
-                >
-                  <font-awesome-icon icon="eye" class="w-4 h-4" />
-                </button>
-                
-                <button
-                  @click="openStatusDialog(user)"
-                  :class="user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'"
-                  class="transition-colors"
-                  :title="user.is_active ? $t('admin.userManagement.deactivate') : $t('admin.userManagement.activate')"
-                >
-                  <font-awesome-icon :icon="user.is_active ? 'user-slash' : 'user-check'" class="w-4 h-4" />
-                </button>
+                <!-- Actions -->
+                <div class="flex space-x-2">
+                  <button
+                    @click="handleEditUser(user)"
+                    class="text-blue-600 hover:text-blue-900 transition-colors"
+                    :title="$t('common.edit')"
+                  >
+                    <font-awesome-icon icon="edit" class="w-4 h-4" />
+                  </button>
+                  
+                  <button
+                    @click="handleViewDetails(user)"
+                    class="text-green-600 hover:text-green-900 transition-colors"
+                    :title="$t('common.view')"
+                  >
+                    <font-awesome-icon icon="eye" class="w-4 h-4" />
+                  </button>
+                  
+                  <button
+                    @click="openStatusDialog(user)"
+                    :class="user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'"
+                    class="transition-colors"
+                    :title="user.is_active ? $t('admin.userManagement.deactivate') : $t('admin.userManagement.activate')"
+                  >
+                    <font-awesome-icon :icon="user.is_active ? 'user-slash' : 'user-check'" class="w-4 h-4" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -462,10 +515,14 @@ export default {
       isUpdatingStatus: false,
       isUpdatingUser: false,
       isUpdatingPassword: false,
+      isUpdatingSubscription: false,
       
       // Données sélectionnées
       selectedUser: null,
       userDetails: null,
+      
+      // Statuts d'abonnement des utilisateurs (cache)
+      subscriptionStatuses: {},
       
       // Formulaires
       editUserForm: {
@@ -515,6 +572,9 @@ export default {
         const response = await adminAPI.getUsers(options);
         this.users = response.users || [];
         this.pagination = response.pagination || null;
+        
+        // Charger les statuts d'abonnement pour les utilisateurs affichés
+        await this.loadSubscriptionStatuses();
       } catch (error) {
         console.error('Erreur lors du chargement des utilisateurs:', error);
         this.error = this.$t('admin.userManagement.errors.loadUsers');
@@ -753,6 +813,65 @@ export default {
         this.error = error.response?.data?.error || this.$t('admin.userManagement.errors.updatePassword');
       } finally {
         this.isUpdatingPassword = false;
+      }
+    },
+
+    // ===== GESTION DES ABONNEMENTS =====
+    
+    getSubscriptionStatus(user) {
+      // Vérifier d'abord le cache
+      if (this.subscriptionStatuses[user.id] !== undefined) {
+        return this.subscriptionStatuses[user.id];
+      }
+      
+      // Par défaut, considérer comme gratuit
+      return 'free';
+    },
+    
+    async loadSubscriptionStatuses() {
+      try {
+        // Charger les statuts d'abonnement pour tous les utilisateurs affichés
+        const userIds = this.users.map(user => user.id);
+        if (userIds.length === 0) return;
+        
+        const response = await adminAPI.getSubscriptionStatuses(userIds);
+        if (response && response.statuses) {
+          this.subscriptionStatuses = { ...this.subscriptionStatuses, ...response.statuses };
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des statuts d\'abonnement:', error);
+        // En cas d'erreur, ne pas bloquer l'interface
+      }
+    },
+    
+    async toggleSubscription(user) {
+      if (this.isUpdatingSubscription) return;
+      
+      this.isUpdatingSubscription = true;
+      this.error = null;
+      
+      try {
+        const currentStatus = this.getSubscriptionStatus(user);
+        const newStatus = currentStatus === 'paid' ? 'free' : 'paid';
+        
+        const response = await adminAPI.updateUserSubscriptionStatus(user.id, newStatus === 'paid');
+        
+        if (response && response.success) {
+          // Mettre à jour le cache local
+          this.subscriptionStatuses[user.id] = newStatus;
+          
+          this.success = newStatus === 'paid' 
+            ? this.$t('admin.userManagement.success.subscriptionUpgraded')
+            : this.$t('admin.userManagement.success.subscriptionDowngraded');
+        } else {
+          throw new Error('Réponse API invalide');
+        }
+        
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour de l\'abonnement:', error);
+        this.error = error.response?.data?.error || this.$t('admin.userManagement.errors.updateSubscription');
+      } finally {
+        this.isUpdatingSubscription = false;
       }
     }
   }

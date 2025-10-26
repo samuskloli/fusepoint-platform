@@ -1,9 +1,20 @@
 import api from './api'
 import axios from 'axios'
+import tokenManager from './tokenManager.js'
 
 class ProjectManagementService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const apiEnv = import.meta.env.VITE_API_URL
+    const backendEnv = import.meta.env.VITE_BACKEND_URL
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
+    this.baseURL = isLocalNetworkHost
+      ? ''
+      : (apiEnv && apiEnv.startsWith('http')
+          ? apiEnv.replace(/\/+$/, '')
+          : backendEnv && backendEnv.startsWith('http')
+            ? backendEnv.replace(/\/+$/, '')
+            : '')
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 20000,
@@ -12,19 +23,8 @@ class ProjectManagementService {
       }
     });
 
-    // Intercepteur pour ajouter le token aux requêtes
-    this.api.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('accessToken');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+    // Abonner cette instance au gestionnaire de tokens centralisé
+    tokenManager.subscribe(this.api, 'projectManagementService.js');
   }
   // Gestion des projets
   async createProject(clientId, projectData) {
@@ -535,9 +535,33 @@ class ProjectManagementService {
   async getAgentProjects() {
     try {
       const response = await this.api.get('/api/agent/projects');
+      // Normaliser la structure pour obtenir TOUJOURS un tableau de projets
+      let projects = [];
+
+      // Cas typiques côté serveur: { success: true, data: { projects, items, pagination } }
+      if (response.data && response.data.success && response.data.data) {
+        const data = response.data.data;
+        if (Array.isArray(data)) {
+          projects = data;
+        } else if (Array.isArray(data.projects)) {
+          projects = data.projects;
+        } else if (Array.isArray(data.items)) {
+          projects = data.items;
+        }
+      } else if (response.data) {
+        // Parfois la route renvoie directement un tableau
+        if (Array.isArray(response.data)) {
+          projects = response.data;
+        } else if (Array.isArray(response.data.projects)) {
+          projects = response.data.projects;
+        } else if (Array.isArray(response.data.items)) {
+          projects = response.data.items;
+        }
+      }
+
       return {
         success: true,
-        data: response.data.data || response.data || []
+        data: projects
       };
     } catch (error) {
       console.error('Erreur lors de la récupération des projets de l\'agent:', error);

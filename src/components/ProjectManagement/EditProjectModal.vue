@@ -189,7 +189,7 @@
 </template>
 
 <script>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted, onBeforeUnmount, nextTick } from 'vue'
 import { projectManagementService } from '../../services/projectManagementService'
 
 export default {
@@ -200,7 +200,7 @@ export default {
       required: true
     }
   },
-  emits: ['close', 'updated'],
+  emits: ['close', 'update'],
   setup(props, { emit }) {
     const loading = ref(false)
     const newTag = ref('')
@@ -218,33 +218,170 @@ export default {
       tags: []
     })
 
-    // Initialiser le formulaire avec les données du projet
-    const initializeForm = () => {
-      if (props.project) {
-        form.title = props.project.title || ''
-        form.description = props.project.description || ''
-        form.type = props.project.type || 'marketing'
-        form.startDate = props.project.startDate ? props.project.startDate.split('T')[0] : ''
-        form.endDate = props.project.endDate ? props.project.endDate.split('T')[0] : ''
-        form.budget = props.project.budget || ''
-        form.priority = props.project.priority || 'medium'
-        form.status = props.project.status || 'planning'
-        form.progress = props.project.progress || 0
-        form.tags = props.project.tags ? [...props.project.tags] : []
+    const normalizeTags = (tags) => {
+      if (!tags) return []
+      if (Array.isArray(tags)) return [...tags]
+      if (typeof tags === 'string') {
+        try {
+          const parsed = JSON.parse(tags)
+          if (Array.isArray(parsed)) return parsed
+        } catch (_) {}
+        return tags.split(',').map(t => t.trim()).filter(Boolean)
       }
+      if (typeof tags === 'object' && tags !== null && Array.isArray(tags.list)) {
+        return tags.list
+      }
+      return []
     }
 
-    // Initialiser le formulaire au montage
-    initializeForm()
+    const toDateInput = (value) => {
+      if (!value) return ''
+      try {
+        const d = new Date(value)
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10)
+      } catch (_) {}
+      const s = String(value)
+      if (s.includes('T')) return s.split('T')[0]
+      // Fallback: assume YYYY-MM-DD or similar
+      return s.slice(0, 10)
+    }
 
-    // Réinitialiser le formulaire si le projet change
-    watch(() => props.project, () => {
-      initializeForm()
-    }, { deep: true })
+    // Initialiser le formulaire avec les données du projet
+    const initializeForm = async () => {
+      console.log('=== EditProjectModal initializeForm START ===')
+      console.log('EditProjectModal initializeForm called with project:', props.project)
+      console.log('EditProjectModal props.project type:', typeof props.project)
+      console.log('EditProjectModal props.project keys:', props.project ? Object.keys(props.project) : 'NO KEYS')
+      
+      if (!props.project) {
+        console.log('EditProjectModal - NO PROJECT DATA, returning early')
+        return
+      }
+
+      // Attendre que le DOM soit prêt
+      await nextTick()
+
+      console.log('EditProjectModal - BEFORE form initialization, current form:', JSON.stringify(form))
+
+      // FORCER la réinitialisation complète du formulaire
+      Object.assign(form, {
+        title: '',
+        description: '',
+        type: 'marketing',
+        startDate: '',
+        endDate: '',
+        budget: '',
+        priority: 'medium',
+        status: 'planning',
+        progress: 0,
+        tags: []
+      })
+
+      // Gestion flexible des noms de champs avec plusieurs alias
+      const titleValue = props.project.name || props.project.title || props.project.project_name || props.project.project_title || ''
+      console.log('EditProjectModal - title field candidates:', {
+        'props.project.name': props.project.name,
+        'props.project.title': props.project.title,
+        'props.project.project_name': props.project.project_name,
+        'props.project.project_title': props.project.project_title,
+        'final titleValue': titleValue
+      })
+      
+      // FORCER l'assignation des valeurs
+      form.title = titleValue
+      form.description = props.project.description || ''
+      form.type = props.project.type || 'marketing'
+      
+      const start = props.project.startDate || props.project.start_date || props.project.start || props.project.begin_date || ''
+      const end = props.project.endDate || props.project.end_date || props.project.deadline || props.project.due_date || props.project.end || ''
+      form.startDate = toDateInput(start)
+      form.endDate = toDateInput(end)
+      form.budget = props.project.budget || props.project.estimated_budget || props.project.total_budget || ''
+      form.priority = props.project.priority || 'medium'
+      form.status = props.project.status || props.project.state || 'planning'
+      form.progress = props.project.progress || props.project.completion || props.project.progress_percentage || 0
+      form.tags = normalizeTags(props.project.tags || props.project.tag_list)
+      
+      console.log('EditProjectModal - AFTER form initialization, final form:', JSON.stringify(form))
+      
+      // FORCER une mise à jour supplémentaire après un délai
+      setTimeout(() => {
+        console.log('EditProjectModal - TIMEOUT CHECK, form state:', JSON.stringify(form))
+        if (!form.title && titleValue) {
+          console.log('EditProjectModal - FORCING title again:', titleValue)
+          form.title = titleValue
+        }
+        
+        // FALLBACK COMPLET - forcer tous les champs si ils sont vides
+        if (!form.title && props.project) {
+          console.log('EditProjectModal - FALLBACK MECHANISM ACTIVATED')
+          const project = props.project
+          form.title = project.name || project.title || project.project_name || project.project_title || 'Projet sans nom'
+          form.description = project.description || ''
+          form.type = project.type || 'marketing'
+          form.startDate = toDateInput(project.startDate || project.start_date || project.start || project.begin_date)
+          form.endDate = toDateInput(project.endDate || project.end_date || project.deadline || project.due_date || project.end)
+          form.budget = project.budget || project.estimated_budget || project.total_budget || ''
+          form.priority = project.priority || 'medium'
+          form.status = project.status || project.state || 'planning'
+          form.progress = project.progress || project.completion || project.progress_percentage || 0
+          form.tags = normalizeTags(project.tags || project.tag_list)
+          console.log('EditProjectModal - FALLBACK COMPLETED, form:', JSON.stringify(form))
+        }
+      }, 100)
+      
+      console.log('=== EditProjectModal initializeForm END ===')
+    }
+
+    // Initialiser le formulaire au montage si le projet est déjà disponible
+    onMounted(async () => {
+      console.log('=== EditProjectModal MOUNTED ===')
+      console.log('EditProjectModal onMounted - props.project:', props.project)
+      console.log('EditProjectModal onMounted - props.project keys:', props.project ? Object.keys(props.project) : 'NO KEYS')
+      
+      // FORCER l'initialisation immédiatement au montage
+      if (props.project) {
+        console.log('EditProjectModal onMounted - calling initializeForm()')
+        await initializeForm()
+        
+        // DOUBLE VÉRIFICATION après un délai
+        setTimeout(async () => {
+          console.log('EditProjectModal onMounted - DOUBLE CHECK after 200ms')
+          if (!form.title && props.project) {
+            console.log('EditProjectModal onMounted - FORCING re-initialization')
+            await initializeForm()
+          }
+        }, 200)
+      } else {
+        console.log('EditProjectModal onMounted - NO project, not calling initializeForm()')
+      }
+      console.log('=== EditProjectModal MOUNTED END ===')
+    })
+
+    // Initialiser et réagir immédiatement aux changements de projet
+    watch(
+      () => props.project,
+      async (newVal, oldVal) => {
+        console.log('=== EditProjectModal WATCH TRIGGERED ===')
+        console.log('EditProjectModal watch project - newVal:', newVal)
+        console.log('EditProjectModal watch project - oldVal:', oldVal)
+        console.log('EditProjectModal watch project - newVal type:', typeof newVal)
+        console.log('EditProjectModal watch project - newVal keys:', newVal ? Object.keys(newVal) : 'NO KEYS')
+        if (newVal) {
+          console.log('EditProjectModal watch - calling initializeForm()')
+          await initializeForm()
+        } else {
+          console.log('EditProjectModal watch - NO newVal, not calling initializeForm()')
+        }
+        console.log('=== EditProjectModal WATCH END ===')
+      },
+      { immediate: true, deep: true }
+    )
 
     const addTag = () => {
-      if (newTag.value.trim() && !form.tags.includes(newTag.value.trim())) {
-        form.tags.push(newTag.value.trim())
+      const tag = newTag.value.trim()
+      if (tag && !form.tags.includes(tag)) {
+        form.tags.push(tag)
         newTag.value = ''
       }
     }
@@ -259,18 +396,23 @@ export default {
     const updateProject = async () => {
       try {
         loading.value = true
-        
         const projectData = {
-          ...form,
-          id: props.project.id,
-          budget: form.budget ? parseFloat(form.budget) : null
+          name: form.title?.trim() || '',
+          description: form.description?.trim() || '',
+          budget: form.budget ? parseFloat(form.budget) : null,
+          priority: form.priority,
+          status: form.status,
+          deadline: form.endDate || null
         }
 
-        const updatedProject = await projectManagementService.updateProject(props.project.id, projectData)
-        emit('updated', updatedProject)
+        const result = await projectManagementService.updateProject(props.project.id, projectData)
+        if (result.success) {
+          emit('update', result.data)
+        } else {
+          console.error('Erreur lors de la mise à jour du projet:', result.error)
+        }
       } catch (error) {
         console.error('Erreur lors de la mise à jour du projet:', error)
-        // Ici vous pourriez ajouter une notification d'erreur
       } finally {
         loading.value = false
       }

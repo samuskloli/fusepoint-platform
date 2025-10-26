@@ -2,7 +2,11 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const authService = require('../services/authService');
 const databaseService = require('../services/databaseService');
+const PlatformSettingsService = require('../services/platformSettingsService');
 const router = express.Router();
+
+// Initialiser le service de paramètres de plateforme
+const platformSettingsService = new PlatformSettingsService();
 
 // Gestionnaire spécifique pour les requêtes OPTIONS (preflight CORS)
 router.options('*', (req, res) => {
@@ -389,10 +393,25 @@ router.get('/me', authService.authenticateMiddleware.bind(authService), async (r
       canAccessAgent = userRoles.some(role => ['agent', 'admin'].includes(role.name));
     }
     
+    // Récupérer le statut d'abonnement de l'utilisateur
+    let isPaid = false;
+    if (companies && companies.length > 0) {
+      try {
+        const companyId = companies[0].id;
+        const paidSetting = await platformSettingsService.getSetting(`company_paid_${companyId}`);
+        isPaid = paidSetting && paidSetting.value === 'true';
+      } catch (error) {
+        console.warn('⚠️ Impossible de récupérer le statut d\'abonnement:', error);
+        // En cas d'erreur, considérer comme gratuit par défaut
+        isPaid = false;
+      }
+    }
+    
     // Enrichir les informations utilisateur
     const enrichedUser = {
       ...user,
       isSuperAdmin,
+      isPaid, // Ajouter le statut d'abonnement
       permissions: {
         canAccessSuperAdmin: isSuperAdmin,
         canAccessAgent: isSuperAdmin || canAccessAgent // Super admin a accès à tout

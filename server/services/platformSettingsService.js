@@ -85,13 +85,13 @@ class PlatformSettingsService {
   }
 
   // Mettre à jour un paramètre existant
-  async updateSetting(key, value, type = 'string', category = 'general', description = '', updatedBy = null) {
+  async updateSetting(key, value, type = 'string', category = 'general', description = '') {
     try {
       const result = await this.db.run(
         `UPDATE platform_settings 
-         SET value = ?, type = ?, category = ?, description = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP 
+         SET value = ?, type = ?, category = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
          WHERE \`key\` = ?`,
-        [value, type, category, description, updatedBy, key]
+        [value, type, category, description, key]
       );
       
       if (result.changes === 0) {
@@ -106,13 +106,13 @@ class PlatformSettingsService {
   }
 
   // Mettre à jour ou créer un paramètre
-  async updateOrCreateSetting(key, value, type = 'string', category = 'general', description = '', updatedBy = null) {
+  async updateOrCreateSetting(key, value, type = 'string', category = 'general', description = '') {
     try {
       const existing = await this.getSetting(key);
       if (existing) {
-        return await this.updateSetting(key, value, type, category, description, updatedBy);
+        return await this.updateSetting(key, value, type, category, description);
       } else {
-        return await this.createSetting(key, value, type, category, description, false, updatedBy);
+        return await this.createSetting(key, value, type, category, description, false);
       }
     } catch (err) {
       console.error('Erreur lors de la mise à jour/création du paramètre:', err);
@@ -121,12 +121,12 @@ class PlatformSettingsService {
   }
 
   // Créer un nouveau paramètre
-  async createSetting(key, value, type = 'string', category = 'general', description = '', isSensitive = false, createdBy = null) {
+  async createSetting(key, value, type = 'string', category = 'general', description = '', isSensitive = false) {
     try {
       const result = await this.db.run(
-        `INSERT INTO platform_settings (\`key\`, value, type, category, description, is_sensitive, created_by) 
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [key, value, type, category, description, isSensitive ? 1 : 0, createdBy]
+        `INSERT INTO platform_settings (\`key\`, value, type, category, description, is_sensitive) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [key, value, type, category, description, isSensitive ? 1 : 0]
       );
       
       return { 
@@ -145,12 +145,9 @@ class PlatformSettingsService {
   }
 
   // Supprimer un paramètre
-  async deleteSetting(key, deletedBy = null) {
+  async deleteSetting(key) {
     try {
-      // Log de suppression avant suppression
-      if (deletedBy) {
-        console.log(`Suppression du paramètre '${key}' par l'utilisateur ${deletedBy}`);
-      }
+      console.log(`Suppression du paramètre '${key}'`);
       
       const result = await this.db.run('DELETE FROM platform_settings WHERE `key` = ?', [key]);
       

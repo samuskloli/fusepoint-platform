@@ -43,6 +43,7 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
 import type { FileItem } from '@/services/multiTenantService'
 import { useMultiTenantApi } from '@/services/multiTenantService'
+import http from '@/services/api'
 
 const props = defineProps<{
   file: FileItem | null
@@ -68,7 +69,24 @@ const isVideo = computed(() => !!mime.value && mime.value.startsWith('video/'))
 const isPDF = computed(() => mime.value === 'application/pdf')
 
 const blobUrl = ref<string>('')
-const displaySrc = computed(() => blobUrl.value || (props.file as any)?.preview_url || props.file?.url || (props.file as any)?.thumbnail || '')
+const signedUrl = ref<string>('')
+
+const toAbsoluteUrl = (url?: string | null): string => {
+  const u = (url || '').toString()
+  if (!u) return ''
+  // Recognize signed token like "<base64url>.<hex>" and wrap into API path
+  const tokenPattern = /^[A-Za-z0-9_-]+\.[0-9a-f]{64}$/
+  if (tokenPattern.test(u)) return `/api/files/signed/${u}`
+  // Laisser les URLs absolues et les chemins relatifs racine tels quels
+  if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/')) return u
+  // Normaliser sans / initial
+  return `/${u}`
+}
+
+const displaySrc = computed(() => {
+  const direct = (props.file as any)?.preview_url || props.file?.url || (props.file as any)?.thumbnail || ''
+  return blobUrl.value || signedUrl.value || toAbsoluteUrl(direct)
+})
 
 const createBlobUrl = (blob: Blob) => {
   // Nettoyer l'ancien blob URL si présent
@@ -90,35 +108,63 @@ const loadPreviewBlob = async () => {
   }
 }
 
+const loadSignedUrl = async () => {
+  try {
+    if (!props.file?.id) return
+    const resp = await http.post('/api/files/signed-url', { fileId: String(props.file.id), intent: 'preview' })
+    const url = resp.data?.url || resp.data?.data?.url
+    if (url) signedUrl.value = url
+  } catch (e: any) {
+    // Ne bloque pas l'aperçu si l'URL signée échoue
+    if (e?.response?.status === 403) {
+      console.warn('Accès interdit pour URL signée de prévisualisation')
+    } else {
+      console.warn('Erreur URL signée de prévisualisation:', e)
+    }
+  }
+}
+
 const emitClose = () => emit('close')
 const emitDownload = () => emit('download')
 const emitShare = () => emit('share')
 const emitDelete = () => emit('delete')
 
-const onError = () => {
-  // Si l'image échoue à se charger via URL, tenter un blob
+const onError = async () => {
+  // Si l'URL directe échoue, tenter d'abord une URL signée puis un blob
+  if (!signedUrl.value) {
+    await loadSignedUrl()
+  }
   if (!blobUrl.value) {
-    loadPreviewBlob()
+    await loadPreviewBlob()
   }
 }
 
 watch(() => props.visible, (v) => {
   if (v) {
-    // Tenter de charger un blob pour des PDF/vidéos/images si l'URL directe pose problème
+    // Précharger le blob pour PDF/vidéos/images (affichage plus fiable)
     if (props.file && (isImage.value || isVideo.value || isPDF.value)) {
       loadPreviewBlob()
+    }
+    // Préparer un fallback via URL signée si nécessaire
+    if (props.file) {
+      loadSignedUrl()
     }
   } else if (!v && blobUrl.value) {
     URL.revokeObjectURL(blobUrl.value)
     blobUrl.value = ''
+    signedUrl.value = ''
   }
 })
 
 watch(() => props.file?.id, () => {
   if (props.visible) {
     blobUrl.value = ''
+    signedUrl.value = ''
     if (props.file && (isImage.value || isVideo.value || isPDF.value)) {
       loadPreviewBlob()
+    }
+    if (props.file) {
+      loadSignedUrl()
     }
   }
 })

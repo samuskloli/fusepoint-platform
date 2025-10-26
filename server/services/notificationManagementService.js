@@ -461,15 +461,23 @@ class NotificationManagementService {
        const data = JSON.stringify({ clientId, agentId });
  
        const result = await databaseService.run(query, [
-         clientId, // user_id correspond au client destinataire
-         type,
-         title,
-         message,
-         actionUrl,
-         data
-       ]);
+        clientId, // user_id correspond au client destinataire
+        type,
+        title,
+        message,
+        actionUrl,
+        data
+      ]);
+
+      // Envoi push (non bloquant)
+      try {
+        const pushService = require('./pushService');
+        await pushService.sendToUser(clientId, { title, body: message, url: actionUrl || '/' });
+      } catch (e) {
+        // Ne pas bloquer en cas d'échec
+      }
  
-       return result.insertId;
+      return result.insertId;
  
      } catch (error) {
        console.error('Erreur lors de la création de la notification système:', error);

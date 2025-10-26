@@ -73,6 +73,8 @@ export default {
   },
 
   loadError: 'Error loading widgets',
+  noAvailableWidgets: 'No available widgets',
+  allWidgetsAdded: 'All available widgets have already been added to this project',
 
   // Team Widget
   "team": {
@@ -118,7 +120,7 @@ export default {
     "listView": "List view",
     "allFiles": "All files",
     "images": "Images",
-    "documents": "Documents",
+  
     "videos": "Videos",
     "archives": "Archives",
     "recent": "Recent",

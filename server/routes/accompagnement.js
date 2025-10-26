@@ -6,6 +6,8 @@ const authMiddleware = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { requireRole } = require('../middleware/roleAuth');
+const databaseService = require('../services/databaseService');
 
 // Configuration multer pour l'upload de fichiers
 const storage = multer.diskStorage({
@@ -93,11 +95,16 @@ router.post('/notifications', authMiddleware, async (req, res) => {
 // GET /api/notifications - Récupérer les notifications d'un utilisateur
 router.get('/notifications', authMiddleware, async (req, res) => {
     try {
-        const { unreadOnly = false, limit = 20, offset = 0 } = req.query;
+        const { unreadOnly = false, limit = 20, offset = 0, company_id } = req.query;
+        
+        let effectiveCompanyId = req.user.company_id;
+        if (req.user.role === 'super_admin') {
+            effectiveCompanyId = company_id ? parseInt(company_id) : null;
+        }
         
         const notifications = await accompagnementService.getNotifications(
             req.user.id,
-            req.user.company_id,
+            effectiveCompanyId,
             unreadOnly === 'true',
             parseInt(limit)
         );
@@ -133,12 +140,24 @@ router.put('/notifications/:id/read', authMiddleware, async (req, res) => {
     }
 });
 
+// Nouvelle route: PUT /api/accompagnement/notifications/mark-all-read - Marquer toutes les notifications comme lues
+router.put('/notifications/mark-all-read', authMiddleware, async (req, res) => {
+    try {
+        const result = await accompagnementService.markAllNotificationsAsRead(req.user.id);
+        res.json({ success: true, changes: result.changes });
+    } catch (error) {
+        console.error('Erreur marquage toutes notifications:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors du marquage des notifications' });
+    }
+});
+
 // ==================== ROUTES PRESTATIONS ====================
 
 // GET /api/accompagnement/services - Récupérer les prestations disponibles
 router.get('/services', authMiddleware, async (req, res) => {
     try {
-        const services = await accompagnementService.getAgencyServices();
+        const activeOnly = req.query.activeOnly !== 'false'
+        const services = await accompagnementService.getAgencyServices(activeOnly)
         
         // Si aucun service en base, retourner des services par défaut
         if (!services || services.length === 0) {
@@ -154,6 +173,7 @@ router.get('/services', authMiddleware, async (req, res) => {
                     icon: 'chart-bar',
                     color: 'blue',
                     is_active: 1,
+                    is_available: 1,
                     deliverables: ['Rapport d\'audit complet', 'Recommandations personnalisées'],
                     requirements: ['Accès Google Analytics']
                 },
@@ -166,94 +186,20 @@ router.get('/services', authMiddleware, async (req, res) => {
                     price_type: 'fixed',
                     duration_hours: 4,
                     icon: 'megaphone',
-                    color: 'purple',
-                    is_active: 1,
-                    deliverables: ['Plan stratégique complet', 'Calendrier de mise en œuvre'],
-                    requirements: ['Brief entreprise']
-                },
-                {
-                    id: 3,
-                    name: 'Optimisation SEO',
-                    category: 'Marketing',
-                    description: 'Amélioration du référencement naturel de votre site web.',
-                    base_price: 200,
-                    price_type: 'fixed',
-                    duration_hours: 2,
-                    icon: 'trending-up',
                     color: 'green',
                     is_active: 1,
-                    deliverables: ['Audit SEO', 'Plan d\'optimisation'],
-                    requirements: ['Accès au site web']
-                },
-                {
-                    id: 4,
-                    name: 'Configuration Technique',
-                    category: 'Technique',
-                    description: 'Configuration et optimisation de vos outils marketing.',
-                    base_price: 100,
-                    price_type: 'fixed',
-                    duration_hours: 1,
-                    icon: 'cog',
-                    color: 'orange',
-                    is_active: 1,
-                    deliverables: ['Configuration complète', 'Documentation'],
-                    requirements: ['Accès aux outils']
-                },
-                {
-                    id: 5,
-                    name: 'Formation Analytics',
-                    category: 'Formation',
-                    description: 'Formation personnalisée sur l\'utilisation de Google Analytics.',
-                    base_price: 250,
-                    price_type: 'fixed',
-                    duration_hours: 4,
-                    icon: 'academic-cap',
-                    color: 'indigo',
-                    is_active: 1,
-                    deliverables: ['Session de formation', 'Support de cours'],
-                    requirements: ['Équipe à former']
+                    is_available: 1,
+                    deliverables: ['Plan marketing 3 mois', 'Calendrier éditorial'],
+                    requirements: ['Accès aux réseaux sociaux']
                 }
-            ];
-            
-            return res.json({
-                success: true,
-                data: defaultServices
-            });
+            ]
+            return res.json({ success: true, data: defaultServices })
         }
-        
-        res.json({
-            success: true,
-            data: services
-        });
-    } catch (error) {
-        console.error('Erreur récupération services:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur lors de la récupération des services'
-        });
-    }
-});
 
-// GET /api/accompagnement/services/:id - Récupérer une prestation par ID
-router.get('/services/:id', authMiddleware, async (req, res) => {
-    try {
-        const service = await accompagnementService.getServiceById(req.params.id);
-        if (!service) {
-            return res.status(404).json({
-                success: false,
-                message: 'Prestation non trouvée'
-            });
-        }
-        res.json({
-            success: true,
-            data: service
-        });
+        res.json({ success: true, data: services })
     } catch (error) {
-        console.error('Erreur récupération prestation:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur lors de la récupération de la prestation'
-        });
+        console.error('Erreur récupération prestations:', error)
+        res.status(500).json({ success: false, message: 'Erreur lors de la récupération des prestations' })
     }
 });
 
@@ -299,22 +245,68 @@ router.post('/requests', authMiddleware, async (req, res) => {
             `Discussion - ${title}`
         );
 
-        // Créer une notification pour l'équipe Fusepoint
-        await accompagnementService.createNotification({
-            user_id: req.user.id,
-            company_id: req.user.company_id,
-            type: 'new_request',
-            title: 'Nouvelle demande de prestation',
-            message: `${req.user.first_name} ${req.user.last_name} a demandé: ${title}`,
-            data: { request_id: requestId, service_id },
-            action_url: `/accompagnement/requests/${requestId}`
-        });
+        // Notifier l'agent assigné (si existant) et envoyer un email
+        try {
+            // Récupérer l'agent assigné au client courant
+            const agent = await databaseService.get(
+                `SELECT a.id, a.email, a.first_name, a.last_name
+                 FROM users c
+                 LEFT JOIN users a ON a.id = c.agent_id
+                 WHERE c.id = ?`,
+                [req.user.id]
+            );
+
+            if (agent && agent.id) {
+                // Notification plateforme pour l'agent
+                await accompagnementService.createNotification({
+                    user_id: agent.id,
+                    company_id: req.user.company_id,
+                    type: 'new_service_request',
+                    title: 'Nouvelle demande de prestation',
+                    message: `${req.user.first_name} ${req.user.last_name} a demandé: ${title}`,
+                    data: { request_id: requestId, service_id, client_id: req.user.id },
+                    action_url: '/agent/service-requests'
+                });
+
+                // Email de notification à l'agent
+                const emailService = new EmailService();
+                try {
+                    await emailService.sendNotification(
+                        agent.email,
+                        `${agent.first_name} ${agent.last_name}`,
+                        'new_service_request',
+                        'Nouvelle demande de prestation',
+                        `${req.user.first_name} ${req.user.last_name} a créé une nouvelle demande: "${title}"`,
+                        '/agent/service-requests'
+                    );
+                } catch (emailErr) {
+                    console.warn('Erreur envoi email à l\'agent pour nouvelle demande:', emailErr?.message || emailErr);
+                }
+            }
+        } catch (notifyErr) {
+            console.warn('Notification agent échouée (non bloquant):', notifyErr?.message || notifyErr);
+        }
+
+        // Email de confirmation au client (optionnel, non bloquant)
+        try {
+            const emailService = new EmailService();
+            await emailService.sendNotification(
+                req.user.email,
+                `${req.user.first_name} ${req.user.last_name}`,
+                'request_confirmation',
+                'Votre demande a bien été créée',
+                `Votre demande "${title}" a bien été enregistrée. Notre équipe vous recontactera rapidement.`,
+                '/dashboard'
+            );
+        } catch (emailClientErr) {
+            console.warn('Email de confirmation client échoué (non bloquant):', emailClientErr?.message || emailClientErr);
+        }
 
         res.status(201).json({
             success: true,
             data: {
-                request_id: requestId,
-                conversation_id: conversationId
+                request_id: Number(requestId),
+                conversation_id: Number(conversationId)
             },
             message: 'Demande créée avec succès'
         });
@@ -608,51 +600,33 @@ router.put('/recommendations/:id/response', authMiddleware, async (req, res) => 
 // GET /api/accompagnement/notifications - Récupérer les notifications avec pagination
 router.get('/notifications', authMiddleware, async (req, res) => {
     try {
-        const { unread_only, limit, page } = req.query;
+        const { unread_only, limit, page, company_id } = req.query;
+        const limitNum = parseInt(limit) || 20;
         const pageNum = parseInt(page) || 1;
-        const limitNum = parseInt(limit) || 10;
-        const offset = (pageNum - 1) * limitNum;
-        
+        const unreadOnlyBool = unread_only === 'true';
+
+        let effectiveCompanyId = req.user.company_id;
+        if (req.user.role === 'super_admin') {
+            effectiveCompanyId = company_id ? parseInt(company_id) : null;
+        }
+
         const notifications = await accompagnementService.getNotifications(
             req.user.id,
-            req.user.company_id,
-            unread_only === 'true',
+            effectiveCompanyId,
+            unreadOnlyBool,
             limitNum
         );
-        
-        const totalCount = await accompagnementService.getNotificationsCount(req.user.id);
-        const hasMore = offset + limitNum < totalCount;
-        
+
         res.json({
             success: true,
             data: notifications,
-            hasMore,
-            total: totalCount,
-            page: pageNum,
-            limit: limitNum
+            pagination: { page: pageNum, limit: limitNum }
         });
     } catch (error) {
         console.error('Erreur récupération notifications:', error);
         res.status(500).json({
             success: false,
             message: 'Erreur lors de la récupération des notifications'
-        });
-    }
-});
-
-// PUT /api/accompagnement/notifications/mark-all-read - Marquer toutes les notifications comme lues
-router.put('/notifications/mark-all-read', authMiddleware, async (req, res) => {
-    try {
-        await accompagnementService.markAllNotificationsAsRead(req.user.id);
-        res.json({ 
-            success: true, 
-            message: 'Toutes les notifications ont été marquées comme lues' 
-        });
-    } catch (error) {
-        console.error('Erreur lors du marquage des notifications:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Erreur lors du marquage des notifications'
         });
     }
 });
@@ -670,7 +644,7 @@ router.put('/notifications/:id/read', authMiddleware, async (req, res) => {
         console.error('Erreur marquage notification:', error);
         res.status(500).json({
             success: false,
-            message: 'Erreur lors du marquage de la notification'
+            message: 'Erreur lors du marquage des notifications'
         });
     }
 });

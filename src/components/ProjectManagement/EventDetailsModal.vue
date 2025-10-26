@@ -155,6 +155,7 @@
 
 <script>
 import { computed } from 'vue'
+import { useTranslation } from '@/composables/useTranslation'
 
 export default {
   name: 'EventDetailsModal',
@@ -166,6 +167,8 @@ export default {
   },
   emits: ['close', 'edit', 'delete'],
   setup(props, { emit }) {
+    const { t } = useTranslation()
+    
     const statusLabels = {
       scheduled: 'Planifié',
       in_progress: 'En cours',
@@ -284,8 +287,8 @@ export default {
     }
 
     const deleteEvent = () => {
-      if (confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) {
-        emit('delete', props.event)
+      if (confirm(t('common.confirmations.deleteEvent'))) {
+        emit('delete', props.event.id)
       }
     }
 
@@ -294,6 +297,7 @@ export default {
     }
 
     return {
+      t,
       getStatusLabel,
       getPriorityLabel,
       getTypeLabel,

@@ -81,21 +81,21 @@
 
       <!-- Quick actions -->
       <div v-if="!isEditMode" class="header-quick-actions">
-        <button @click="gotoTab('tasks')" class="qa-btn">
-          <i class="fas fa-list-check mr-2"></i>
-          {{ t('widgets.taskList.addTask') }}
+        <button @click="gotoTab('tasks')" class="qa-btn" :aria-label="t('widgets.taskList.addTask')">
+          <i class="fas fa-list-check"></i>
+          <span class="qa-label">{{ t('widgets.taskList.addTask') }}</span>
         </button>
-        <button @click="gotoTab('files')" class="qa-btn">
-          <i class="fas fa-upload mr-2"></i>
-          {{ t('widgets.files.uploadFile') }}
+        <button @click="gotoTab('files')" class="qa-btn" :aria-label="t('widgets.files.uploadFile')">
+          <i class="fas fa-upload"></i>
+          <span class="qa-label">{{ t('widgets.files.uploadFile') }}</span>
         </button>
-        <button @click="gotoTab('calendar')" class="qa-btn">
-          <i class="fas fa-calendar mr-2"></i>
-          {{ t('widgets.calendar.openCalendar') }}
+        <button @click="openWidgetByType('calendar')" class="qa-btn" :aria-label="t('widgets.calendar.openCalendar')">
+          <i class="fas fa-calendar"></i>
+          <span class="qa-label">{{ t('widgets.calendar.openCalendar') }}</span>
         </button>
-        <button v-if="canContactAgent" @click="contactAgent" class="qa-btn primary">
-          <i class="fas fa-headset mr-2"></i>
-          Contacter l’agent
+        <button v-if="canContactAgent" @click="contactAgent" class="qa-btn primary" aria-label="Contacter l’agent">
+          <i class="fas fa-headset"></i>
+          <span class="qa-label">Contacter l’agent</span>
         </button>
       </div>
     </div>
@@ -149,7 +149,6 @@
           :key="widget.id"
           class="widget-container"
           :style="getWidgetStyle(widget)"
-          @dblclick="!isEditMode && openWidget(widget)"
         >
           <!-- Overlay d'édition -->
           <div v-if="isEditMode" class="widget-edit-overlay">
@@ -209,21 +208,32 @@
             </div>
           </div>
 
-          <!-- Action ouverture plein écran -->
-          <div v-if="!isEditMode" class="widget-actions">
-            <button class="open-btn" @click.stop="openWidget(widget)" title="Voir plus">
-              <i class="fas fa-expand"></i>
-            </button>
-          </div>
-          
           <!-- Composant widget -->
-          <component 
-            :is="getWidgetComponent(widget.widget_type)"
-            :project-id="projectId"
-            :widget="widget"
-            @widget-updated="handleWidgetUpdated"
-            @widget-error="handleWidgetError"
-          />
+          <template v-if="!isMobile">
+            <component 
+              :is="getWidgetComponent(widget.widget_type)"
+              :project-id="projectId"
+              :widget="widget"
+              @widget-updated="handleWidgetUpdated"
+              @widget-error="handleWidgetError"
+            />
+            <!-- Action ouverture plein écran - repositionné en bas à droite -->
+            <div v-if="!isEditMode" class="widget-fullscreen-btn">
+              <button class="fullscreen-btn" @click.stop="openWidget(widget)" title="Voir en plein écran">
+                <i class="fas fa-expand"></i>
+              </button>
+            </div>
+          </template>
+          
+          <!-- Rendu mobile: tuile cliquable -->
+          <template v-else>
+            <div class="widget-icon-tile" @click="openWidget(widget)" role="button" tabindex="0" @keydown.enter="openWidget(widget)">
+              <div class="tile-icon-badge">
+                <i :class="getWidgetIcon(widget.widget_type)" class="tile-icon"></i>
+              </div>
+              <div class="tile-label">{{ getWidgetName(widget.widget_type) }}</div>
+            </div>
+          </template>
         </div>
       </div>
     </div>
@@ -276,6 +286,7 @@ import widgetApiService from '@/components/widgets/shared/services/widgetApiServ
 import { useNotifications } from '@/composables/useNotifications'
 import { useAuth } from '@/composables/useAuth'
 import { useTranslation } from '@/composables/useTranslation'
+import { componentNameToType, typeToIcon, typeToNameKey } from '@/utils/widgetsMap'
 
 // Import des widgets
 import TaskListWidget from '@/components/widgets/TaskListWidget.vue'
@@ -289,6 +300,10 @@ import HistoryWidget from '@/components/widgets/HistoryWidget.vue'
 import ChecklistWidget from '@/components/widgets/ChecklistWidget.vue'
 import TeamWidget from '@/components/widgets/TeamWidget.vue'
 import DeliverablesWidget from '@/components/widgets/DeliverablesWidget.vue'
+import ProjectOverviewWidget from '@/components/widgets/ProjectOverviewWidget.vue'
+import BudgetWidget from '@/components/widgets/BudgetWidget.vue'
+
+import NotesWidget from '@/components/widgets/NotesWidget.vue'
 
 // Import des modales
 import AddWidgetModal from '@/components/modals/AddWidgetModal.vue'
@@ -314,6 +329,10 @@ export default {
     ChecklistWidget,
     TeamWidget,
     DeliverablesWidget,
+    ProjectOverviewWidget,
+    BudgetWidget,
+
+    NotesWidget,
     AddWidgetModal,
     WidgetConfigModal,
     WidgetViewerModal,
@@ -349,6 +368,19 @@ export default {
     const showDeleteConfirm = ref(false)
     const deleteConfirmMessage = ref('')
     const widgetToDelete = ref(null)
+
+    // Détection du viewport (mobile)
+    const isMobile = ref(false)
+    const updateIsMobile = () => {
+      isMobile.value = window.innerWidth <= 768
+    }
+    onMounted(() => {
+      updateIsMobile()
+      window.addEventListener('resize', updateIsMobile)
+    })
+    onUnmounted(() => {
+      window.removeEventListener('resize', updateIsMobile)
+    })
 
     // Paramètres du tableau de bord
     const dashboardSettings = ref({
@@ -398,24 +430,6 @@ export default {
     })
 
     // Helpers mapping and transform
-    const componentNameToType = (name) => {
-      const map = {
-        TaskListWidget: 'task_list',
-        TasksWidget: 'tasks',
-        StatsWidget: 'stats',
-        FilesWidget: 'files',
-        TeamWidget: 'team',
-        CalendarWidget: 'calendar',
-        CommentsWidget: 'comments',
-        DeliverablesWidget: 'deliverables',
-        GoalsWidget: 'goals',
-        AIWidget: 'ai',
-        HistoryWidget: 'history',
-        ChecklistWidget: 'checklist'
-      }
-      return map[name] || 'widget'
-    }
-
     const transformBackendWidgetToUI = (w) => ({
       id: w.id,
       widget_id: w.widgetId ?? w.widget_id ?? w.id,
@@ -600,12 +614,22 @@ export default {
         'history': 'HistoryWidget',
         'checklist': 'ChecklistWidget',
         'team': 'TeamWidget',
-        'deliverables': 'DeliverablesWidget'
+        'deliverables': 'DeliverablesWidget',
+        'project_overview': 'ProjectOverviewWidget',
+        'budget': 'BudgetWidget',
+
+        'notes': 'NotesWidget'
       }
       return componentMap[widgetType] || 'div'
     }
     
     const getWidgetStyle = (widget) => {
+      if (isMobile.value) {
+        return {
+          gridColumn: 'span 1',
+          gridRow: 'span 1'
+        }
+      }
       return {
         gridColumn: `span ${widget.width || 4}`,
         gridRow: `span ${widget.height || 2}`
@@ -856,8 +880,8 @@ export default {
     
     const handleAddWidgetFromModal = async (selectedWidget) => {
       try {
-        // Resolve component name from selected widget type/title
-        const type = selectedWidget?.type || selectedWidget?.widget_type
+        // Résoudre proprement le nom de composant et le type, en évitant 'widget'
+        const initialType = selectedWidget?.type || selectedWidget?.widget_type
         const fallbackNameMap = {
           tasks: 'TasksWidget',
           task_list: 'TaskListWidget',
@@ -870,15 +894,24 @@ export default {
           goals: 'GoalsWidget',
           ai: 'AIWidget',
           history: 'HistoryWidget',
-          checklist: 'ChecklistWidget'
+          checklist: 'ChecklistWidget',
+          project_overview: 'ProjectOverviewWidget',
+          budget: 'BudgetWidget',
+
+          notes: 'NotesWidget'
         }
-        const componentName = selectedWidget?.component_name || fallbackNameMap[type] || 'TasksWidget'
+        const rawComponentName = selectedWidget?.component_name || (initialType ? fallbackNameMap[initialType] : null)
+        const derivedType = rawComponentName ? componentNameToType(rawComponentName) : undefined
+        const type = (initialType && initialType !== 'widget')
+          ? initialType
+          : ((derivedType && derivedType !== 'widget') ? derivedType : 'task_list')
+        const componentName = rawComponentName || fallbackNameMap[type] || 'TaskListWidget'
 
         // Créer un nouveau widget localement
         const widgetId = `widget_${Date.now()}`
         const newWidget = {
           id: widgetId,
-          widget_id: widgetId, // Assurer la cohérence entre id et widget_id
+          widget_id: widgetId,
           widget_type: type,
           component_name: componentName,
           position_x: 0,
@@ -889,10 +922,7 @@ export default {
           widget_config: {}
         }
 
-        // Ajouter le widget à la liste locale
         projectWidgets.value.push(newWidget)
-
-        // Sauvegarder via l'API unifiée
         await saveProjectDashboardLayout()
 
         showAddWidget.value = false
@@ -963,7 +993,11 @@ export default {
         'ai': 'fas fa-robot',
         'goals': 'fas fa-bullseye',
         'history': 'fas fa-history',
-        'checklist': 'fas fa-clipboard-list'
+        'checklist': 'fas fa-clipboard-list',
+        'project_overview': 'fas fa-project-diagram',
+        'budget': 'fas fa-euro-sign',
+        'documents': 'fas fa-folder',
+        'notes': 'fas fa-sticky-note'
       }
       return icons[type] || 'fas fa-puzzle-piece'
     }
@@ -980,11 +1014,32 @@ export default {
         'ai': 'widgets.ai.title',
         'goals': 'widgets.goals.title',
         'history': 'widgets.history.title',
-        'checklist': 'widgets.checklist.title'
+        'checklist': 'widgets.checklist.title',
+        'project_overview': 'widgets.project_overview.title',
+        'budget': 'widgets.budget.title',
+        'documents': 'widgets.documents.title',
+        'notes': 'widgets.notes.title'
+      }
+      const fallbackNames = {
+        'task_list': 'Tâches',
+        'stats': 'Statistiques',
+        'files': 'Fichiers',
+        'team': 'Équipe',
+        'calendar': 'Calendrier',
+        'comments': 'Commentaires',
+        'deliverables': 'Livrables',
+        'ai': 'Assistant IA',
+        'goals': 'Objectifs',
+        'history': 'Historique',
+        'checklist': 'Checklist',
+        'project_overview': 'Aperçu du projet',
+        'budget': 'Budget',
+        'documents': 'Documents',
+        'notes': 'Notes'
       }
       const key = keys[type] || 'widgets.widget'
       const translated = t(key)
-      return translated !== key ? translated : 'Widget'
+      return translated !== key ? translated : (fallbackNames[type] || 'Widget')
     }
 
     // Génère une clé unique pour les overrides de layout
@@ -1249,6 +1304,18 @@ export default {
       }
     }
 
+    const openWidgetByType = (type) => {
+      const target = projectWidgets.value.find((w) => {
+        const tType = w.widget_type || componentNameToType(w.component_name)
+        return tType === type
+      })
+      if (target) {
+        openWidget(target)
+      } else {
+        showError(t('widgets.calendar.openCalendar') + ' indisponible')
+      }
+    }
+
     const contactAgent = () => {
       gotoTab('team')
       success('Ouverture de l’onglet Équipe — contactez votre agent.')
@@ -1290,6 +1357,7 @@ export default {
       formatCurrency,
       t,
       gotoTab,
+      openWidgetByType,
       contactAgent,
       getWidgetIcon,
       getWidgetName,
@@ -1299,7 +1367,9 @@ export default {
       // Ajouts pour la confirmation de suppression
       showDeleteConfirm,
       deleteConfirmMessage,
-      performDeleteWidget
+      performDeleteWidget,
+      // Expose mobile state
+      isMobile
     }
   }
 }
@@ -1310,6 +1380,15 @@ export default {
   padding: 1.5rem;
   background: #f8fafc;
   min-height: 100vh;
+}
+@media (max-width: 768px) {
+  .project-dashboard {
+    padding: 0.5rem;
+  }
+  .dashboard-header {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
 }
 
 .dashboard-header {
@@ -1525,6 +1604,11 @@ export default {
   padding: 2rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
+@media (max-width: 768px) {
+  .widgets-container {
+    padding: 0.75rem;
+  }
+}
 
 .widgets-grid {
   display: grid;
@@ -1606,32 +1690,34 @@ export default {
   pointer-events: none;
 }
 
-/* Bouton Voir plus */
-.widget-actions {
+/* Bouton plein écran en bas à droite */
+.widget-fullscreen-btn {
   position: absolute;
-  top: 0.5rem;
+  bottom: 0.5rem;
   right: 0.5rem;
   z-index: 5;
 }
 
-.open-btn {
+.fullscreen-btn {
   width: 32px;
   height: 32px;
   border: none;
   border-radius: 6px;
-  background: white;
+  background: rgba(255, 255, 255, 0.9);
   color: #6b7280;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   transition: all 0.2s;
+  backdrop-filter: blur(4px);
 }
 
-.open-btn:hover {
-  background: #f3f4f6;
+.fullscreen-btn:hover {
+  background: rgba(255, 255, 255, 1);
   color: #374151;
+  transform: scale(1.05);
 }
 
 .edit-controls {
@@ -1712,43 +1798,121 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .project-dashboard {
-    padding: 1rem;
-  }
-  
-  .header-content {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .project-meta {
-    justify-content: center;
-  }
-  
   .widgets-grid {
     grid-template-columns: 1fr;
-    gap: 1rem;
+    justify-items: center;
+    align-items: start;
   }
-  
   .widget-container {
-    grid-column: 1 !important;
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    min-height: 140px;
+    overflow: visible; /* pour afficher l'ombre des tuiles */
   }
-}.widget-icon-tile {
+  .widget-container p,
+  .widget-container li,
+  .widget-container span,
+  .widget-container h1,
+  .widget-container h2,
+  .widget-container h3 {
+    word-break: break-word;
+    white-space: normal;
+  }
+  .placeholder-title {
+    font-size: 1.4rem;
+  }
+  .fullscreen-btn,
+  .edit-btn {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+.widget-icon-tile {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 100%;
-  border: 1px dashed #d1d5db;
-  border-radius: 12px;
-  background: #f9fafb;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+  transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .widget-icon-tile:hover {
-  background: #eef2ff;
+  background: #f9fafb;
   border-color: #93c5fd;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.widget-icon-tile:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tile-icon-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #eef2ff;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.tile-icon {
+  font-size: 1.5rem;
+  color: #3b82f6;
+}
+
+.tile-label {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .widgets-grid {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+  .widget-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+    min-height: 140px;
+    overflow: visible; /* pour afficher l'ombre des tuiles */
+  }
+  .widget-container p,
+  .widget-container li,
+  .widget-container span,
+  .widget-container h1,
+  .widget-container h2,
+  .widget-container h3 {
+    word-break: break-word;
+    white-space: normal;
+  }
+  .placeholder-title {
+    font-size: 1.4rem;
+  }
+  .fullscreen-btn,
+  .edit-btn {
+    width: 38px;
+    height: 38px;
+  }
 }
 
 .tile-icon {

@@ -206,7 +206,8 @@
                   <span class="font-medium">Entreprise:</span> {{ client.company || messages.noCompany }}
                 </div>
                 <div class="truncate">
-                  <span class="font-medium">Tél:</span> {{ client.phone || messages.noPhone }}
+                  <span class="font-medium">Tél:</span>
+                  <a v-if="client.phone" :href="'tel:' + formatTel(client.phone)" class="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline">{{ client.phone }}</a><span v-if="!client.phone">{{ messages.noPhone }}</span>
                 </div>
               </div>
               <div class="text-xs text-gray-400">
@@ -276,7 +277,7 @@
               <!-- Téléphone -->
               <div class="col-span-1 text-center">
                 <div class="text-sm text-gray-900">
-                  {{ client.phone || messages.noPhone }}
+                  <a v-if="client.phone" :href="'tel:' + formatTel(client.phone)" class="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline">{{ client.phone }}</a><span v-if="!client.phone">{{ messages.noPhone }}</span>
                 </div>
               </div>
               
@@ -478,6 +479,13 @@ export default {
         month: '2-digit',
         year: 'numeric'
       })
+    },
+
+    formatTel(phone) {
+      if (!phone) return ''
+      return String(phone)
+        .replace(/\s+/g, '')
+        .replace(/[()\-\.]/g, '')
     },
     
     handleStatusChange(client, newStatus) {

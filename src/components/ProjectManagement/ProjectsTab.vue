@@ -6,7 +6,7 @@
         <div class="flex items-center">
           <div class="p-2 bg-blue-100 rounded-lg">
             <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
           </div>
           <div class="ml-4">
@@ -63,28 +63,38 @@
     <div class="bg-white rounded-lg shadow p-6">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
         <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-          <select 
-            v-model="statusFilter" 
-            class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Tous les statuts</option>
-            <option value="planning">Planification</option>
-            <option value="in_progress">En cours</option>
-            <option value="review">En révision</option>
-            <option value="completed">Terminé</option>
-            <option value="on_hold">En pause</option>
-          </select>
+          <div class="relative">
+            <select 
+               v-model="statusFilter" 
+               class="appearance-none border border-gray-300 rounded-md pl-2 pr-7 py-1.5 md:py-2 text-xs md:text-sm font-normal text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-auto"
+             >
+              <option value="">Tous les statuts</option>
+              <option value="planning">Planification</option>
+              <option value="in_progress">En cours</option>
+              <option value="review">En révision</option>
+              <option value="completed">Terminé</option>
+              <option value="on_hold">En pause</option>
+            </select>
+            <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+             </svg>
+          </div>
 
-          <select 
-            v-model="priorityFilter" 
-            class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Toutes les priorités</option>
-            <option value="low">Basse</option>
-            <option value="medium">Moyenne</option>
-            <option value="high">Haute</option>
-            <option value="urgent">Urgente</option>
-          </select>
+          <div class="relative">
+            <select 
+               v-model="priorityFilter" 
+               class="appearance-none border border-gray-300 rounded-md pl-2 pr-7 py-1.5 md:py-2 text-xs md:text-sm font-normal text-gray-700 bg-white hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 w-auto"
+             >
+              <option value="">Toutes les priorités</option>
+              <option value="low">Basse</option>
+              <option value="medium">Moyenne</option>
+              <option value="high">Haute</option>
+              <option value="urgent">Urgente</option>
+            </select>
+            <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+             </svg>
+          </div>
 
           <input 
             v-model="searchQuery"
@@ -153,10 +163,10 @@
           <p class="text-sm text-gray-600 mb-4 line-clamp-2">{{ project.description }}</p>
 
           <div class="flex items-center justify-between mb-4">
-            <span :class="getStatusClass(project.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+            <span :class="getStatusClass(project.status)" class="inline-flex items-center justify-center px-2 py-1 text-xs leading-none font-semibold rounded-full">
               {{ getStatusLabel(project.status) }}
             </span>
-            <span :class="getPriorityClass(project.priority)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+            <span :class="getPriorityClass(project.priority)" class="inline-flex items-center justify-center px-2 py-1 text-xs leading-none font-semibold rounded-full">
               {{ getPriorityLabel(project.priority) }}
             </span>
           </div>
@@ -210,12 +220,12 @@
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getStatusClass(project.status)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                <span :class="getStatusClass(project.status)" class="inline-flex items-center justify-center px-2 py-1 text-xs leading-none font-semibold rounded-full">
                   {{ getStatusLabel(project.status) }}
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <span :class="getPriorityClass(project.priority)" class="inline-flex px-2 py-1 text-xs font-semibold rounded-full">
+                <span :class="getPriorityClass(project.priority)" class="inline-flex items-center justify-center px-2 py-1 text-xs leading-none font-semibold rounded-full">
                   {{ getPriorityLabel(project.priority) }}
                 </span>
               </td>
@@ -268,7 +278,7 @@
       <!-- Message si aucun projet -->
       <div v-if="filteredProjects.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
         </svg>
         <h3 class="mt-2 text-sm font-medium text-gray-900">Aucun projet trouvé</h3>
         <p class="mt-1 text-sm text-gray-500">

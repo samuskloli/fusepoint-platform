@@ -9,6 +9,22 @@
       exactMatch
     />
 
+    <!-- LinkPoints -->
+    <SidebarNavItem
+      to="/linkpoints"
+      label="LinkPoints"
+      iconPath="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+      :isCollapsed="isCollapsed"
+      exactMatch
+    />
+    <!-- Statut LinkPoints -->
+    <SidebarNavItem
+      to="/linkpoints/status"
+      label="Statut LinkPoints"
+      iconPath="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+      :isCollapsed="isCollapsed"
+    />
+
     <!-- Analytics -->
     <SidebarNavItem
       to="/analytics"

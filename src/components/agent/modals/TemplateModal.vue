@@ -1,9 +1,61 @@
 <template>
-  <div  class="modal-overlay=closeModal modal-content='modal-header=closeModal="close-btn="fas fa-times=saveTemplate='modal-body="form-group=nom="nom='form.name=text="t('projectTemplates.namePlaceholder="error-message=form-group='description="description=form.description="t('projectTemplates.descriptionPlaceholder='errors.description=error-message="form-group="duree_estimee=input-with-unit='duree_estimee="form.duration_estimate=number="1'
-              max="365
-              required
-            >
-            <span  class="unit=errors.duration_estimate='error-message="form-group=category="category='form.category=">{{ t('projectTemplates.selectCategory="category in templateCategories=category.value='category.value=form-group=tags="tags='form.tags=text="t('projectTemplates.tagsPlaceholder="errors.tags=error-message='form-group="checkbox-label=form.is_active="checkbox='checkmark=help-text="modal-footer="button=closeModal='btn btn-secondary="submit=btn btn-primary="loading='loading=fas fa-spinner fa-spin"></i>
+  <div class="modal-overlay" @click.self="closeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>{{ isEdit ? t('projectTemplates.editTitle') : t('projectTemplates.createTitle') }}</h3>
+        <button class="close-btn" @click="closeModal">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <form @submit.prevent="saveTemplate">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="nom">{{ t('projectTemplates.name') }}</label>
+            <input id="nom" v-model="form.name" type="text" :placeholder="t('projectTemplates.namePlaceholder')" required />
+            <span v-if="errors.name" class="error-message">{{ errors.name }}</span>
+          </div>
+          <div class="form-group">
+            <label for="description">{{ t('projectTemplates.description') }}</label>
+            <textarea id="description" v-model="form.description" :placeholder="t('projectTemplates.descriptionPlaceholder')"></textarea>
+            <span v-if="errors.description" class="error-message">{{ errors.description }}</span>
+          </div>
+          <div class="form-group">
+            <label for="duree_estimee">{{ t('projectTemplates.durationEstimate') }}</label>
+            <div class="input-with-unit">
+              <input id="duree_estimee" v-model.number="form.duration_estimate" type="number" min="1" max="365" required />
+              <span class="unit">{{ t('time.days') }}</span>
+            </div>
+            <span v-if="errors.duration_estimate" class="error-message">{{ errors.duration_estimate }}</span>
+          </div>
+          <div class="form-group">
+            <label for="category">{{ t('projectTemplates.category') }}</label>
+            <select id="category" v-model="form.category">
+              <option value="">{{ t('projectTemplates.selectCategory') }}</option>
+              <option v-for="category in templateCategories" :key="category.value" :value="category.value">
+                {{ t(category.labelKey || category.label || category.value) }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tags">{{ t('projectTemplates.tags') }}</label>
+            <input id="tags" v-model="form.tags" type="text" :placeholder="t('projectTemplates.tagsPlaceholder')" />
+            <span v-if="errors.tags" class="error-message">{{ errors.tags }}</span>
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" v-model="form.is_active" />
+              <span class="checkmark"></span>
+              {{ t('projectTemplates.active') }}
+            </label>
+            <p class="help-text">{{ t('projectTemplates.activeHelp') }}</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="closeModal">
+            {{ t('common.cancel') }}
+          </button>
+          <button type="submit" class="btn btn-primary" :disabled="loading">
+            <i v-if="loading" class="fas fa-spinner fa-spin"></i>
             {{ isEdit ? t('common.update') : t('common.create') }}
           </button>
         </div>
@@ -14,8 +66,8 @@
 
 <script>
 import { ref, reactive, computed, watch, nextTick } from 'vue'
-import { projectTemplateService } from '@/services/projectTemplateService'
-import { useNotifications } from '@/composables/useNotifications'
+import projectTemplateService from '@/services/projectTemplateService'
+import { useToast } from '@/composables/useToast'
 import { useTranslation } from '@/composables/useTranslation'
 
 export default {
@@ -32,10 +84,8 @@ export default {
   },
   emits: ['close', 'saved'],
   setup(props, { emit }) {
-  const { t } = useTranslation()
-
-    const { success, error: showError } = useNotifications()
     const { t } = useTranslation()
+    const { showSuccess, showError } = useToast()
     
     // État
     const loading = ref(false)
@@ -75,7 +125,10 @@ export default {
         // Mode édition - charger les données du template
         form.name = props.template.name || ''
         form.description = props.template.description || ''
-        form.duration_estimate = Number(props.template.duration_estimate) || 30
+        // Gérer la différence de nommage: estimated_duration (backend) vs duration_estimate (UI)
+        form.duration_estimate = Number(
+          props.template.duration_estimate ?? props.template.estimated_duration
+        ) || 30
         form.category = props.template.category || ''
         form.tags = Array.isArray(props.template.tags)
           ? props.template.tags.join(', ')
@@ -153,9 +206,13 @@ export default {
         const templateData = {
           name: form.name.trim(),
           description: form.description?.trim() || '',
-          duration_estimate: form.duration_estimate,
+          // Le backend attend estimated_duration
+          estimated_duration: form.duration_estimate,
           category: form.category,
-          tags: form.tags,
+          // Envoyer un tableau de tags, pas une string
+          tags: form.tags
+            ? form.tags.split(',').map(s => s.trim()).filter(Boolean)
+            : [],
           is_active: form.is_active
         }
         
@@ -207,15 +264,15 @@ export default {
     })
     
     return {
-    loading,
+      loading,
       errors,
       form,
       templateCategories,
       closeModal,
       saveTemplate,
       isEdit: props.isEdit,
-    t
-  }
+      t
+    }
   }
 }
 </script>

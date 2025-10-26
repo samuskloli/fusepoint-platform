@@ -3,9 +3,10 @@ import api from './api'
 // Service pour la gestion de l'accompagnement Fusepoint
 export const accompagnementService = {
   // Gestion des services
-  async getServices() {
+  async getServices(options = {}) {
     try {
-      const response = await api.get('/api/accompagnement/services')
+      const { activeOnly = true } = options
+      const response = await api.get('/api/accompagnement/services', { params: { activeOnly } })
       return response.data
     } catch (error) {
       console.error('Erreur lors de la récupération des services:', error)
@@ -19,6 +20,39 @@ export const accompagnementService = {
       return response.data
     } catch (error) {
       console.error('Erreur lors de la création du service:', error)
+      throw error
+    }
+  },
+
+  // Ajout: récupérer un service par ID
+  async getServiceById(serviceId) {
+    try {
+      const response = await api.get(`/api/accompagnement/services/${serviceId}`)
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la récupération du service:', error)
+      throw error
+    }
+  },
+
+  // Ajout: mettre à jour un service
+  async updateService(serviceId, serviceData) {
+    try {
+      const response = await api.put(`/api/accompagnement/services/${serviceId}`, serviceData)
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du service:', error)
+      throw error
+    }
+  },
+
+  // Ajout: supprimer un service
+  async deleteService(serviceId) {
+    try {
+      const response = await api.delete(`/api/accompagnement/services/${serviceId}`)
+      return response.data
+    } catch (error) {
+      console.error('Erreur lors de la suppression du service:', error)
       throw error
     }
   },
@@ -161,7 +195,11 @@ export const accompagnementService = {
   async getNotifications() {
     try {
       const response = await api.get('/api/accompagnement/notifications')
-      return response.data
+      // Adapter la réponse pour le composant NotificationCenter
+      return {
+        data: response.data?.data || [],
+        hasMore: response.data?.pagination?.hasMore || false
+      }
     } catch (error) {
       console.error('Erreur lors de la récupération des notifications:', error)
       throw error
@@ -173,7 +211,7 @@ export const accompagnementService = {
       const response = await api.put(`/api/accompagnement/notifications/${notificationId}/read`)
       return response.data
     } catch (error) {
-      console.error('Erreur lors du marquage de la notification:', error)
+      console.error('Erreur lors du marquage de la notification comme lue:', error)
       throw error
     }
   },

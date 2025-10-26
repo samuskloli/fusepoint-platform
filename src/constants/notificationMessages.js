@@ -196,5 +196,6 @@ export const NOTIFICATION_DURATIONS = {
   [NOTIFICATION_PRIORITIES.LOW]: 3000,
   [NOTIFICATION_PRIORITIES.NORMAL]: 5000,
   [NOTIFICATION_PRIORITIES.HIGH]: 8000,
-  [NOTIFICATION_PRIORITIES.URGENT]: 0 // Pas de fermeture automatique
+  // Urgent: auto-dismiss également, mais avec une durée plus longue
+  [NOTIFICATION_PRIORITIES.URGENT]: 12000
 }

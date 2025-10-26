@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/fusepoint-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     
     <!-- Primary Meta Tags -->
     <title>Fusepoint Platform - Plateforme Marketing Intelligente</title>
@@ -244,17 +244,82 @@
     
     <!-- Hide loading screen when app is ready -->
     <script>
-      window.addEventListener('load', function() {
-        setTimeout(function() {
+      // Fonction pour masquer le loader
+      function hideLoader() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          console.log('🚫 Masquage du loader');
+          loadingScreen.style.opacity = '0';
+          loadingScreen.style.transition = 'opacity 0.3s ease';
+          setTimeout(() => {
+            loadingScreen.style.display = 'none';
+          }, 300);
+        }
+      }
+
+      // Fonction pour afficher le loader (pour les entreprises non-payantes)
+      function showLoader() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+          console.log('👁️ Affichage du loader');
+          loadingScreen.style.display = 'flex';
+          loadingScreen.style.opacity = '1';
+        }
+      }
+
+      // Vérification immédiate du statut
+      (async function() {
+        console.log('🔍 Vérification du statut de paiement...');
+        
+        const path = window.location.pathname;
+        console.log('📍 Chemin:', path);
+        
+        // Si on est sur une page LinkPoint publique
+        if (path.startsWith('/l/')) {
+          const slug = path.split('/l/')[1]?.split('?')[0];
+          console.log('🏢 Slug:', slug);
+          
+          // Masquer immédiatement le loader pour les pages LinkPoint
           const loadingScreen = document.getElementById('loading-screen');
           if (loadingScreen) {
-            loadingScreen.style.opacity = '0';
-            setTimeout(function() {
-              loadingScreen.style.display = 'none';
-            }, 500);
+            loadingScreen.style.display = 'none';
+            console.log('⚡ Loader masqué immédiatement pour page LinkPoint');
           }
-        }, 1000);
-      });
+          
+          if (slug) {
+            try {
+              console.log('🌐 Vérification du statut payant...');
+              const response = await fetch(`/api/linkpoints/public/${slug}/paid`);
+              console.log('📡 Réponse:', response.status);
+              
+              if (response.ok) {
+                const data = await response.json();
+                console.log('💰 Données:', data);
+                
+                if (data.paid === true) {
+                  console.log('✅ ENTREPRISE PAYANTE - Loader reste masqué');
+                  return; // Le loader reste masqué
+                } else {
+                  console.log('💸 ENTREPRISE NON-PAYANTE - Réaffichage du loader');
+                  showLoader();
+                  setTimeout(hideLoader, 1000);
+                  return;
+                }
+              }
+            } catch (error) {
+              console.log('❌ Erreur API:', error);
+              // En cas d'erreur, réafficher le loader par sécurité
+              showLoader();
+              setTimeout(hideLoader, 1000);
+              return;
+            }
+          }
+        }
+        
+        // Comportement par défaut pour les autres pages : attendre 1 seconde
+        console.log('⏱️ Attente 1 seconde (comportement normal)');
+        setTimeout(hideLoader, 1000);
+      })();
     </script>
   </body>
 </html>

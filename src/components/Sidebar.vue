@@ -12,24 +12,24 @@
       <!-- Navigation principale -->
       <SidebarMainNav :isCollapsed="isCollapsed" />
       
-      <!-- Navigation Super Admin -->
-      <SidebarSuperAdminNav :isCollapsed="isCollapsed" :isSuperAdmin="isSuperAdmin" />
-      
       <!-- Navigation Agent -->
       <SidebarAgentNav :isCollapsed="isCollapsed" :isAgent="isAgent" />
       
-      <!-- Navigation Gestion -->
-      <SidebarManagementNav :isCollapsed="isCollapsed" />
+      <!-- Navigation Gestion (masquée pour les clients) -->
+      <SidebarManagementNav v-if="!isClient" :isCollapsed="isCollapsed" />
 
+      <!-- Navigation Super Admin (déplacée en bas) -->
+      <SidebarSuperAdminNav :isCollapsed="isCollapsed" :isSuperAdmin="isSuperAdmin" />
 
-        <!-- Navigation Inférieure -->
-        <SidebarBottomNav :isCollapsed="isCollapsed" />    </nav>
+      <!-- Navigation Inférieure -->
+      <SidebarBottomNav :isCollapsed="isCollapsed" />
+    </nav>
   </div>
 </template>
 
 <script>
 import { useAuthStore } from '../stores/auth'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SidebarHeader from './sidebar/SidebarHeader.vue'
 import SidebarMainNav from './sidebar/SidebarMainNav.vue'
 import SidebarAgentNav from './sidebar/SidebarAgentNav.vue'
@@ -51,6 +51,9 @@ export default {
   setup(props, { emit }) {
     const authStore = useAuthStore()
     const isCollapsed = ref(false)
+
+    // Déterminer si l'utilisateur est un client
+    const isClient = computed(() => authStore.userRole === 'client' || authStore.user?.role === 'client')
     
     const toggleCollapse = () => {
       isCollapsed.value = !isCollapsed.value
@@ -60,6 +63,7 @@ export default {
     return {
       isAgent: authStore.isAgent,
       isSuperAdmin: authStore.isSuperAdmin,
+      isClient,
       isCollapsed,
       toggleCollapse
     }

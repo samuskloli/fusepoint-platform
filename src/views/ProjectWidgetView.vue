@@ -43,6 +43,12 @@ import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
 import projectManagementService from '@/services/projectManagementService'
 import widgetApiService from '@/components/widgets/shared/services/widgetApiService'
+import {
+  componentNameToType,
+  typeToComponent,
+  typeToIcon,
+  typeToNameKey
+} from '@/utils/widgetsMap'
 import RoleLayout from '@/components/RoleLayout.vue'
 
 // Import des widgets (mêmes que dans ProjectDashboard)
@@ -89,19 +95,7 @@ export default {
     const widgetId = computed(() => route.params.widgetId)
     const type = computed(() => route.params.type)
 
-    const componentMap = {
-      'task_list': 'TaskListWidget',
-      'stats': 'StatsWidget',
-      'files': 'FilesWidget',
-      'team': 'TeamWidget',
-      'calendar': 'CalendarWidget',
-      'comments': 'CommentsWidget',
-      'deliverables': 'DeliverablesWidget',
-      'goals': 'GoalsWidget',
-      'ai': 'AIWidget',
-      'history': 'HistoryWidget',
-      'checklist': 'ChecklistWidget'
-    }
+    // Mapping centralisé utilisé via widgetsMap
 
     const transformBackendWidgetToUI = (w) => ({
       id: w.id,
@@ -116,63 +110,28 @@ export default {
       component_name: w.componentName ?? w.component_name
     })
 
-    const componentNameToType = (name) => {
-      const map = {
-        TaskListWidget: 'task_list',
-        TasksWidget: 'tasks',
-        StatsWidget: 'stats',
-        FilesWidget: 'files',
-        TeamWidget: 'team',
-        CalendarWidget: 'calendar',
-        CommentsWidget: 'comments',
-        DeliverablesWidget: 'deliverables',
-        GoalsWidget: 'goals',
-        AIWidget: 'ai',
-        HistoryWidget: 'history',
-        ChecklistWidget: 'checklist'
-      }
-      return map[name] || 'widget'
-    }
-
+    // Remplacer les helpers locaux par l’util partagé
     const getWidgetComponent = (widgetType) => {
-      return componentMap[widgetType] || 'div'
+      return typeToComponent(widgetType) || 'div'
     }
 
     const getWidgetIcon = (widgetType) => {
-      const icons = {
-        'task_list': 'fas fa-tasks',
-        'stats': 'fas fa-chart-bar',
-        'files': 'fas fa-folder',
-        'team': 'fas fa-users',
-        'calendar': 'fas fa-calendar',
-        'comments': 'fas fa-sticky-note',
-        'deliverables': 'fas fa-clipboard-check',
-        'ai': 'fas fa-robot',
-        'goals': 'fas fa-bullseye',
-        'history': 'fas fa-history',
-        'checklist': 'fas fa-clipboard-list'
-      }
-      return icons[widgetType] || 'fas fa-puzzle-piece'
+      return typeToIcon(widgetType)
     }
 
     const getWidgetName = (widgetType) => {
-      const keys = {
-        'task_list': 'widgets.taskList.title',
-        'stats': 'widgets.stats.title',
-        'files': 'widgets.files.title',
-        'team': 'widgets.team.title',
-        'calendar': 'widgets.calendar.title',
-        'comments': 'widgets.comments.title',
-        'deliverables': 'widgets.deliverables.title',
-        'ai': 'widgets.ai.title',
-        'goals': 'widgets.goals.title',
-        'history': 'widgets.history.title',
-        'checklist': 'widgets.checklist.title'
-      }
-      const key = keys[widgetType] || 'widgets.widget'
+      const key = typeToNameKey(widgetType) || 'widgets.widget'
       const translated = t(key)
       return translated !== key ? translated : 'Widget'
     }
+
+    // Utilise componentNameToType du module widgetsMap
+
+    // getWidgetComponent est défini via widgetsMap plus haut
+
+    // getWidgetIcon utilise typeToIcon du module widgetsMap
+
+    // getWidgetName utilise typeToNameKey du module widgetsMap
 
     const loadData = async () => {
       loading.value = true

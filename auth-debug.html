@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic d'Authentification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #fafafa;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .token-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .status.warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Diagnostic d'Authentification</h1>
+        
+        <div class="section">
+            <h2>📊 État du LocalStorage</h2>
+            <div id="localStorageInfo"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🔑 Informations des Tokens</h2>
+            <div id="tokenInfo"></div>
+        </div>
+        
+        <div class="section">
+            <h2>👤 Informations Utilisateur</h2>
+            <div id="userInfo"></div>
+        </div>
+        
+        <div class="section">
+            <h2>🧪 Tests d'API</h2>
+            <button onclick="testAuthAPI()">Tester l'API d'authentification</button>
+            <button onclick="testRefreshToken()">Rafraîchir le token</button>
+            <button onclick="testAdminAPI()">Tester l'API Admin</button>
+            <button onclick="clearAllAuth()">Nettoyer l'authentification</button>
+            <div id="testResults"></div>
+        </div>
+    </div>
+
+    <script>
+        function updateDiagnostic() {
+            // LocalStorage
+            const localStorageKeys = [
+                'accessToken', 'refreshToken', 'sessionToken', 
+                'tokenExpiresAt', 'user', 'companies'
+            ];
+            
+            let localStorageHtml = '';
+            localStorageKeys.forEach(key => {
+                const value = localStorage.getItem(key);
+                const status = value ? 'success' : 'error';
+                localStorageHtml += `
+                    <div class="status ${status}">
+                        <strong>${key}:</strong> ${value ? 'Présent' : 'Absent'}
+                        ${value && key.includes('Token') ? `<div class="token-info">${value.substring(0, 100)}...</div>` : ''}
+                    </div>
+                `;
+            });
+            document.getElementById('localStorageInfo').innerHTML = localStorageHtml;
+            
+            // Token Info
+            const accessToken = localStorage.getItem('accessToken');
+            let tokenHtml = '';
+            
+            if (accessToken) {
+                try {
+                    // Décoder le JWT (partie payload)
+                    const payload = JSON.parse(atob(accessToken.split('.')[1]));
+                    const now = Math.floor(Date.now() / 1000);
+                    const isExpired = payload.exp && payload.exp < now;
+                    
+                    tokenHtml = `
+                        <div class="status ${isExpired ? 'error' : 'success'}">
+                            <strong>Token Status:</strong> ${isExpired ? 'Expiré' : 'Valide'}
+                        </div>
+                        <div class="token-info">
+                            <strong>Payload:</strong><br>
+                            ${JSON.stringify(payload, null, 2)}
+                        </div>
+                        <div class="status ${isExpired ? 'error' : 'success'}">
+                            <strong>Expiration:</strong> ${new Date(payload.exp * 1000).toLocaleString()}
+                        </div>
+                    `;
+                } catch (e) {
+                    tokenHtml = `<div class="status error">Erreur lors du décodage du token: ${e.message}</div>`;
+                }
+            } else {
+                tokenHtml = '<div class="status error">Aucun token d\'accès trouvé</div>';
+            }
+            document.getElementById('tokenInfo').innerHTML = tokenHtml;
+            
+            // User Info
+            const userStr = localStorage.getItem('user');
+            let userHtml = '';
+            
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    userHtml = `
+                        <div class="status success">
+                            <strong>Utilisateur connecté:</strong> ${user.email || 'Email non défini'}
+                        </div>
+                        <div class="token-info">
+                            ${JSON.stringify(user, null, 2)}
+                        </div>
+                    `;
+                } catch (e) {
+                    userHtml = `<div class="status error">Erreur lors du parsing utilisateur: ${e.message}</div>`;
+                }
+            } else {
+                userHtml = '<div class="status error">Aucune information utilisateur trouvée</div>';
+            }
+            document.getElementById('userInfo').innerHTML = userHtml;
+        }
+        
+        async function testAuthAPI() {
+            const resultsDiv = document.getElementById('testResults');
+            const token = localStorage.getItem('accessToken');
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<div class="test-result status error">Aucun token pour tester l\'API</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                const status = response.ok ? 'success' : 'error';
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result status ${status}">
+                        <strong>Test API Auth:</strong> ${response.status} ${response.statusText}<br>
+                        <div class="token-info">${JSON.stringify(data, null, 2)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result status error">
+                        <strong>Erreur API Auth:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testRefreshToken() {
+            const resultsDiv = document.getElementById('testResults');
+            const refreshToken = localStorage.getItem('refreshToken');
+            
+            if (!refreshToken) {
+                resultsDiv.innerHTML = '<div class="test-result status error">Aucun refresh token disponible</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/refresh', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        refreshToken: refreshToken
+                    })
+                });
+                
+                const data = await response.json();
+                const status = response.ok ? 'success' : 'error';
+                
+                if (response.ok && data.accessToken) {
+                    localStorage.setItem('accessToken', data.accessToken);
+                    if (data.expiresAt) {
+                        localStorage.setItem('tokenExpiresAt', data.expiresAt);
+                    }
+                    updateDiagnostic();
+                }
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result status ${status}">
+                        <strong>Test Refresh Token:</strong> ${response.status} ${response.statusText}<br>
+                        <div class="token-info">${JSON.stringify(data, null, 2)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result status error">
+                        <strong>Erreur Refresh Token:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        async function testAdminAPI() {
+            const resultsDiv = document.getElementById('testResults');
+            
+            // Forcer la mise à jour du diagnostic d'abord
+            updateDiagnostic();
+            
+            const token = localStorage.getItem('accessToken');
+            const allKeys = Object.keys(localStorage);
+            
+            console.log('Debug testAdminAPI:', {
+                token: token ? 'Présent' : 'Absent',
+                tokenLength: token ? token.length : 0,
+                allLocalStorageKeys: allKeys,
+                accessTokenValue: token
+            });
+            
+            if (!token) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result status error">
+                        <strong>Aucun token pour tester l'API</strong><br>
+                        <small>Clés localStorage disponibles: ${allKeys.join(', ')}</small><br>
+                        <small>Essayez de rafraîchir le token d'abord</small>
+                    </div>
+                `;
+                return;
+            }
+            
+            try {
+                resultsDiv.innerHTML = '<div class="test-result status info">Test en cours...</div>';
+                
+                const response = await fetch('/api/admin/users?page=1&limit=5', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                const status = response.ok ? 'success' : 'error';
+                
+                resultsDiv.innerHTML = `
+                    <div class="test-result status ${status}">
+                        <strong>Test API Admin:</strong> ${response.status} ${response.statusText}<br>
+                        <small>Token utilisé: ${token.substring(0, 50)}...</small><br>
+                        <div class="token-info">${JSON.stringify(data, null, 2)}</div>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="test-result status error">
+                        <strong>Erreur API Admin:</strong> ${error.message}<br>
+                        <small>Token: ${token ? 'Présent' : 'Absent'}</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function clearAllAuth() {
+            const keys = ['accessToken', 'refreshToken', 'sessionToken', 'tokenExpiresAt', 'user', 'companies'];
+            keys.forEach(key => localStorage.removeItem(key));
+            
+            // Nettoyer aussi les cookies
+            document.cookie.split(";").forEach(function(c) { 
+                document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+            });
+            
+            alert('Authentification nettoyée ! Rechargez la page et reconnectez-vous.');
+            updateDiagnostic();
+        }
+        
+        // Mettre à jour au chargement
+        window.onload = function() {
+            updateDiagnostic();
+        };
+    </script>
+</body>
+</html>

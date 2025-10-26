@@ -38,6 +38,7 @@ import HistoryWidget from '@/components/widgets/HistoryWidget.vue'
 import ChecklistWidget from '@/components/widgets/ChecklistWidget.vue'
 import TeamWidget from '@/components/widgets/TeamWidget.vue'
 import DeliverablesWidget from '@/components/widgets/DeliverablesWidget.vue'
+import { typeToComponent, typeToIcon, typeToNameKey } from '@/utils/widgetsMap'
 
 export default {
   name: 'WidgetViewerModal',
@@ -73,54 +74,15 @@ export default {
     const { t } = useTranslation()
 
     const getWidgetComponent = (type) => {
-      const map = {
-        'task_list': 'TaskListWidget',
-        'stats': 'StatsWidget',
-        'calendar': 'CalendarWidget',
-        'comments': 'CommentsWidget',
-        'goals': 'GoalsWidget',
-        'ai': 'AIWidget',
-        'files': 'FilesWidget',
-        'history': 'HistoryWidget',
-        'checklist': 'ChecklistWidget',
-        'team': 'TeamWidget',
-        'deliverables': 'DeliverablesWidget'
-      }
-      return map[type] || 'div'
+      return typeToComponent(type) || 'div'
     }
 
     const getWidgetIcon = (type) => {
-      const icons = {
-        'task_list': 'fas fa-tasks',
-        'stats': 'fas fa-chart-bar',
-        'files': 'fas fa-folder',
-        'team': 'fas fa-users',
-        'calendar': 'fas fa-calendar',
-        'comments': 'fas fa-sticky-note',
-        'deliverables': 'fas fa-clipboard-check',
-        'ai': 'fas fa-robot',
-        'goals': 'fas fa-bullseye',
-        'history': 'fas fa-history',
-        'checklist': 'fas fa-clipboard-list'
-      }
-      return icons[type] || 'fas fa-puzzle-piece'
+      return typeToIcon(type) || 'fas fa-puzzle-piece'
     }
 
     const getWidgetName = (type) => {
-      const keys = {
-        'task_list': 'widgets.taskList.title',
-        'stats': 'widgets.stats.title',
-        'files': 'widgets.files.title',
-        'team': 'widgets.team.title',
-        'calendar': 'widgets.calendar.title',
-        'comments': 'widgets.comments.title',
-        'deliverables': 'widgets.deliverables.title',
-        'ai': 'widgets.ai.title',
-        'goals': 'widgets.goals.title',
-        'history': 'widgets.history.title',
-        'checklist': 'widgets.checklist.title'
-      }
-      const key = keys[type] || 'widgets.widget'
+      const key = typeToNameKey(type) || 'widgets.widget'
       const translated = t(key)
       return translated !== key ? translated : 'Widget'
     }

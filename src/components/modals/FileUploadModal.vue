@@ -245,11 +245,11 @@ export default {
     }
     
     const acceptedTypesText = computed(() => {
-      return 'PDF, Word, Excel, PowerPoint, Images, Archives'
+      return t('files.acceptedTypesText')
     })
     
     const maxSizeText = computed(() => {
-      return '50MB max par fichier'
+      return t('files.maxSizeText')
     })
     
     const closeModal = () => {

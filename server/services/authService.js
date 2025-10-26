@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const databaseService = require('./databaseService');
+const PlatformSettingsService = require('./platformSettingsService');
 
 /**
  * Service d'authentification sécurisé
@@ -11,6 +12,7 @@ class AuthService {
     this.jwtSecret = process.env.JWT_SECRET || this.generateJwtSecret();
     this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
     this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+    this.platformSettingsService = new PlatformSettingsService();
   }
 
   /**
@@ -107,6 +109,20 @@ class AuthService {
       // Récupérer les entreprises de l'utilisateur
       const companies = await databaseService.getUserCompanies(user.id);
 
+      // Récupérer le statut d'abonnement de l'utilisateur
+      let isPaid = false;
+      if (companies && companies.length > 0) {
+        try {
+          const companyId = companies[0].id;
+          const paidSetting = await this.platformSettingsService.getSetting(`company_paid_${companyId}`);
+          isPaid = paidSetting && paidSetting.value === 'true';
+        } catch (error) {
+          console.warn('⚠️ Impossible de récupérer le statut d\'abonnement lors du login:', error);
+          // En cas d'erreur, considérer comme gratuit par défaut
+          isPaid = false;
+        }
+      }
+
       return {
         user: {
           id: user.id,
@@ -114,7 +130,8 @@ class AuthService {
           firstName: user.first_name,
           lastName: user.last_name,
           role: user.role,
-          onboarding_completed: user.onboarding_completed
+          onboarding_completed: user.onboarding_completed,
+          isPaid // Ajouter le statut d'abonnement
         },
         companies,
         tokens: {

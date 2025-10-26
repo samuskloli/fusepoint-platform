@@ -1,6 +1,6 @@
 class AIConfigService {
   constructor() {
-    this.baseURL = `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}/api/ai`;
+    this.baseURL = `${import.meta.env.VITE_API_URL || 'http://localhost:3004'}/api/ai`;
   }
 
   // Vérifier le statut de l'IA

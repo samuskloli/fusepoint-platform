@@ -74,6 +74,8 @@ export default {
   },
 
   "loadError": 'Erreur lors du chargement des widgets',
+  "noAvailableWidgets": 'Aucun widget disponible',
+  "allWidgetsAdded": 'Tous les widgets disponibles ont déjà été ajoutés à ce projet',
   // Goals Widget
   "goals": {
     "title": "Objectifs",
@@ -353,7 +355,7 @@ export default {
     "listView": "Vue liste",
     "allFiles": "Tous les fichiers",
     "images": "Images",
-    "documents": "Documents",
+  
     "videos": "Vidéos",
     "archives": "Archives",
     "recent": "Récents",

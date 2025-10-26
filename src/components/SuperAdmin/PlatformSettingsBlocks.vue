@@ -247,11 +247,14 @@
 
 <script>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useTranslation } from '../../composables/useTranslation.js'
 import superAdminAPI from '../../services/superAdminAPI.js'
 
 export default {
   name: 'PlatformSettingsBlocks',
   setup() {
+    const { t } = useTranslation()
+    
     // État réactif
     const loading = ref(false)
     const settingsBlocks = ref({})
@@ -443,7 +446,7 @@ export default {
     }
 
     const resetBlock = async (blockKey) => {
-      if (!confirm(`Êtes-vous sûr de vouloir réinitialiser le bloc "${settingsBlocks.value[blockKey]?.title}" ?`)) {
+      if (!confirm(t('common.confirmations.resetBlock', { blockTitle: settingsBlocks.value[blockKey]?.title }))) {
         return
       }
       
@@ -517,7 +520,7 @@ export default {
     }
 
     const initializeAllBlocks = async () => {
-      if (!confirm('Êtes-vous sûr de vouloir initialiser tous les blocs avec leurs valeurs par défaut ?')) {
+      if (!confirm(t('common.confirmations.initializeAllBlocks'))) {
         return
       }
       
@@ -594,6 +597,7 @@ export default {
     })
 
     return {
+      t,
       loading,
       settingsBlocks,
       settingValues,

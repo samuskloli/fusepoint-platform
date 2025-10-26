@@ -169,10 +169,9 @@ class EmailService {
       }
       
       // Vérifier la connexion (non bloquant)
-      console.log('🔍 Vérification de la connexion SMTP...');
       try {
         await this.transporter.verify();
-        console.log('✅ Connexion SMTP vérifiée avec succès');
+        // Succès silencieux pour éviter les doublons de logs
       } catch (verifyError) {
         console.warn('⚠️ Impossible de vérifier la connexion SMTP:', verifyError.message);
         console.warn('⚠️ Le service email continuera sans vérification');

@@ -162,10 +162,13 @@ router.get('/:clientId/projects/:projectId/widgets/files',
     try {
       const { clientId, projectId } = req.validatedScope;
       const { path: folderPath = '/', page = 1, limit = 50 } = req.query;
-      const pageNum = parseInt(page);
-      const limitNum = parseInt(limit);
+      let pageNum = parseInt(page, 10);
+      let limitNum = parseInt(limit, 10);
+      if (!Number.isFinite(pageNum) || pageNum <= 0) pageNum = 1;
+      if (!Number.isFinite(limitNum) || limitNum <= 0) limitNum = 50;
+      if (limitNum > 100) limitNum = 100;
       const offset = (pageNum - 1) * limitNum;
-      
+
       // Détecter les colonnes disponibles de la table files
       const columns = await databaseService.query('SHOW COLUMNS FROM files');
       const colNames = columns.map(c => c.Field);
@@ -175,13 +178,13 @@ router.get('/:clientId/projects/:projectId/widgets/files',
       const selectCols = [
         'id',
         has('name') ? 'name' : 'filename AS name',
-        'original_name',
+        has('original_name') ? 'original_name' : (has('name') ? 'name AS original_name' : 'filename AS original_name'),
         has('size') ? 'size' : 'file_size AS size',
-        'mime_type',
+        has('mime_type') ? 'mime_type' : `'application/octet-stream' AS mime_type`,
         has('folder_path') ? 'folder_path' : `'/' AS folder_path`,
-        'created_at',
-        has('updated_at') ? 'updated_at' : 'created_at AS updated_at',
-        has('created_by') ? 'created_by' : 'uploaded_by AS created_by'
+        has('created_at') ? 'created_at' : 'NOW() AS created_at',
+        has('updated_at') ? 'updated_at' : (has('created_at') ? 'created_at AS updated_at' : 'NOW() AS updated_at'),
+        has('created_by') ? 'created_by' : (has('uploaded_by') ? 'uploaded_by AS created_by' : 'NULL AS created_by')
       ].join(', ');
       
       // Construire dynamiquement le WHERE
@@ -205,9 +208,9 @@ router.get('/:clientId/projects/:projectId/widgets/files',
         LIMIT ? OFFSET ?
       `;
       params.push(limitNum, offset);
-      
+
       const files = await databaseService.query(filesQuery, params);
-      
+
       // Construire l'URL publique pour chaque fichier si absente
       const buildPublicUrl = (fname) => `/uploads/clients/${clientId}/projects/${projectId}/files/${fname}`;
       const filesWithUrl = files.map(f => ({
@@ -288,12 +291,12 @@ router.post('/:clientId/projects/:projectId/widgets/files',
           dbColumns.push('filename'); dbValues.push(file.filename);
         }
         
-        dbColumns.push('original_name'); dbValues.push(file.originalname);
+        if (has('original_name')) { dbColumns.push('original_name'); dbValues.push(file.originalname); }
         
         // path/file_path
         if (has('path')) {
           dbColumns.push('path'); dbValues.push(file.path);
-        } else {
+        } else if (has('file_path')) {
           dbColumns.push('file_path'); dbValues.push(file.path);
         }
         
@@ -310,7 +313,7 @@ router.post('/:clientId/projects/:projectId/widgets/files',
           dbColumns.push('file_size'); dbValues.push(file.size);
         }
         
-        dbColumns.push('mime_type'); dbValues.push(file.mimetype);
+        if (has('mime_type')) { dbColumns.push('mime_type'); dbValues.push(file.mimetype); }
         
         // client_id, project_id
         dbColumns.push('client_id'); dbValues.push(clientId);
@@ -386,7 +389,7 @@ router.delete('/:clientId/projects/:projectId/widgets/files/:fileId',
         whereClause += ' AND is_deleted = FALSE';
       }
       const selectSql = `
-        SELECT id, ${has('path') ? 'path' : 'file_path'} as path
+        SELECT id, ${has('path') ? 'path' : (has('file_path') ? 'file_path' : 'NULL')} as path
         FROM files
         ${whereClause}
       `;
@@ -448,8 +451,8 @@ router.get('/:clientId/projects/:projectId/widgets/files/:fileId/download',
       const selectCols = [
         'id',
         has('name') ? 'name' : 'filename AS name',
-        'original_name',
-        'mime_type',
+        has('original_name') ? 'original_name' : (has('name') ? 'name AS original_name' : 'filename AS original_name'),
+        has('mime_type') ? 'mime_type' : `'application/octet-stream' AS mime_type`,
         'client_id',
         'project_id'
       ].join(', ');
@@ -539,7 +542,7 @@ router.post('/:clientId/projects/:projectId/widgets/files/folders',
       const result = await databaseService.run(insertSql, dbValues);
 
       const created = {
-        id: result.lastID || result.insertId,
+        id: Number(result.insertId ?? result.lastID),
         name: folderName,
         mime_type: 'application/x-directory',
         folder_path: parentPath || '/',
@@ -551,7 +554,15 @@ router.post('/:clientId/projects/:projectId/widgets/files/folders',
 
       return res.status(201).json({ success: true, data: { folder: created }, message: 'Dossier créé avec succès' });
     } catch (error) {
-      console.error('Erreur création dossier:', error);
+      console.error('Erreur création dossier:', {
+        error: error.message,
+        stack: error.stack,
+        clientId: req.validatedScope?.clientId,
+        projectId: req.validatedScope?.projectId,
+        folderName: req.body?.name,
+        parentPath: req.body?.parent_path || req.body?.folder_path,
+        userId: req.user?.id
+      });
       return res.status(500).json({ success: false, error: 'Erreur lors de la création du dossier', details: error.message });
     }
   }

@@ -441,6 +441,7 @@
     <ProjectTemplateModal
       v-if="showCreateTemplate"
       :template="editingTemplate"
+      :isVisible="showCreateTemplate"
       @close="closeTemplateModal"
       @saved="handleTemplateSaved"
     />

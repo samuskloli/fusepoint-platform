@@ -80,11 +80,13 @@ CREATE TABLE IF NOT EXISTS conversations (
     id INT PRIMARY KEY AUTO_INCREMENT,
     client_id INT NOT NULL,
     agent_id INT NOT NULL,
+    request_id INT NULL,
     title TEXT NOT NULL,
     status TEXT DEFAULT 'active',
     last_message_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (request_id) REFERENCES service_requests(id) ON DELETE SET NULL
 );
 
 -- Table de l'historique des statuts de demandes

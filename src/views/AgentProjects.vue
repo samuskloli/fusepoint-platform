@@ -1,15 +1,15 @@
 <template>
 <RoleLayout>
     <!-- Main Content -->
-    <div class="p-8">
+    <div class="px-2 py-5 md:p-6 lg:p-8">
       <!-- Header -->
-      <div class="mb-8">
-        <div class="flex items-center justify-between mb-6">
+      <div class="mb-3 md:mb-6 lg:mb-8">
+        <div class="flex items-center justify-between mb-3 md:mb-4 lg:mb-6">
           <h1 class="text-3xl font-bold text-gray-900">Projets en cours</h1>
           <button 
             @click="refreshData" 
             :disabled="loading"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="inline-flex items-center px-3 py-2 md:px-4 md:py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg v-if="loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -25,43 +25,43 @@
       </div>
 
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-y-5 gap-x-2 md:gap-4 lg:gap-6 mb-3 md:mb-6 lg:mb-8">
+        <div class="bg-white rounded-lg shadow px-2 py-3 md:p-4 lg:p-6">
           <div class="flex items-center">
             <div class="p-2 bg-blue-100 rounded-lg">
               <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
               </svg>
             </div>
-            <div class="ml-4">
+            <div class="ml-3 md:ml-4">
               <p class="text-sm font-medium text-gray-600">Clients assignés</p>
               <p class="text-2xl font-semibold text-gray-900">{{ assignedClients.length }}</p>
             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow px-2 py-3 md:p-4 lg:p-6">
           <div class="flex items-center">
             <div class="p-2 bg-green-100 rounded-lg">
               <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
             </div>
-            <div class="ml-4">
+            <div class="ml-3 md:ml-4">
               <p class="text-sm font-medium text-gray-600">Projets actifs</p>
               <p class="text-2xl font-semibold text-gray-900">{{ totalActiveProjects }}</p>
             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="bg-white rounded-lg shadow px-2 py-3 md:p-4 lg:p-6">
           <div class="flex items-center">
             <div class="p-2 bg-yellow-100 rounded-lg">
               <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
             </div>
-            <div class="ml-4">
+            <div class="ml-3 md:ml-4">
               <p class="text-sm font-medium text-gray-600">Échéances cette semaine</p>
               <p class="text-2xl font-semibold text-gray-900">{{ upcomingDeadlines }}</p>
             </div>
@@ -70,21 +70,21 @@
       </div>
 
       <!-- Search Bar -->
-      <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <div class="flex items-center space-x-4">
+      <div class="bg-white rounded-lg shadow px-2 py-4 md:p-4 lg:p-6 mb-3 md:mb-6 lg:mb-8">
+        <div class="flex items-center space-x-2 md:space-x-4">
           <div class="flex-1">
             <label class="block text-sm font-medium text-gray-700 mb-2">Rechercher un client</label>
             <input
               v-model="searchQuery"
               type="text"
               placeholder="Nom, email ou entreprise..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-2 py-2 md:px-3 md:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
           </div>
           <div>
             <button
               @click="searchQuery = ''"
-              class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
+              class="px-3 py-2 md:px-4 md:py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
             >
               Effacer
             </button>
@@ -93,16 +93,16 @@
       </div>
 
       <!-- Clients Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-5 gap-x-2 md:gap-4 lg:gap-6">
         <div
           v-for="client in filteredClients"
           :key="client.id"
           @click="goToClientDashboard(client)"
           class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer border border-gray-200 hover:border-blue-300"
         >
-          <div class="p-6">
+          <div class="p-3 md:p-4 lg:p-6">
             <!-- Client Header -->
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center justify-between mb-2 md:mb-3 lg:mb-4">
               <div class="flex items-center space-x-3">
                 <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                   <span class="text-blue-600 font-semibold text-lg">
@@ -138,7 +138,7 @@
             </div>
 
             <!-- Project Stats -->
-            <div class="grid grid-cols-2 gap-4 mb-4">
+            <div class="grid grid-cols-2 gap-1 md:gap-2 lg:gap-4 mb-2 md:mb-3 lg:mb-4">
               <div class="text-center">
                 <div class="text-2xl font-bold text-blue-600">{{ client.projectCount || 0 }}</div>
                 <div class="text-xs text-gray-500">Projets</div>
@@ -150,7 +150,7 @@
             </div>
 
             <!-- Last Activity -->
-            <div class="text-xs text-gray-500 border-t pt-3">
+            <div class="text-xs text-gray-500 border-t pt-3 md:pt-3">
               <div class="flex items-center justify-between">
                 <span>Dernière connexion:</span>
                 <span>{{ formatLastLogin(client.last_login) }}</span>
@@ -158,8 +158,8 @@
             </div>
 
             <!-- Action Button -->
-            <div class="mt-4">
-              <button class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
+            <div class="mt-2 md:mt-3 lg:mt-4">
+              <button class="w-full bg-blue-600 text-white py-2 px-3 md:py-2 md:px-4 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
                 Accéder au tableau de bord
               </button>
             </div>
@@ -168,7 +168,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="filteredClients.length === 0" class="text-center py-12">
+      <div v-if="filteredClients.length === 0" class="text-center py-6 md:py-10 lg:py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
         </svg>

@@ -1,8 +1,3 @@
-/**
- * Index des traductions françaises
- * Importe et unifie tous les modules de traduction français
- */
-
 import common from './common.js';
 import interfaceTranslations from './interface.js';
 import resetPassword from './resetPassword.js';
@@ -37,6 +32,8 @@ import multiTenant from './multiTenant.js';
 import roles from './roles.js';
 import categories from './categories.js'
 import priorities from './priorities.js'
+import files from './files.js'
+import servicesManagement from './servicesManagement.js'
 
 export default {
   common,
@@ -73,4 +70,6 @@ export default {
   roles,
   categories,
   priorities,
+  files,
+  servicesManagement
 };

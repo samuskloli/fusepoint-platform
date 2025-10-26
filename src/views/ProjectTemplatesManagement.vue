@@ -237,6 +237,7 @@
     <ProjectTemplateModal
       v-if="showCreateTemplateModal || showEditTemplateModal"
       :template="selectedTemplate"
+      :isVisible="showCreateTemplateModal || showEditTemplateModal"
       @close="closeTemplateModal"
       @saved="handleTemplateSaved"
     />
@@ -329,8 +330,17 @@ export default {
     }
     
     const editTemplate = (template) => {
+      console.log('🔧 Édition du template demandée:', template)
+      console.log('📋 Clés du template:', Object.keys(template))
+      console.log('📝 Nom du template:', template.name)
+      
       selectedTemplate.value = template
       showEditTemplateModal.value = true
+      
+      console.log('✅ État après édition:', {
+        selectedTemplate: selectedTemplate.value,
+        showEditTemplateModal: showEditTemplateModal.value
+      })
     }
     
     const manageWidgets = (template) => {

@@ -3,7 +3,17 @@ import axios from 'axios'
 
 class HistoryService {
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const apiEnv = import.meta.env.VITE_API_URL
+    const backendEnv = import.meta.env.VITE_BACKEND_URL
+    const host = typeof window !== 'undefined' ? window.location.hostname : ''
+    const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
+    this.baseURL = isLocalNetworkHost
+      ? ''
+      : (apiEnv && apiEnv.startsWith('http')
+          ? apiEnv.replace(/\/+$/, '')
+          : backendEnv && backendEnv.startsWith('http')
+            ? backendEnv.replace(/\/+$/, '')
+            : '')
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 10000,

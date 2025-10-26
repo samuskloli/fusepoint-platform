@@ -128,6 +128,15 @@
         <!-- Vue liste -->
         <div v-else class="files-list">
           <div class="list-header">
+            <div class="header-cell select">
+              <input 
+                type="checkbox" 
+                :checked="selectedFiles.length > 0 && selectedFiles.length === filteredFiles.length"
+                :indeterminate="selectedFiles.length > 0 && selectedFiles.length < filteredFiles.length"
+                @change="toggleSelectAll"
+                class="select-all-checkbox"
+              />
+            </div>
             <div class="header-cell name">{{ t('widgets.files.name') }}</div>
             <div class="header-cell size">{{ t('widgets.files.size') }}</div>
             <div class="header-cell type">{{ t('widgets.files.type') }}</div>
@@ -143,9 +152,18 @@
               'selected': selectedFiles.some((f: FileItem) => f.id === file.id),
               'folder': isFolder(file)
             }"
-            @click="handleFileClick(file)"
             @dblclick="handleFileDoubleClick(file)"
           >
+            <div class="list-cell select">
+              <label class="select-checkbox-list" @click.stop="handleFileClick(file)">
+                <input
+                  type="checkbox"
+                  :checked="selectedFiles.some((f: FileItem) => f.id === file.id)"
+                  @change.stop
+                />
+              </label>
+            </div>
+            
             <div class="list-cell name">
               <div class="file-icon-small">
                 <i v-if="isFolder(file)" class="fas fa-folder text-blue-500"></i>
@@ -153,7 +171,13 @@
               </div>
               <div class="file-info">
                 <div class="file-name-wrapper">
-                  <span class="file-name">{{ file.name }}</span>
+                  <span 
+                    class="file-name" 
+                    :class="{ 'folder-name': isFolder(file) }"
+                    @click="isFolder(file) ? navigateToPath([...currentPath, file.name]) : previewFile(file)"
+                  >
+                    {{ file.name }}
+                  </span>
                   <span v-if="!isFolder(file)" class="file-type">{{ getFileTypeLabel(file.mime_type) }}</span>
                   <span v-if="!isFolder(file)" class="owner-badge" :class="{ you: isOwnedByCurrentUser(file), agent: isUploadedByAgent(file) }">
                     {{ isOwnedByCurrentUser(file) ? t('widgets.files.uploadedByYou') : (isUploadedByAgent(file) ? t('widgets.files.uploadedByAgent') : '') }}
@@ -809,6 +833,9 @@ const observeVisibility = (el: any, id: string): void => {
 const toAbsoluteUrl = (u?: string): string => {
   if (!u) return ''
   try {
+    // Recognize signed token like "<base64url>.<hex>" and wrap into API path
+    const tokenPattern = /^[A-Za-z0-9_-]+\.[0-9a-f]{64}$/
+    if (tokenPattern.test(u)) return `/api/files/signed/${u}`
     if (u.startsWith('/uploads')) return u
     if (u.startsWith('data:') || /^https?:\/\//.test(u)) return u
     const base = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL || (http as any)?.defaults?.baseURL || window.location.origin
@@ -821,9 +848,7 @@ const toAbsoluteUrl = (u?: string): string => {
 
 const buildThumbnailUrl = (file: FileItem, size: number = 256): string => {
   const id = String((file as any).id)
-  const base = (import.meta as any).env?.VITE_BACKEND_URL || (import.meta as any).env?.VITE_API_URL || (http as any)?.defaults?.baseURL || window.location.origin
-  const cleanBase = String(base || '').replace(/\/$/, '')
-  return `${cleanBase}/api/thumbnails/${encodeURIComponent(id)}?size=${size}`
+  return `/api/thumbnails/${encodeURIComponent(id)}?size=${size}`
 }
 
 const getPreviewSrc = (file: FileItem): string => {
@@ -942,9 +967,19 @@ const canManageFile = (file: FileItem): boolean => {
 
 const handleFileClick = (file: FileItem): void => {
   if (selectedFiles.value.some((f: FileItem) => f.id === file.id)) {
+    // Désélectionner le fichier
     selectedFiles.value = selectedFiles.value.filter((f: FileItem) => f.id !== file.id)
   } else {
-    selectedFiles.value = [file]
+    // Ajouter le fichier à la sélection (sélection multiple)
+    selectedFiles.value = [...selectedFiles.value, file]
+  }
+}
+
+const toggleSelectAll = (): void => {
+  if (selectedFiles.value.length === filteredFiles.value.length) {
+    selectedFiles.value = []
+  } else {
+    selectedFiles.value = [...filteredFiles.value]
   }
 }
 
@@ -1129,11 +1164,19 @@ const createNewFolder = async (): Promise<void> => {
     const response = await api.createFolder(folderName, parentPath)
     if (response.success) {
       success(t('widgets.files.folderCreated') || 'Dossier créé')
-      await loadFiles()
+      try {
+        await loadFiles()
+      } catch (loadError) {
+        console.warn('Erreur lors du rechargement des fichiers après création du dossier:', loadError)
+        // Le dossier a été créé avec succès, mais le rechargement a échoué
+        // On affiche un message informatif plutôt qu'une erreur
+        showError(t('widgets.files.folderCreatedButRefreshFailed') || 'Dossier créé avec succès. Veuillez rafraîchir manuellement.')
+      }
     } else {
       throw new Error((response as any).error || t('widgets.files.createFolderError') || 'Erreur lors de la création du dossier')
     }
   } catch (err) {
+    console.error('Erreur lors de la création du dossier:', err)
     showError(err instanceof Error ? err.message : t('widgets.files.createFolderError') || 'Erreur lors de la création du dossier')
   } finally {
     loading.value = false
@@ -1622,5 +1665,39 @@ onUnmounted(() => {
 
 .pagination-info {
   @apply text-sm text-gray-600;
+}
+
+/* Styles pour les cases à cocher */
+.header-cell.select {
+  @apply w-12 flex items-center justify-center;
+}
+
+.list-cell.select {
+  @apply w-12 flex items-center justify-center;
+}
+
+.select-checkbox-list {
+  @apply cursor-pointer p-1 rounded hover:bg-gray-100 transition-colors flex items-center justify-center;
+}
+
+.select-checkbox-list input {
+  @apply w-4 h-4 cursor-pointer;
+}
+
+.select-all-checkbox {
+  @apply w-4 h-4 cursor-pointer;
+}
+
+/* Styles pour les noms de fichiers et dossiers */
+.file-name {
+  @apply cursor-pointer hover:text-blue-600 transition-colors;
+}
+
+.file-name.folder-name {
+  @apply text-blue-600 font-medium;
+}
+
+.file-name.folder-name:hover {
+  @apply text-blue-800 underline;
 }
 </style>

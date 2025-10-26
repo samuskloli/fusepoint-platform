@@ -1,0 +1,7 @@
+{
+  "name": "fusepoint/core",
+  "version": "1.0.0",
+  "widgets": [
+    { "id": "stats-card", "entry": "/widgets/stats-card/index.umd.js", "style": "/widgets/stats-card/style.css", "areas": ["dashboard-home"] }
+  ]
+}

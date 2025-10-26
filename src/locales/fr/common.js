@@ -97,5 +97,51 @@ export default {
   "label": "Libellé",
   "p": "Paragraphe",
   "actions.save": "Enregistrer",
-  "actions.cancel": "Annuler"
+  "actions.cancel": "Annuler",
+  
+  // Messages de confirmation et d'alerte
+  "confirmations": {
+    "deleteWidget": "Êtes-vous sûr de vouloir supprimer le widget \"{widgetName}\" ?",
+    "addWidgetsToDatabase": "Ajouter {count} widgets à la base de données ?",
+    "deleteEvent": "Êtes-vous sûr de vouloir supprimer cet événement ?",
+    "deleteAssociation": "Êtes-vous sûr de vouloir supprimer cette association ?",
+    "deleteTask": "Êtes-vous sûr de vouloir supprimer cette tâche ?",
+    "deleteSetting": "Êtes-vous sûr de vouloir supprimer ce paramètre ?",
+    "stopCampaign": "Êtes-vous sûr de vouloir arrêter cette campagne ?",
+    "cancelInvitation": "Êtes-vous sûr de vouloir annuler cette invitation ?",
+    "removeMember": "Êtes-vous sûr de vouloir retirer {name} du projet ?",
+    "initializeBlocks": "Êtes-vous sûr de vouloir initialiser tous les blocs avec leurs valeurs par défaut ?",
+    "deleteFolder": "Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?",
+    "deleteFile": "Êtes-vous sûr de vouloir supprimer ce fichier ?",
+    "deleteMultipleFiles": "Êtes-vous sûr de vouloir supprimer {count} fichier(s) ?",
+    "resetBlock": "Êtes-vous sûr de vouloir réinitialiser le bloc \"{blockTitle}\" ?",
+    "initializeAllBlocks": "Êtes-vous sûr de vouloir initialiser tous les blocs avec leurs valeurs par défaut ?",
+    "reloadPage": "Voulez-vous recharger la page maintenant pour appliquer les changements ?"
+  },
+  
+  // Messages d'alerte et de notification
+  "socialMedia": {
+    "confirmAutoRepair": "Problèmes détectés:\n{issues}\n\nVoulez-vous tenter une réparation automatique?"
+  },
+  "alerts": {
+    "error": "Erreur",
+    "success": "Succès",
+    "profileUpdated": "Profil mis à jour avec succès !",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "passwordUpdated": "Mot de passe mis à jour avec succès !",
+    "accountDeleted": "Compte supprimé avec succès",
+    "optimizationSuggestions": "Suggestions d'optimisation disponibles dans la section Agents IA",
+    "invitationSent": "Invitation envoyée avec succès!",
+    "invitationCanceled": "Invitation annulée avec succès!",
+    "invitationResent": "Invitation renvoyée avec succès!",
+    "roleUpdateError": "Erreur lors de la mise à jour du rôle",
+    "permissionsUpdateError": "Erreur lors de la mise à jour des permissions",
+    "eventUpdateError": "Erreur lors de la mise à jour de l'événement",
+    "eventCreateError": "Erreur lors de la création de l'événement",
+    "providerInviteError": "Erreur lors de l'invitation du prestataire",
+    "progressUpdateError": "Erreur lors de la mise à jour de la progression. Veuillez réessayer.",
+    "invitationSendError": "Erreur lors de l'envoi de l'invitation",
+    "invitationCancelError": "Erreur lors de l'annulation de l'invitation",
+    "invitationResendError": "Erreur lors du renvoi de l'invitation"
+  }
 };

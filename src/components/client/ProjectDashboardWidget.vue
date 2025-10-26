@@ -2,60 +2,56 @@
   <div class="project-dashboard-widget">
     <div class="project-header">
       <div class="project-info">
-        <h2>{{ project.nom }}</h2>
-        <p v-if="project.description" class="project-description">{{ project.description }}</p>
+        <h2>{{ project?.title || project?.name || t('projects.project') }}</h2>
+        <p class="project-description" v-if="project?.description">{{ project.description }}</p>
         <div class="project-meta">
-          <span :class="['project-status', `status-${project.statut}`]">
-            <i :class="getStatusIcon(project.statut)"></i>
-            {{ t(`projects.status.${project.statut}`) }}
+          <span class="project-status">
+            <i class="fas fa-circle status-indicator" :class="{
+              'status-pending': project?.status === 'pending',
+              'status-in-progress': project?.status === 'in_progress',
+              'status-completed': project?.status === 'completed',
+              'status-on-hold': project?.status === 'on_hold',
+              'status-cancelled': project?.status === 'cancelled'
+            }"></i>
+            {{ t(`projects.status.${project?.status || 'unknown'}`) }}
           </span>
-          <span :class="['project-priority', `priority-${project.priorite}`]">
-            <i class="fas fa-flag"></i>
-            {{ t(`projects.priority.${project.priorite}`) }}
+          <span class="project-dates" v-if="project?.startDate || project?.endDate">
+            <i class="fas fa-calendar"></i>
+            {{ formatDate(project?.startDate) }} → {{ formatDate(project?.endDate) }}
           </span>
-          <span v-if="project.date_fin_prevue" class="project-deadline">
-            <i class="fas fa-calendar-alt"></i>
-            {{ formatDate(project.date_fin_prevue) }}
+          <span class="project-widgets">
+            <i class="fas fa-puzzle-piece"></i>
+            {{ t('projects.widgetsCount', { count: projectWidgets.length }) }}
           </span>
         </div>
       </div>
       <div class="project-actions">
-        <button class="btn btn-outline" @click="toggleWidgetsView">
+        <button class="btn btn-primary" @click="refreshProject">
+          <i class="fas fa-sync-alt"></i>
+          {{ t('actions.refresh') }}
+        </button>
+        <button class="btn btn-secondary" @click="toggleWidgetsView">
           <i :class="showAllWidgets ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
-          {{ showAllWidgets ? t('projects.showActiveWidgets') : t('projects.showAllWidgets') }}
-        </button>
-        <button class="btn btn-outline" :disabled="loading" @click="refreshProject">
-          <i :class="['fas', 'fa-sync', { 'fa-spin': loading }]"></i>
-          {{ t('common.refresh') }}
+          {{ showAllWidgets ? t('projects.hideDisabled') : t('projects.showAll') }}
         </button>
       </div>
     </div>
 
-    <div v-if="projectProgress" class="progress-section">
-      <div class="progress-header">
-        <span class="progress-label">{{ t('projects.progress') }}</span>
-        <span class="progress-value">{{ Math.round(projectProgress.percentage) }}%</span>
-      </div>
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: `${projectProgress.percentage}%` }"></div>
-      </div>
-      <div class="progress-details">
-        {{ t('projects.progressDetails', { completed: projectProgress.completed, total: projectProgress.total }) }}
-      </div>
-    </div>
-
-    <div v-if="!loading && displayedWidgets.length > 0" class="widgets-container">
-      <div v-for="widget in displayedWidgets" :key="widget.id" :class="['widget-wrapper']">
+    <div v-if="displayedWidgets.length" class="widgets-grid">
+      <div v-for="widget in displayedWidgets" :key="widget.id" class="widget-card" :class="{ 'widget-disabled': !widget.is_enabled }">
         <div class="widget-header">
           <div class="widget-title">
-            <i :class="getWidgetIcon(widget.component_name)"></i>
-            <h3>{{ widget.nom }}</h3>
+            <i :class="getWidgetIcon(widget.component_name)" class="widget-icon"></i>
+            <span>{{ widget.name || t('widgets.widget') }}</span>
           </div>
-          <span v-if="!widget.is_enabled" class="status-badge disabled">{{ t('projects.widgetDisabled') }}</span>
-          <span v-else :class="['status-badge', { 'completed': widget.etat === 'completed', 'in-progress': widget.etat === 'in_progress', 'pending': widget.etat === 'pending' }]"></span>
+          <span class="widget-status" :class="`status-${widget.etat || 'unknown'}`">
+            <i :class="getStatusIcon(widget.etat)"></i>
+            {{ t(`widgets.status.${widget.etat || 'unknown'}`) }}
+          </span>
         </div>
+        
         <div class="widget-content">
-          <div v-if="!hasWidgetPermission(widget)" class="widget-disabled-message">
+          <div v-if="!hasWidgetPermission(widget)" class="no-permission">
             <i class="fas fa-lock"></i>
             {{ t('projects.noPermission') }}
           </div>
@@ -83,6 +79,7 @@ import { useTranslation } from '@/composables/useTranslation'
 import projectTemplateService from '@/services/projectTemplateService'
 import { useToast } from '@/composables/useToast'
 import { useAuth } from '@/composables/useAuth'
+import { componentNameToIcon } from '@/utils/widgetsMap'
 
 // Import direct des widgets
 import ChecklistWidget from '@/components/widgets/ChecklistWidget.vue'
@@ -100,6 +97,12 @@ import FeedbackWidget from '@/components/widgets/FeedbackWidget.vue'
 import FeatureTrackingWidget from '@/components/widgets/FeatureTrackingWidget.vue'
 import VersioningWidget from '@/components/widgets/VersioningWidget.vue'
 import DeliverablesWidget from '@/components/widgets/DeliverablesWidget.vue'
+import WidgetCard from '@/components/widgets/WidgetCard.vue'
+import ProjectOverviewWidget from '@/components/widgets/ProjectOverviewWidget.vue'
+import TasksWidget from '@/components/widgets/project-management/tasks/TasksWidget.vue'
+import BudgetWidget from '@/components/widgets/BudgetWidget.vue'
+
+import NotesWidget from '@/components/widgets/NotesWidget.vue'
 
 const widgetComponents = {
   ChecklistWidget,
@@ -117,12 +120,12 @@ const widgetComponents = {
   FeatureTrackingWidget,
   VersioningWidget,
   DeliverablesWidget,
-  // Aliases pour les composants de la base de données
-  ProjectOverviewWidget: BaseWidget,
-  TasksWidget: TaskListWidget,
-  BudgetWidget: BaseWidget,
-  DocumentsWidget: FilesWidget,
-  NotesWidget: CommentsWidget
+  WidgetCard,
+  ProjectOverviewWidget,
+  TasksWidget,
+  BudgetWidget,
+
+  NotesWidget
 }
 
 export default {
@@ -142,7 +145,13 @@ export default {
     FeedbackWidget,
     FeatureTrackingWidget,
     VersioningWidget,
-    DeliverablesWidget
+    DeliverablesWidget,
+    WidgetCard,
+    ProjectOverviewWidget,
+    TasksWidget,
+    BudgetWidget,
+
+    NotesWidget
   },
   props: {
     project: {
@@ -172,31 +181,7 @@ export default {
     })
     
     // Méthodes utilitaires
-    const getWidgetIcon = (componentName) => {
-      const iconMap = {
-        'ChecklistWidget': 'fas fa-tasks',
-        'GoalsWidget': 'fas fa-bullseye',
-        'FilesWidget': 'fas fa-folder',
-        'CommentsWidget': 'fas fa-comments',
-        'AIWidget': 'fas fa-robot',
-        'CalendarWidget': 'fas fa-calendar',
-        'StatsWidget': 'fas fa-chart-bar',
-        'TaskListWidget': 'fas fa-list',
-        'TeamWidget': 'fas fa-users',
-        'HistoryWidget': 'fas fa-history',
-        'BaseWidget': 'fas fa-puzzle-piece',
-        'FeedbackWidget': 'fas fa-comment-dots',
-        'FeatureTrackingWidget': 'fas fa-road',
-        'VersioningWidget': 'fas fa-code-branch',
-        // Icônes pour les composants de la base de données
-        'ProjectOverviewWidget': 'fas fa-project-diagram',
-        'TasksWidget': 'fas fa-tasks',
-        'BudgetWidget': 'fas fa-euro-sign',
-        'DocumentsWidget': 'fas fa-folder',
-        'NotesWidget': 'fas fa-sticky-note'
-      }
-      return iconMap[componentName] || 'fas fa-puzzle-piece'
-    }
+    const getWidgetIcon = (componentName) => componentNameToIcon(componentName)
     
     const getWidgetComponent = (componentName) => {
       return widgetComponents[componentName] || null
@@ -391,239 +376,106 @@ export default {
   border: 1px solid var(--border-color);
 }
 
-.status-pending { color: var(--warning-color); }
-.status-in_progress { color: var(--info-color); }
-.status-completed { color: var(--success-color); }
-.status-on_hold { color: var(--secondary-color); }
-.status-cancelled { color: var(--danger-color); }
-
-.project-priority {
+.project-dates {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
 }
 
-.priority-low { color: var(--success-color); }
-.priority-medium { color: var(--warning-color); }
-.priority-high { color: var(--danger-color); }
-
-.project-deadline {
+.project-widgets {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: var(--text-secondary);
 }
+
+.status-indicator {
+  font-size: 0.6rem;
+}
+
+.status-pending { color: #f59e0b; }
+.status-in-progress { color: #3b82f6; }
+.status-completed { color: #10b981; }
+.status-on-hold { color: #6b7280; }
+.status-cancelled { color: #ef4444; }
 
 .project-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
-.progress-section {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.progress-header {
-  display: flex;
-  justify-content: space-between;
+.btn {
+  display: inline-flex;
   align-items: center;
-  margin-bottom: 1rem;
-}
-
-.progress-label {
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.progress-value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.progress-bar {
-  width: 100%;
-  height: 12px;
-  background: var(--bg-tertiary);
-  border-radius: 6px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--success-color));
-  transition: width 0.3s ease;
-}
-
-.progress-details {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.widgets-container {
-  display: grid;
-  gap: 2rem;
-}
-
-.widget-wrapper {
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-color);
   background: var(--bg-secondary);
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.btn-secondary {
+  background: var(--bg-secondary);
+}
+
+.widgets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.widget-card {
   border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   overflow: hidden;
-  transition: all 0.2s ease;
 }
 
-.widget-wrapper:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.widget-card.widget-disabled {
+  opacity: 0.7;
 }
-
-
 
 .widget-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
 }
 
 .widget-title {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.widget-title i {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary-color);
-  color: white;
-  border-radius: 0.5rem;
-  font-size: 1.2rem;
-}
-
-.widget-title h3 {
-  margin: 0;
-  color: var(--text-primary);
-  font-size: 1.1rem;
-}
-
-.status-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.8rem;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.status-badge.disabled {
-  background: var(--bg-tertiary);
-  color: var(--text-tertiary);
-}
-
-.status-badge.pending {
-  background: rgba(var(--warning-color-rgb), 0.1);
-  color: var(--warning-color);
-}
-
-.status-badge.in-progress {
-  background: rgba(var(--info-color-rgb), 0.1);
-  color: var(--info-color);
-}
-
-.status-badge.completed {
-  background: rgba(var(--success-color-rgb), 0.1);
-  color: var(--success-color);
-}
-
-.widget-content {
-  padding: 1.5rem;
-}
-
-
-
-.loading-state,
-.empty-state {
-  text-align: center;
-  padding: 4rem 2rem;
-  color: var(--text-secondary);
-}
-
-.loading-state i,
-.empty-state i {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  color: var(--text-tertiary);
-}
-
-.empty-state h3 {
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
-}
-
-.btn {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
   gap: 0.5rem;
 }
 
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+.widget-icon {
+  color: var(--primary);
 }
 
-.btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.widget-content {
+  padding: 1rem;
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2rem;
 }
 
-@media (max-width: 768px) {
-  .project-dashboard-widget {
-    padding: 1rem;
-  }
-  
-  .project-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .project-actions {
-    justify-content: center;
-  }
-  
-  .project-meta {
-    justify-content: center;
-  }
-  
-  .widget-header {
-    flex-direction: column;
-    gap: 1rem;
-    align-items: stretch;
-  }
-  
-  .widget-title {
-    justify-content: center;
-  }
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-secondary);
+}
+
+.empty-state i {
+  font-size: 2rem;
+  color: var(--primary);
 }
 </style>

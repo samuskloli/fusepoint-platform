@@ -120,13 +120,59 @@
 
           <!-- Widgets -->
           <div class="form-section">
-            <h4 class="section-title">{{ t('projectTemplates.widgets') }}</h4>
+            <div class="section-header">
+              <h4 class="section-title">{{ t('projectTemplates.widgets') }}</h4>
+              
+              <!-- Filtres et recherche -->
+              <div class="widgets-filters">
+                <div class="search-box">
+                  <i class="fas fa-search search-icon"></i>
+                  <input
+                    v-model="widgetSearchQuery"
+                    type="text"
+                    class="search-input"
+                    :placeholder="t('projectTemplates.searchWidgets')"
+                  >
+                </div>
+                
+                <div class="filter-buttons">
+                  <button
+                    @click="widgetFilter = 'all'"
+                    type="button"
+                    class="filter-btn"
+                    :class="{ active: widgetFilter === 'all' }"
+                  >
+                    {{ t('projectTemplates.allWidgets') }}
+                  </button>
+                  <button
+                    @click="widgetFilter = 'developed'"
+                    type="button"
+                    class="filter-btn"
+                    :class="{ active: widgetFilter === 'developed' }"
+                  >
+                    {{ t('projectTemplates.developedWidgets') }}
+                  </button>
+                  <button
+                    @click="widgetFilter = 'undeveloped'"
+                    type="button"
+                    class="filter-btn"
+                    :class="{ active: widgetFilter === 'undeveloped' }"
+                  >
+                    {{ t('projectTemplates.undevelopedWidgets') }}
+                  </button>
+                </div>
+              </div>
+            </div>
+            
             <div class="widgets-grid">
               <div
-                v-for="widget in availableWidgets"
+                v-for="widget in filteredWidgets"
                 :key="widget.id"
                 class="widget-card"
-                :class="{ active: isWidgetSelected(widget.id) }"
+                :class="{ 
+                  active: isWidgetSelected(widget.id),
+                  undeveloped: !isWidgetDeveloped(widget.component_name)
+                }"
                 @click="toggleWidget(widget)"
               >
                 <div class="widget-header">
@@ -134,7 +180,12 @@
                     <i :class="widget.icon"></i>
                   </div>
                   <div class="widget-info">
-                    <div class="widget-name">{{ widget.name }}</div>
+                    <div class="widget-name-container">
+                      <div class="widget-name">{{ widget.name }}</div>
+                      <div v-if="!isWidgetDeveloped(widget.component_name)" class="undeveloped-badge">
+                        {{ t('projectTemplates.notDeveloped') }}
+                      </div>
+                    </div>
                     <div class="widget-description">{{ widget.description }}</div>
                   </div>
                   <div class="widget-toggle">
@@ -143,10 +194,11 @@
                       @change="toggleWidget(widget)"
                       type="checkbox"
                       class="widget-checkbox"
+                      :disabled="!isWidgetDeveloped(widget.component_name)"
                     >
                   </div>
                 </div>
-                
+
                 <!-- Configuration du widget -->
                 <div v-if="isWidgetSelected(widget.id)" class="widget-config">
                   <div class="config-grid">
@@ -301,7 +353,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import projectTemplateService from '@/services/projectTemplateService'
 import { useNotifications } from '@/composables/useNotifications'
 import { useTranslation } from '@/composables/useTranslation'
@@ -329,12 +381,39 @@ export default {
     const availableWidgets = ref([])
     const selectedWidgets = ref([])
     
+    // Nouveaux états pour les filtres
+    const widgetSearchQuery = ref('')
+    const widgetFilter = ref('all') // 'all', 'developed', 'undeveloped'
+    
+    // Liste des widgets non développés (basée sur l'analyse précédente)
+    const undevelopedWidgets = ref([
+      'ProjectOverviewWidget',
+      'BudgetWidget', 
+      'BrandGuideWidget',
+      'SEOChecklistWidget',
+      'TrackingChecklistWidget',
+      'DevelopmentWidget',
+
+      'LogoPreviewWidget',
+      'NotesWidget',
+      'ColorPaletteWidget',
+      'ProjectPlanningWidget',
+      'ResourcesWidget',
+      'RoadmapWidget',
+      'SocialMediaWidget',
+      'TestingWidget',
+      'TimelineWidget',
+      'UserFeedbackWidget',
+      'WebsitePreviewWidget'
+    ])
+    
     // Données du modèle
     const templateData = ref({
       name: '',
       description: '',
       category: '',
       estimated_duration: null,
+      estimated_budget: null,
       duration_unit: 'days',
       default_priority: 'medium',
       tags: [],
@@ -362,7 +441,10 @@ export default {
         .map(widgetId => {
           const widget = availableWidgets.value.find(w => w.id === widgetId)
           const config = getWidgetConfig(widgetId)
-          return {...widget, config}
+          return {
+            ...(widget || { id: widgetId, name: 'Widget', icon: 'fas fa-puzzle-piece' }),
+            config
+          }
         })
         .sort((a, b) => {
           if (a.config.position_y !== b.config.position_y) {
@@ -372,29 +454,113 @@ export default {
         })
     })
     
+    // Propriété calculée pour les widgets filtrés
+    const filteredWidgets = computed(() => {
+      let filtered = availableWidgets.value
+      
+      // Filtrage par recherche
+      if (widgetSearchQuery.value.trim()) {
+        const query = widgetSearchQuery.value.toLowerCase()
+        filtered = filtered.filter(widget => 
+          widget.name.toLowerCase().includes(query) ||
+          widget.description.toLowerCase().includes(query) ||
+          widget.category.toLowerCase().includes(query)
+        )
+      }
+      
+      // Filtrage par statut de développement
+      if (widgetFilter.value === 'developed') {
+        filtered = filtered.filter(widget => isWidgetDeveloped(widget.component_name))
+      } else if (widgetFilter.value === 'undeveloped') {
+        filtered = filtered.filter(widget => !isWidgetDeveloped(widget.component_name))
+      }
+      
+      return filtered
+    })
+    
     // Configuration des widgets
     const widgetConfigs = ref({})
     
     // Méthodes
     const loadAvailableWidgets = async () => {
+      // Éviter les chargements multiples
+      if (availableWidgets.value.length > 0) {
+        console.log('🔄 Widgets déjà chargés, éviter le rechargement')
+        return
+      }
+      
       try {
+        console.log('📦 Chargement des widgets disponibles...')
         const result = await projectTemplateService.getWidgets()
         if (result.success) {
           availableWidgets.value = result.data
+          console.log('✅ Widgets chargés:', result.data.length)
+        } else {
+          console.error('❌ Erreur lors du chargement des widgets:', result.message)
+          showError(result.message || t('errors.loadingFailed'))
         }
       } catch (err) {
+        console.error('❌ Exception lors du chargement des widgets:', err)
         showError(t('errors.loadingFailed'))
       }
     }
     
-    const initializeTemplate = () => {
+    const initializeTemplate = async () => {
+      console.log('🔄 Initialisation du template:', {
+        hasTemplate: !!props.template,
+        template: props.template,
+        isVisible: props.isVisible
+      })
+      
+      // Attendre que le DOM soit prêt
+      await nextTick()
+      
       if (props.template) {
         // Mode édition
+        console.log('📝 Mode édition - Template reçu:', props.template)
+        
+        // Réinitialisation complète avant remplissage
+        templateData.value = {
+          name: '',
+          description: '',
+          category: '',
+          estimated_duration: null,
+          estimated_budget: null,
+          duration_unit: 'days',
+          default_priority: 'medium',
+          tags: [],
+          is_public: false,
+          allow_customization: true
+        }
+        
+        // Attendre un tick pour la réinitialisation
+        await nextTick()
+        
+        // Remplir avec les données du template
         templateData.value = {
           ...templateData.value,
           ...props.template,
           tags: [...(props.template.tags || [])]
         }
+        
+        console.log('✅ Template data après initialisation:', templateData.value)
+        
+        // Mécanisme de fallback - vérifier après 100ms
+        setTimeout(() => {
+          if (!templateData.value.name && props.template?.name) {
+            console.log('🚨 Fallback activé - Forçage du remplissage')
+            templateData.value.name = props.template.name
+            templateData.value.description = props.template.description || ''
+            templateData.value.category = props.template.category || ''
+            templateData.value.estimated_duration = props.template.estimated_duration
+            templateData.value.duration_unit = props.template.duration_unit || 'days'
+            templateData.value.default_priority = props.template.default_priority || 'medium'
+            templateData.value.tags = [...(props.template.tags || [])]
+            templateData.value.is_public = props.template.is_public || false
+            templateData.value.allow_customization = props.template.allow_customization !== false
+            console.log('✅ Fallback terminé:', templateData.value)
+          }
+        }, 100)
         
         // Charger la configuration des widgets
         if (props.template.widgets) {
@@ -413,11 +579,13 @@ export default {
         }
       } else {
         // Mode création - réinitialiser
+        console.log('🆕 Mode création - Réinitialisation du formulaire')
         templateData.value = {
           name: '',
           description: '',
           category: '',
           estimated_duration: null,
+          estimated_budget: null,
           duration_unit: 'days',
           default_priority: 'medium',
           tags: [],
@@ -426,6 +594,7 @@ export default {
         }
         selectedWidgets.value = []
         widgetConfigs.value = {}
+        console.log('✅ Formulaire réinitialisé pour création')
       }
     }
     
@@ -445,7 +614,17 @@ export default {
       return selectedWidgets.value.includes(widgetId)
     }
     
+    const isWidgetDeveloped = (componentName) => {
+      return !undevelopedWidgets.value.includes(componentName)
+    }
+    
     const toggleWidget = (widget) => {
+      // Empêcher la sélection des widgets non développés
+      if (!isWidgetDeveloped(widget.component_name)) {
+        showError(t('projectTemplates.widgetNotDeveloped', { name: widget.name }))
+        return
+      }
+      
       const index = selectedWidgets.value.indexOf(widget.id)
       
       if (index > -1) {
@@ -492,18 +671,52 @@ export default {
     }
     
     const saveTemplate = async () => {
-      if (!isFormValid.value) return
+      if (!isFormValid.value) {
+        console.warn('⚠️ Formulaire invalide, sauvegarde annulée')
+        return
+      }
       
       loading.value = true
       
       try {
+        // Validation des données avant envoi
+        if (!templateData.value.name.trim()) {
+          showError(t('errors.nameRequired'))
+          return
+        }
+        
+        if (selectedWidgets.value.length === 0) {
+          showError(t('errors.noWidgetsSelected'))
+          return
+        }
+        
         const templatePayload = {
           ...templateData.value,
-          widgets: selectedWidgets.value.map(widgetId => ({
-            widget_id: widgetId,
-            ...widgetConfigs.value[widgetId]
-          }))
+          name: templateData.value.name.trim(),
+          description: templateData.value.description.trim(),
+          // Ajouter les champs requis par le backend
+          estimated_budget: templateData.value.estimated_budget || null,
+          widgets: selectedWidgets.value.map(widgetId => {
+            const config = widgetConfigs.value[widgetId] || {
+              position_x: 0,
+              position_y: 0,
+              width: 4,
+              height: 2,
+              is_enabled: true,
+              config: {}
+            }
+            return {
+              widget_id: widgetId,
+              ...config
+            }
+          })
         }
+        
+        console.log('💾 Sauvegarde du template:', {
+          isEditing: isEditing.value,
+          templateId: props.template?.id,
+          payload: templatePayload
+        })
         
         let result
         if (isEditing.value) {
@@ -512,13 +725,19 @@ export default {
           result = await projectTemplateService.createTemplate(templatePayload)
         }
         
+        console.log('📤 Résultat de la sauvegarde:', result)
+        
         if (result.success) {
           success(isEditing.value ? t('projectTemplates.templateUpdated') : t('projectTemplates.templateCreated'))
           emit('saved', result.data)
           closeModal()
+        } else {
+          console.error('❌ Erreur de sauvegarde:', result.error)
+          showError(result.error || t('errors.savingFailed'))
         }
       } catch (err) {
-        showError(t('errors.savingFailed'))
+        console.error('❌ Exception lors de la sauvegarde:', err)
+        showError(err.message || t('errors.savingFailed'))
       } finally {
         loading.value = false
       }
@@ -548,24 +767,58 @@ export default {
       emit('close')
     }
     
+    // Variables pour éviter les initialisations multiples
+    const isInitializing = ref(false)
+    const isWidgetsLoaded = ref(false)
+    
     // Watchers
-    watch(() => props.isVisible, (visible) => {
-      if (visible) {
-        initializeTemplate()
-        loadAvailableWidgets()
+    watch(() => props.isVisible, async (visible, oldVisible) => {
+      console.log('👁️ Changement de visibilité:', { visible, oldVisible })
+      if (visible && !isInitializing.value) {
+        console.log('🚀 Modale devenue visible - Initialisation...')
+        isInitializing.value = true
+        await initializeTemplate()
+        if (!isWidgetsLoaded.value) {
+          loadAvailableWidgets()
+          isWidgetsLoaded.value = true
+        }
+        isInitializing.value = false
+      } else if (!visible) {
+        // Reset les flags quand la modale se ferme
+        isInitializing.value = false
+        isWidgetsLoaded.value = false
       }
     })
     
-    watch(() => props.template, () => {
-      if (props.isVisible) {
-        initializeTemplate()
+    watch(() => props.template, async (newTemplate, oldTemplate) => {
+      console.log('📋 Changement de template:', { 
+        newTemplate, 
+        oldTemplate, 
+        isVisible: props.isVisible 
+      })
+      if (props.isVisible && !isInitializing.value && newTemplate !== oldTemplate) {
+        console.log('🔄 Template changé et modale visible - Réinitialisation...')
+        isInitializing.value = true
+        await initializeTemplate()
+        isInitializing.value = false
       }
     })
     
-    onMounted(() => {
-      if (props.isVisible) {
-        initializeTemplate()
-        loadAvailableWidgets()
+    onMounted(async () => {
+      console.log('🎯 Composant monté:', { 
+        isVisible: props.isVisible, 
+        hasTemplate: !!props.template,
+        template: props.template 
+      })
+      if (props.isVisible && !isInitializing.value) {
+        console.log('🚀 Modale visible au montage - Initialisation...')
+        isInitializing.value = true
+        await initializeTemplate()
+        if (!isWidgetsLoaded.value) {
+          loadAvailableWidgets()
+          isWidgetsLoaded.value = true
+        }
+        isInitializing.value = false
       }
     })
     
@@ -581,9 +834,13 @@ export default {
       projectPriorities,
       isFormValid,
       selectedWidgetsSorted,
+      filteredWidgets,
+      widgetSearchQuery,
+      widgetFilter,
       addTag,
       removeTag,
       isWidgetSelected,
+      isWidgetDeveloped,
       toggleWidget,
       getWidgetConfig,
       getWidgetPreviewStyle,
@@ -703,16 +960,60 @@ export default {
 }
 
 /* Widgets */
+.section-header {
+  @apply mb-6;
+}
+
+.widgets-filters {
+  @apply mt-4 space-y-4;
+}
+
+.search-box {
+  @apply relative;
+}
+
+.search-icon {
+  @apply absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm;
+}
+
+.search-input {
+  @apply w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors;
+}
+
+.filter-buttons {
+  @apply flex flex-wrap gap-2;
+}
+
+.filter-btn {
+  @apply px-4 py-2 text-sm font-medium rounded-lg border transition-colors;
+}
+
+.filter-btn:not(.active) {
+  @apply text-gray-700 bg-white border-gray-300 hover:bg-gray-50;
+}
+
+.filter-btn.active {
+  @apply text-blue-700 bg-blue-50 border-blue-300;
+}
+
 .widgets-grid {
   @apply grid grid-cols-1 lg:grid-cols-2 gap-4;
 }
 
 .widget-card {
-  @apply border border-gray-200 rounded-lg p-4 cursor-pointer transition-all hover:border-blue-300 hover:shadow-sm;
+  @apply border border-gray-200 rounded-lg p-4 cursor-pointer transition-all hover:border-blue-300 hover:shadow-md;
 }
 
 .widget-card.active {
   @apply border-blue-500 bg-blue-50;
+}
+
+.widget-card.undeveloped {
+  @apply border-orange-200 bg-orange-50 opacity-75;
+}
+
+.widget-card.undeveloped:hover {
+  @apply border-orange-300;
 }
 
 .widget-header {
@@ -731,8 +1032,16 @@ export default {
   @apply flex-1;
 }
 
+.widget-name-container {
+  @apply flex flex-col space-y-1;
+}
+
 .widget-name {
-  @apply text-sm font-medium text-gray-900;
+  @apply font-medium text-gray-900;
+}
+
+.undeveloped-badge {
+  @apply inline-flex items-center px-2 py-1 text-xs font-medium text-orange-800 bg-orange-100 rounded-full;
 }
 
 .widget-description {

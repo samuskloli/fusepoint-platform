@@ -510,6 +510,7 @@
 
 <script>
 import { ref, computed, onMounted } from 'vue'
+import { useTranslation } from '@/composables/useTranslation'
 import CreateFolderModal from './CreateFolderModal.vue'
 import FilePreviewModal from './FilePreviewModal.vue'
 import { projectManagementService } from '@/services/projectManagementService'
@@ -527,6 +528,9 @@ export default {
     }
   },
   setup(props) {
+    // Traduction
+    const { t } = useTranslation()
+    
     const files = ref([])
     const folders = ref([])
     const breadcrumb = ref([])
@@ -706,7 +710,7 @@ export default {
     }
 
     const deleteFolder = async (folderId) => {
-      if (confirm('Êtes-vous sûr de vouloir supprimer ce dossier et tout son contenu ?')) {
+      if (confirm(t('common.confirmations.deleteFolder'))) {
         try {
           await projectManagementService.deleteFolder(folderId)
           await loadFiles()
@@ -753,7 +757,7 @@ export default {
     }
 
     const deleteFile = async (fileId) => {
-      if (confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
+      if (confirm(t('common.confirmations.deleteFile'))) {
         try {
           await projectManagementService.deleteFile(fileId)
           await loadFiles()
@@ -766,7 +770,7 @@ export default {
     const deleteSelected = async () => {
       if (selectedItems.value.length === 0) return
       
-      if (confirm(`Êtes-vous sûr de vouloir supprimer ${selectedItems.value.length} fichier(s) ?`)) {
+      if (confirm(t('common.confirmations.deleteMultipleFiles', { count: selectedItems.value.length }))) {
         try {
           for (const fileId of selectedItems.value) {
             await projectManagementService.deleteFile(fileId)
@@ -804,6 +808,10 @@ export default {
     })
 
     return {
+      // Traduction
+      t,
+      
+      // État
       files,
       folders,
       breadcrumb,

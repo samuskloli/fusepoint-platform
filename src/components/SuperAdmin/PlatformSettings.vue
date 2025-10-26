@@ -318,11 +318,15 @@
 
 <script>
 import { ref, computed, onMounted, reactive } from 'vue';
+import { useTranslation } from '@/composables/useTranslation';
 import authService from '@/services/authService'
 
 export default {
   name: 'PlatformSettings',
   setup() {
+    // Traduction
+    const { t } = useTranslation();
+    
     // État réactif
     const loading = ref(false);
     const error = ref(null);
@@ -618,7 +622,7 @@ export default {
         return;
       }
       
-      if (!confirm(`Êtes-vous sûr de vouloir supprimer le paramètre "${setting.key}" ?`)) {
+      if (!confirm(t('common.confirmations.deleteSetting'))) {
         return;
       }
       
@@ -650,6 +654,9 @@ export default {
     });
 
     return {
+      // Traduction
+      t,
+      
       // État
       loading,
       error,

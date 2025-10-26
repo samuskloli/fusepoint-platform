@@ -655,9 +655,14 @@
 
 <script>
 import superAdminAPI from '../../services/superAdminAPI';
+import { useTranslation } from '@/composables/useTranslation';
 
 export default {
   name: 'UserManager',
+  setup() {
+    const { t } = useTranslation();
+    return { t };
+  },
   data() {
     return {
       users: [],
@@ -1009,7 +1014,7 @@ export default {
     },
 
     async removeUserFromCompany(companyId) {
-      if (!confirm('Êtes-vous sûr de vouloir supprimer cette association ?')) {
+      if (!confirm(this.t('common.confirmations.deleteAssociation'))) {
         return;
       }
 

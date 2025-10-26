@@ -119,8 +119,19 @@ class DatabaseService {
         }
       }
 
+      // === LinkPoint: créer les tables si absentes ===
+      await this.ensureLinkPointsSchema(conn);
+
+      console.log('✅ Base de schéma LinkPoint vérifiée');
+
+      // === Domaines personnalisés: créer la table si absente ===
+      await this.ensureCustomDomainsSchema(conn);
+      console.log('✅ Table domaines personnalisés vérifiée');
+
+      // Dossiers LinkPoint désactivés; aucune action requise.
+
       // Créer les tables pour les templates de projets et widgets
-      // S'assurer que la table widgets possède les colonnes étendues avant insertions
+      // S'assurer que la table widgets contient les colonnes étendues avant insertions
       try {
         await this.ensureWidgetsExtendedSchema(conn);
       } catch (e) {
@@ -169,7 +180,34 @@ class DatabaseService {
       // Charger le schéma des configurations de widgets par client
       if (fs.existsSync(this.clientWidgetConfigsSchemaPath)) {
         const clientWidgetsSchema = fs.readFileSync(this.clientWidgetConfigsSchemaPath, 'utf8');
-        const mariadbClientWidgetsSchema = this.adaptSchemaToMariaDB(clientWidgetsSchema);
+        let mariadbClientWidgetsSchema = this.adaptSchemaToMariaDB(clientWidgetsSchema);
+
+        // Appliquer le même filtrage si demandé, car ce schéma peut aussi insérer des templates
+        const skipDefaultTemplates = (
+          process.env.DISABLE_DEFAULT_TEMPLATES === '1' ||
+          String(process.env.DISABLE_DEFAULT_TEMPLATES || '').toLowerCase() === 'true'
+        );
+        if (skipDefaultTemplates) {
+          try {
+            const filteredClient = mariadbClientWidgetsSchema
+              .split(';')
+              .filter(q => {
+                const qt = q.trim();
+                if (!qt) return false;
+                const upper = qt.toUpperCase();
+                // Ne pas exécuter les INSERT vers project_templates ou project_template_widgets depuis ce schéma
+                if (upper.startsWith('INSERT') && upper.includes('INTO PROJECT_TEMPLATES')) return false;
+                if (upper.startsWith('INSERT') && upper.includes('INTO PROJECT_TEMPLATE_WIDGETS')) return false;
+                return true;
+              })
+              .join(';');
+            mariadbClientWidgetsSchema = filteredClient;
+            console.log('🚫 Templates par défaut ignorés dans client_widget_configs (DISABLE_DEFAULT_TEMPLATES activé)');
+          } catch (e) {
+            console.warn('⚠️ Filtrage des inserts (client_widget_configs) échoué:', e.message);
+          }
+        }
+
         await this.executeMultipleQueries(conn, mariadbClientWidgetsSchema);
         console.log('🧩 Tables client_widget_configs et templates initialisées avec succès');
       } else {
@@ -221,8 +259,14 @@ class DatabaseService {
     mariadbSchema = mariadbSchema.replace(/\bJSON\s*(?=,|\n|\r|\))/gi, 'LONGTEXT');
     mariadbSchema = mariadbSchema.replace(/\bJSON\s+NOT\s+NULL\b/gi, 'LONGTEXT NOT NULL');
     
-    // Ajouter IF NOT EXISTS seulement si pas déjà présent
+    // Ajouter IF NOT EXISTS sur CREATE TABLE si absent
     mariadbSchema = mariadbSchema.replace(/CREATE TABLE (?!IF NOT EXISTS)([^\s]+)/gi, 'CREATE TABLE IF NOT EXISTS $1');
+
+    // Adapter les index SQLite vers MariaDB
+    // - Supprimer IF NOT EXISTS sur CREATE INDEX (non supporté par certaines versions)
+    mariadbSchema = mariadbSchema.replace(/CREATE\s+INDEX\s+IF\s+NOT\s+EXISTS/gi, 'CREATE INDEX');
+    // - Échapper les colonnes réservées pour platform_settings
+    mariadbSchema = mariadbSchema.replace(/ON\s+platform_settings\s*\(\s*key\s*\)/gi, 'ON platform_settings (`key`)');
     
     return mariadbSchema;
   }
@@ -239,9 +283,10 @@ class DatabaseService {
         try {
           await conn.query(trimmedQuery);
         } catch (error) {
-          // Ignorer les erreurs de table déjà existante
-          if (!error.message.includes('already exists')) {
-            console.warn('⚠️ Erreur requête SQL:', trimmedQuery, error.message);
+          const msg = String(error.message || '');
+          // Ignorer les erreurs bénignes: table/index déjà existants
+          if (!msg.includes('already exists') && !msg.includes('Duplicate key name') && !msg.includes('ER_DUP_KEYNAME')) {
+            console.warn('⚠️ Erreur requête SQL:', trimmedQuery, msg);
           }
         }
       }
@@ -255,7 +300,9 @@ class DatabaseService {
     const alterQueries = [
       "ALTER TABLE files ADD COLUMN IF NOT EXISTS folder_path VARCHAR(255) DEFAULT '/'",
       "ALTER TABLE files ADD COLUMN IF NOT EXISTS is_deleted TINYINT(1) DEFAULT 0",
-      "ALTER TABLE files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS original_name VARCHAR(255)",
+      "ALTER TABLE files ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100) DEFAULT 'application/octet-stream'"
     ];
     for (const q of alterQueries) {
       try {
@@ -325,6 +372,104 @@ class DatabaseService {
       }
     }
   }
+
+  /**
+   * Créer les tables LinkPoint si elles n'existent pas
+   */
+  async ensureLinkPointsSchema(conn) {
+    const queries = [
+      `CREATE TABLE IF NOT EXISTS linkpoints (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type ENUM('external','generated','links') NOT NULL,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        logo_url VARCHAR(255),
+        theme JSON,
+        external_url VARCHAR(1024),
+        owner_user_id INT,
+        company_id INT,
+        archived TINYINT(1) DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS linkpoint_links (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        linkpoint_id INT NOT NULL,
+        label VARCHAR(255) NOT NULL,
+        url VARCHAR(1024) NOT NULL,
+        icon VARCHAR(100),
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (linkpoint_id) REFERENCES linkpoints(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS linkpoint_events (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        linkpoint_id INT NOT NULL,
+        event_type ENUM('scan','click') NOT NULL,
+        link_id INT NULL,
+        occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip VARCHAR(64),
+        user_agent VARCHAR(255),
+        referrer VARCHAR(1024),
+        country_code VARCHAR(3),
+        region VARCHAR(64),
+        device_type VARCHAR(32),
+        FOREIGN KEY (linkpoint_id) REFERENCES linkpoints(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS linkpoint_stats_daily (
+        id BIGINT AUTO_INCREMENT PRIMARY KEY,
+        linkpoint_id INT NOT NULL,
+        stat_date DATE NOT NULL,
+        scans INT DEFAULT 0,
+        clicks INT DEFAULT 0,
+        ctr DECIMAL(5,2) DEFAULT 0,
+        UNIQUE KEY uniq_lp_day (linkpoint_id, stat_date),
+        FOREIGN KEY (linkpoint_id) REFERENCES linkpoints(id) ON DELETE CASCADE
+      )`
+    ];
+
+    for (const q of queries) {
+      try {
+        await conn.query(q);
+      } catch (error) {
+        const msg = String(error.message || '');
+        if (!msg.includes('Duplicate') && !msg.includes("doesn't exist")) {
+          console.warn('⚠️ Erreur création tables LinkPoint:', error.message);
+        }
+      }
+    }
+  }
+
+  // Nouveau: Domaines personnalisés par entreprise
+  async ensureCustomDomainsSchema(conn) {
+    const queries = [
+      `CREATE TABLE IF NOT EXISTS company_custom_domains (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        company_id INT NOT NULL,
+        domain VARCHAR(255) NOT NULL UNIQUE,
+        is_active TINYINT(1) DEFAULT 0,
+        verification_token VARCHAR(64),
+        verified_at TIMESTAMP NULL DEFAULT NULL,
+        ssl_status ENUM('unknown','pending','valid','invalid') DEFAULT 'unknown',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
+      )`
+    ];
+
+    for (const q of queries) {
+      try {
+        await conn.query(q);
+      } catch (error) {
+        const msg = String(error.message || '');
+        if (!msg.includes('Duplicate') && !msg.includes("doesn't exist")) {
+          console.warn('⚠️ Erreur création table company_custom_domains:', error.message);
+        }
+      }
+    }
+  }
+
+  // ensureLinkPointFoldersSchema supprimé pour revenir à l'état précédent
 
   /**
    * Obtenir une connexion MariaDB

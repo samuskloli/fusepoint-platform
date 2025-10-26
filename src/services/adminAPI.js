@@ -26,10 +26,12 @@ class AdminAPI {
 
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: limit.toString(),
-        activeOnly: activeOnly.toString()
+        limit: limit.toString()
       });
 
+      if (activeOnly !== null) {
+        params.append('activeOnly', activeOnly.toString());
+      }
       if (role) params.append('role', role);
       if (search) params.append('search', search);
 
@@ -121,6 +123,84 @@ class AdminAPI {
       return response.data;
     } catch (error) {
       console.error(`Erreur lors de la modification du mot de passe pour l'utilisateur ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer le statut d'abonnement d'un utilisateur
+   */
+  async getUserSubscriptionStatus(userId) {
+    try {
+      const response = await api.get(`${this.baseURL}/users/${userId}/subscription`);
+      return response.data;
+    } catch (error) {
+      console.error(`Erreur lors de la récupération du statut d'abonnement pour l'utilisateur ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Mettre à jour le statut d'abonnement d'un utilisateur
+   */
+  async updateUserSubscriptionStatus(userId, isPaid) {
+    try {
+      const response = await api.put(`${this.baseURL}/users/${userId}/subscription`, {
+        isPaid: isPaid
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Erreur lors de la mise à jour du statut d'abonnement pour l'utilisateur ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les statuts d'abonnement de plusieurs utilisateurs
+   */
+  async getSubscriptionStatuses(userIds) {
+    try {
+      if (!userIds || userIds.length === 0) {
+        return { statuses: {} };
+      }
+
+      // Récupérer les statuts réels depuis l'API
+      const statuses = {};
+      
+      // Récupérer le statut pour chaque utilisateur
+      const promises = userIds.map(async (userId) => {
+        try {
+          const response = await this.getUserSubscriptionStatus(userId);
+          statuses[userId] = response.isPaid ? 'paid' : 'free';
+        } catch (error) {
+          console.error(`Erreur lors de la récupération du statut pour l'utilisateur ${userId}:`, error);
+          // En cas d'erreur, considérer comme gratuit par défaut
+          statuses[userId] = 'free';
+        }
+      });
+
+      await Promise.all(promises);
+      return { statuses };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statuts d\'abonnement:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Récupérer les statuts d'abonnement disponibles
+   */
+  async getAvailableSubscriptionStatuses() {
+    try {
+      // Retourne les statuts d'abonnement disponibles
+      return {
+        data: [
+          { value: true, label: 'Payé' },
+          { value: false, label: 'Non payé' }
+        ]
+      };
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statuts d\'abonnement:', error);
       throw error;
     }
   }

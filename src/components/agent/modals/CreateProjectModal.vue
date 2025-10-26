@@ -27,6 +27,7 @@ import { useTranslation } from '@/composables/useTranslation'
 import projectTemplateService from '@/services/projectTemplateService'
 import clientManagementService from '@/services/clientManagementService'
 import { useToast } from '@/composables/useToast'
+import { componentNameToIcon } from '@/utils/widgetsMap'
 
 export default {
   name: 'CreateProjectModal',
@@ -71,25 +72,7 @@ export default {
     })
     
     // Méthodes utilitaires
-    const getWidgetIcon = (componentName) => {
-      const iconMap = {
-        'TimelineWidget': 'fas fa-timeline',
-        'ChecklistWidget': 'fas fa-tasks',
-        'GoalsWidget': 'fas fa-bullseye',
-        'PerformanceWidget': 'fas fa-chart-line',
-        'FilesWidget': 'fas fa-folder',
-        'CommentsWidget': 'fas fa-comments',
-        'AIWidget': 'fas fa-robot',
-        'DesignWidget': 'fas fa-palette',
-        'FeedbackWidget': 'fas fa-comment-dots',
-        'DevelopmentWidget': 'fas fa-code',
-        'SEOWidget': 'fas fa-search',
-        'SocialWidget': 'fas fa-share-alt',
-        'BrandWidget': 'fas fa-copyright',
-        'AnalyticsWidget': 'fas fa-chart-bar'
-      }
-      return iconMap[componentName] || 'fas fa-puzzle-piece'
-    }
+    const getWidgetIcon = (componentName) => componentNameToIcon(componentName)
     
     // Validation
     const validateForm = () => {

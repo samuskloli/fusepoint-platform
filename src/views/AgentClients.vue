@@ -621,7 +621,7 @@ export default {
           return
         }
         
-        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
         const response = await fetch(`${base}/api/agent/available`, {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -648,7 +648,7 @@ export default {
       
       assigningAgent.value = true
       try {
-        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'
+        const base = import.meta.env.VITE_API_URL || import.meta.env.VITE_BACKEND_URL || 'http://localhost:3004'
         const response = await fetch(`${base}/api/client/${selectedClientForAssignment.value.id}/assign-agent`, {
           method: 'POST',
           headers: {

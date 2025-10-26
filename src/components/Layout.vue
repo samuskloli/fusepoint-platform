@@ -2,7 +2,7 @@
   <div class="layout-container">
     <!-- Sidebar -->
     <div
-      class="sidebar-wrapper"
+      class="sidebar-wrapper hidden md:block"
       :class="{ 
         '-translate-x-full': !sidebarOpen, 
         'translate-x-0': sidebarOpen,
@@ -62,7 +62,7 @@ export default {
 <style scoped>
 /* Styles spécifiques au layout - utilise les classes centralisées */
 .layout-container {
-  @apply flex h-screen bg-gray-50;
+  @apply flex min-h-screen bg-gray-50;
 }
 
 .sidebar-wrapper {
@@ -83,6 +83,6 @@ export default {
 }
 
 .content-container {
-  @apply container mx-auto px-6 py-8 max-w-7xl;
+  @apply container mx-auto px-3 sm:px-6 py-4 sm:py-8 max-w-full sm:max-w-7xl;
 }
 </style>

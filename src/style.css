@@ -18,7 +18,7 @@ body {
 }
 
 .header-container {
-  @apply flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16;
+  @apply flex items-center justify-between px-4 sm:px-6 lg:px-8 h-20 md:h-16;
 }
 
 .header-actions {
@@ -217,6 +217,38 @@ input, textarea, select {
 .list-enter-active,
 .list-leave-active {
   @apply transition-all duration-200 ease-in-out;
+}
+
+/* Overrides responsives mobiles pour les grilles et espacements */
+@media (max-width: 768px) {
+  /* Conteneur principal: réduire les marges internes */
+  .content-container {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  /* Grilles fréquentes: 1 colonne sur mobile */
+  .metrics-grid,
+  .analytics-grid,
+  .traffic-overview,
+  .trends-grid,
+  .quick-actions-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  /* Cartes: réduire le padding pour gagner de la place */
+  .metric-card,
+  .analytics-card {
+    padding: 16px;
+  }
+
+  /* Dashboard unifié: réduire le padding global */
+  .unified-dashboard {
+    padding: 16px;
+  }
 }
 
 .list-enter-from,
@@ -546,4 +578,86 @@ input, textarea, select {
 
 .highlight-info {
   @apply bg-blue-100 text-blue-800 px-1 rounded;
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    height: auto;
+    min-height: 56px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dropdown-menu {
+    position: fixed;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+  .action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .action-buttons > * {
+    flex: 1 1 100%;
+  }
+  img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
+  }
+  .modal-container {
+    max-height: 90vh;
+    width: 95vw;
+  }
+}
+
+/* Mobile horizontal scroll fixes and full-width adjustments */
+@media (max-width: 768px) {
+  html, body, #app {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  /* Ensure primary containers never exceed viewport width */
+  .main-wrapper,
+  .content-container,
+  .project-dashboard,
+  .widgets-container,
+  .widgets-grid,
+  .container,
+  .max-w-7xl {
+    max-width: 100% !important;
+  }
+  /* Reduce side paddings to avoid overflow */
+  .content-container,
+  .project-dashboard,
+  .widgets-container,
+  .container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+  /* Sidebar off-canvas on mobile to avoid pushing content */
+  .sidebar-wrapper {
+    transform: translateX(-100%);
+  }
+  /* Aggressive word wrapping to avoid long text causing overflow */
+  .widget-container,
+  .card,
+  .modal-content,
+  .dropdown-menu,
+  .header-actions,
+  .header-quick-actions {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Media scaling to avoid overflow */
+img, video, canvas, svg {
+  max-width: 100%;
+  height: auto;
 }

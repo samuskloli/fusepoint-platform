@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Super Admin Role</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.danger {
+            background-color: #dc3545;
+        }
+        button.danger:hover {
+            background-color: #c82333;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Super Admin Role</h1>
+        
+        <div id="current-status"></div>
+        
+        <div style="margin: 20px 0;">
+            <button onclick="checkCurrentUser()">Vérifier l'utilisateur actuel</button>
+            <button onclick="fixSuperAdminRole()" class="danger">Forcer le rôle Super Admin</button>
+            <button onclick="testNavigation()">Tester la navigation</button>
+        </div>
+        
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function displayResult(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML += `<div class="${type}">${message}</div>`;
+        }
+
+        function checkCurrentUser() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            try {
+                const userStr = localStorage.getItem('user');
+                const token = localStorage.getItem('accessToken');
+                
+                displayResult('<h3>État actuel:</h3>');
+                displayResult(`Token présent: ${token ? '✅ Oui' : '❌ Non'}`, token ? 'success' : 'error');
+                
+                if (userStr) {
+                    const user = JSON.parse(userStr);
+                    displayResult(`<pre>${JSON.stringify(user, null, 2)}</pre>`);
+                    displayResult(`Rôle actuel: ${user.role}`, user.role === 'super_admin' ? 'success' : 'warning');
+                    displayResult(`isSuperAdmin: ${user.isSuperAdmin}`, user.isSuperAdmin ? 'success' : 'warning');
+                } else {
+                    displayResult('❌ Aucune information utilisateur trouvée', 'error');
+                }
+            } catch (error) {
+                displayResult(`Erreur: ${error.message}`, 'error');
+            }
+        }
+
+        function fixSuperAdminRole() {
+            try {
+                const userStr = localStorage.getItem('user');
+                if (!userStr) {
+                    displayResult('❌ Aucun utilisateur trouvé. Veuillez vous connecter d\'abord.', 'error');
+                    return;
+                }
+                
+                const user = JSON.parse(userStr);
+                
+                // Sauvegarder l'original
+                const originalUser = { ...user };
+                displayResult(`<h3>Utilisateur original:</h3><pre>${JSON.stringify(originalUser, null, 2)}</pre>`);
+                
+                // Modifier le rôle
+                user.role = 'super_admin';
+                user.isSuperAdmin = true;
+                
+                // Ajouter des permissions si elles n'existent pas
+                if (!user.permissions) {
+                    user.permissions = {};
+                }
+                user.permissions.canAccessSuperAdmin = true;
+                user.permissions.canAccessAgent = true;
+                user.permissions.canAccessAdmin = true;
+                
+                // Sauvegarder les modifications
+                localStorage.setItem('user', JSON.stringify(user));
+                
+                displayResult(`<h3>Utilisateur modifié:</h3><pre>${JSON.stringify(user, null, 2)}</pre>`, 'success');
+                displayResult('✅ Rôle Super Admin appliqué avec succès!', 'success');
+                
+                // Déclencher un événement pour notifier les autres composants
+                window.dispatchEvent(new CustomEvent('userRoleUpdated', { detail: user }));
+                
+            } catch (error) {
+                displayResult(`Erreur lors de la modification: ${error.message}`, 'error');
+            }
+        }
+
+        function testNavigation() {
+            displayResult('<h3>Test de navigation:</h3>');
+            
+            const testUrls = [
+                '/super-admin',
+                '/admin/users',
+                '/admin/widgets',
+                '/admin/settings'
+            ];
+            
+            testUrls.forEach(url => {
+                displayResult(`<a href="${url}" target="_blank">Tester ${url}</a>`);
+            });
+            
+            // Test de navigation programmatique
+            setTimeout(() => {
+                displayResult('Tentative de navigation vers /super-admin...', 'info');
+                try {
+                    window.location.href = '/super-admin';
+                } catch (error) {
+                    displayResult(`Erreur de navigation: ${error.message}`, 'error');
+                }
+            }, 2000);
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            checkCurrentUser();
+        });
+    </script>
+</body>
+</html>

@@ -43,7 +43,7 @@ export function useNotifications() {
     
     return id
   }
-  
+
   const removeNotification = (id) => {
     const index = notifications.value.findIndex(n => n.id === id)
     if (index > -1) {
@@ -67,15 +67,16 @@ export function useNotifications() {
   const success = (message, duration, options = {}) => 
     addNotification(NOTIFICATION_TYPES.SUCCESS, message, duration, options)
     
+  // Erreurs: suppression de la persistance par défaut pour auto-dismiss
   const error = (message, duration, options = {}) => 
-    addNotification(NOTIFICATION_TYPES.ERROR, message, duration, { ...options, persistent: true })
+    addNotification(NOTIFICATION_TYPES.ERROR, message, duration, options)
     
   const warning = (message, duration, options = {}) => 
     addNotification(NOTIFICATION_TYPES.WARNING, message, duration, options)
     
   const info = (message, duration, options = {}) => 
     addNotification(NOTIFICATION_TYPES.INFO, message, duration, options)
-  
+
   // Méthodes pour les notifications système
   const addSystemNotification = (notificationData) => {
     const id = ++notificationId
@@ -89,7 +90,14 @@ export function useNotifications() {
     systemNotifications.value.unshift(systemNotification)
     return id
   }
-  
+
+  const removeSystemNotification = (id) => {
+    const index = systemNotifications.value.findIndex(n => n.id === id)
+    if (index > -1) {
+      systemNotifications.value.splice(index, 1)
+    }
+  }
+
   const markSystemNotificationAsRead = (id) => {
     const notification = systemNotifications.value.find(n => n.id === id)
     if (notification) {
@@ -100,41 +108,7 @@ export function useNotifications() {
   const markAllSystemNotificationsAsRead = () => {
     systemNotifications.value.forEach(n => n.read = true)
   }
-  
-  const removeSystemNotification = (id) => {
-    const index = systemNotifications.value.findIndex(n => n.id === id)
-    if (index > -1) {
-      systemNotifications.value.splice(index, 1)
-    }
-  }
-  
-  // Computed pour les statistiques
-  const unreadSystemNotificationsCount = computed(() => 
-    systemNotifications.value.filter(n => !n.read).length
-  )
-  
-  const notificationsByType = computed(() => {
-    const grouped = {}
-    notifications.value.forEach(notification => {
-      if (!grouped[notification.type]) {
-        grouped[notification.type] = []
-      }
-      grouped[notification.type].push(notification)
-    })
-    return grouped
-  })
-  
-  const notificationsByPriority = computed(() => {
-    const grouped = {}
-    notifications.value.forEach(notification => {
-      if (!grouped[notification.priority]) {
-        grouped[notification.priority] = []
-      }
-      grouped[notification.priority].push(notification)
-    })
-    return grouped
-  })
-  
+
   // Méthodes pour l'envoi de notifications via l'API
   const sendNotificationToClient = async (clientId, notificationData) => {
     const validation = notificationService.validateNotificationData(notificationData)
@@ -153,29 +127,26 @@ export function useNotifications() {
     
     return result
   }
-  
+
   const sendNotificationToMultipleClients = async (clientIds, notificationData) => {
     const validation = notificationService.validateNotificationData(notificationData)
     if (!validation.isValid) {
       error(`Erreur de validation: ${validation.errors.join(', ')}`)
       return { success: false, errors: validation.errors }
     }
+
+    const results = await notificationService.sendToMultipleClients(clientIds, notificationData)
     
-    const result = await notificationService.sendToMultipleClients(clientIds, notificationData)
-    
-    if (result.success) {
-      if (result.failureCount > 0) {
-        warning(`${result.successCount} notifications envoyées, ${result.failureCount} échecs`)
-      } else {
-        success(`${result.successCount} notifications envoyées avec succès!`)
-      }
-    } else {
-      error(result.error)
+    if (results.successCount > 0) {
+      success(`${results.successCount} notifications envoyées avec succès!`)
     }
-    
-    return result
+    if (results.failureCount > 0) {
+      warning(`${results.failureCount} envois ont échoué.`)
+    }
+
+    return results
   }
-  
+
   const sendEmailToClient = async (clientId, emailData) => {
     if (!emailData.subject || !emailData.message) {
       error('Le sujet et le message sont requis')
@@ -192,28 +163,47 @@ export function useNotifications() {
     
     return result
   }
-  
+
   const sendEmailToMultipleClients = async (clientIds, emailData) => {
     if (!emailData.subject || !emailData.message) {
       error('Le sujet et le message sont requis')
       return { success: false, error: 'Champs requis manquants' }
     }
-    
-    const result = await notificationService.sendEmailToMultipleClients(clientIds, emailData)
-    
-    if (result.success) {
-      if (result.failureCount > 0) {
-        warning(`${result.successCount} emails envoyés, ${result.failureCount} échecs`)
-      } else {
-        success(`${result.successCount} emails envoyés avec succès!`)
-      }
-    } else {
-      error(result.error)
+
+    const results = await notificationService.sendEmailToMultipleClients(clientIds, emailData)
+
+    if (results.successCount > 0) {
+      success(`${results.successCount} emails envoyés avec succès!`)
     }
-    
-    return result
+    if (results.failureCount > 0) {
+      warning(`${results.failureCount} envois ont échoué.`)
+    }
+
+    return results
   }
-  
+
+  const unreadSystemNotificationsCount = computed(() => {
+    return systemNotifications.value.filter(n => !n.read).length
+  })
+
+  const notificationsByType = computed(() => {
+    const byType = {}
+    notifications.value.forEach(n => {
+      if (!byType[n.type]) byType[n.type] = []
+      byType[n.type].push(n)
+    })
+    return byType
+  })
+
+  const notificationsByPriority = computed(() => {
+    const byPriority = {}
+    notifications.value.forEach(n => {
+      if (!byPriority[n.priority]) byPriority[n.priority] = []
+      byPriority[n.priority].push(n)
+    })
+    return byPriority
+  })
+
   return {
     // État
     notifications,

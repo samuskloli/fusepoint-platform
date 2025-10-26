@@ -72,7 +72,11 @@
               
               <div>
                 <label class="block text-sm font-medium text-gray-700">{{ messages.phone }}</label>
-                <p class="mt-1 text-sm text-gray-900">{{ client.phone || '-' }}</p>
+-                <p class="mt-1 text-sm text-gray-900">{{ client.phone || '-' }}</p>
++                <p class="mt-1 text-sm text-gray-900">
++                  <a v-if="client.phone" :href="'tel:' + formatTel(client.phone)" class="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline">{{ client.phone }}</a>
++                  <span v-if="!client.phone">-</span>
++                </p>
               </div>
               
               <div>
@@ -218,6 +222,12 @@ export default {
         hour: '2-digit',
         minute: '2-digit'
       })
+    },
+    formatTel(phone) {
+      if (!phone) return ''
+      return String(phone)
+        .replace(/\s+/g, '')
+        .replace(/[()\-\.]/g, '')
     },
     
     formatLastLogin(dateString) {

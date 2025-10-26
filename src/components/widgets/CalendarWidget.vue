@@ -313,7 +313,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-// import { useTranslation } from '@/composables/useTranslation'
+import { useTranslation } from '@/composables/useTranslation'
 // import { useNotifications } from '@/composables/useNotifications'
 // import { useAuth } from '@/composables/useAuth'
 // import { calendarService } from './services/calendarService'
@@ -842,7 +842,7 @@ const editEvent = (event: CalendarEvent): void => {
 }
 
 const deleteEvent = async (event: CalendarEvent): Promise<void> => {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer cet événement ?')) return
+  if (!confirm(t('common.confirmations.deleteEvent'))) return
   
   try {
     // Simulation de suppression

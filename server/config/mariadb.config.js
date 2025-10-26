@@ -23,7 +23,8 @@ class MariaDBConfig {
       // Paramètres de gestion des connexions
       idleTimeout: 300000, // 5 minutes avant fermeture des connexions inactives
       minimumIdle: 5, // Minimum de connexions à maintenir
-      resetAfterUse: true // Réinitialiser les connexions après usage
+      resetAfterUse: true, // Réinitialiser les connexions après usage
+      bigIntAsNumber: true // Forcer la conversion des BIGINT en Number pour JSON
     };
     
     this.pool = null;

@@ -22,30 +22,108 @@ class AgentService {
       const totalClients = await databaseService.get(
         'SELECT COUNT(*) as count FROM users WHERE role = "user"'
       );
-      
       const activeClients = await databaseService.get(
         'SELECT COUNT(*) as count FROM users WHERE role = "user" AND is_active = 1'
       );
-      
       const inactiveClients = await databaseService.get(
         'SELECT COUNT(*) as count FROM users WHERE role = "user" AND is_active = 0'
       );
-      
       const assignedClients = await databaseService.get(
         'SELECT COUNT(*) as count FROM users WHERE role = "user" AND agent_id = ?',
         [agentId]
       );
-      
       const unassignedClients = await databaseService.get(
         'SELECT COUNT(*) as count FROM users WHERE role = "user" AND (agent_id IS NULL OR agent_id = "")'
       );
 
+      // Détecter colonnes de la table tasks pour éviter les erreurs si absentes
+      let hasPriority = false;
+      let hasCompletedAt = false;
+      try {
+        const cols = await databaseService.query('SHOW COLUMNS FROM tasks');
+        const names = (cols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasPriority = names.includes('priority');
+        hasCompletedAt = names.includes('completed_at');
+      } catch (e) {
+        // Si inspect des colonnes échoue, rester conservateur
+        hasPriority = false;
+        hasCompletedAt = false;
+      }
+
+      // Statistiques des tâches (portée agent)
+      const baseWhere = `(
+          p.agent_id = ? 
+          OR p.client_id IN (
+            SELECT ac.client_id FROM agent_clients ac WHERE ac.agent_id = ? AND ac.status = 'active'
+          )
+          OR p.client_id IN (
+            SELECT id FROM users WHERE agent_id = ?
+          )
+        )`;
+
+      const taskStats = await databaseService.get(
+        `SELECT 
+          COUNT(*) as total_tasks,
+          COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending_tasks,
+          COUNT(CASE WHEN t.status = 'in_progress' THEN 1 END) as in_progress_tasks,
+          COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed_tasks
+         FROM tasks t
+         JOIN projects p ON t.project_id = p.id
+         WHERE ${baseWhere}`,
+        [agentId, agentId, agentId]
+      );
+
+      // Comptage des priorités si la colonne existe
+      let priorityCounts = { high: 0, medium: 0, low: 0 };
+      if (hasPriority) {
+        const pr = await databaseService.get(
+          `SELECT 
+             COUNT(CASE WHEN LOWER(t.priority) IN ('urgent','high') THEN 1 END) as high,
+             COUNT(CASE WHEN LOWER(t.priority) IN ('medium','normal') THEN 1 END) as medium,
+             COUNT(CASE WHEN LOWER(t.priority) = 'low' THEN 1 END) as low
+           FROM tasks t
+           JOIN projects p ON t.project_id = p.id
+           WHERE ${baseWhere}`,
+          [agentId, agentId, agentId]
+        );
+        priorityCounts = {
+          high: Number(pr?.high) || 0,
+          medium: Number(pr?.medium) || 0,
+          low: Number(pr?.low) || 0
+        };
+      }
+
+      // Tâches résolues aujourd'hui si la colonne completed_at existe
+      let resolvedToday = 0;
+      if (hasCompletedAt) {
+        const resolvedTodayRow = await databaseService.get(
+          `SELECT COUNT(*) as count
+           FROM tasks t
+           JOIN projects p ON t.project_id = p.id
+           WHERE t.status = 'completed'
+             AND DATE(t.completed_at) = CURDATE()
+             AND ${baseWhere}`,
+          [agentId, agentId, agentId]
+        );
+        resolvedToday = Number(resolvedTodayRow?.count) || 0;
+      }
+
+      // Notifications/messages non lus pour l'agent
+      const unreadMessagesRow = await databaseService.get(
+        'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
+        [agentId]
+      );
+
       return {
-        totalClients: totalClients.count,
-        activeClients: activeClients.count,
-        inactiveClients: inactiveClients.count,
-        assignedClients: assignedClients.count,
-        unassignedClients: unassignedClients.count
+        totalClients: Number(totalClients.count) || 0,
+        activeClients: Number(activeClients.count) || 0,
+        inactiveClients: Number(inactiveClients.count) || 0,
+        assignedClients: Number(assignedClients.count) || 0,
+        unassignedClients: Number(unassignedClients.count) || 0,
+        pendingRequests: Number(taskStats?.pending_tasks) || 0,
+        resolvedToday,
+        unreadMessages: Number(unreadMessagesRow?.count) || 0,
+        priorityCounts
       };
     } catch (error) {
       console.error('❌ Erreur lors de la récupération des statistiques agent:', error);
@@ -121,13 +199,14 @@ class AgentService {
   }
 
   /**
-   * Récupère les clients d'un agent
+   * Récupère clients d'un agent
    * @param {number} agentId - ID de l'agent
    * @param {Object} filters - Filtres de recherche
    * @returns {Array} - Liste des clients
    */
   async getAgentClients(agentId, filters = {}) {
     try {
+      // Construire la requête avec possibilité de tri par dernière interaction
       let query = `
         SELECT 
           u.id,
@@ -144,10 +223,30 @@ class AgentService {
           agent.last_name as agent_last_name
         FROM users u
         LEFT JOIN users agent ON agent.id = u.agent_id
-        WHERE u.role IN ('user', 'client')
       `;
       
       const params = [];
+      
+      // Joindre agent_clients pour le tri par dernière interaction si agentId spécifié
+      let hasLastInteractionColumn = false;
+      let hasAcUpdatedAt = false;
+      try {
+        const acCols = await databaseService.query('SHOW COLUMNS FROM agent_clients');
+        const acNames = (acCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasLastInteractionColumn = acNames.includes('last_interaction_at');
+        hasAcUpdatedAt = acNames.includes('updated_at');
+      } catch (e) {
+        hasLastInteractionColumn = false;
+        hasAcUpdatedAt = false;
+      }
+      
+      if (filters.agentId !== null && filters.agentId !== undefined) {
+        query += ' LEFT JOIN agent_clients ac ON ac.client_id = u.id AND ac.agent_id = ? AND ac.status = "active"';
+        params.push(filters.agentId);
+      }
+      
+      // Clause WHERE de base
+      query += "\n        WHERE u.role IN ('user', 'client')";
       
       // Filtrer par agent si spécifié (seulement pour les agents normaux)
       if (filters.agentId !== null && filters.agentId !== undefined) {
@@ -169,7 +268,13 @@ class AgentService {
         params.push(searchTerm, searchTerm, searchTerm);
       }
       
-      query += ' ORDER BY u.created_at DESC';
+      // Tri: dernière interaction si disponible et agentId présent, sinon par mise à jour/création
+      if (filters.agentId !== null && filters.agentId !== undefined) {
+        const interactionExpr = hasLastInteractionColumn ? 'ac.last_interaction_at' : (hasAcUpdatedAt ? 'ac.updated_at' : 'NULL');
+        query += ` ORDER BY COALESCE(${interactionExpr}, u.updated_at, u.created_at) DESC`;
+      } else {
+        query += ' ORDER BY u.updated_at DESC, u.created_at DESC';
+      }
       
       // Pagination
       if (filters.limit) {
@@ -1048,6 +1153,66 @@ class AgentService {
     } catch (error) {
       console.error('❌ Erreur lors de l\'assignation avec synchronisation:', error);
       throw error;
+    }
+  }
+// Enregistrer une interaction entre un agent et un client (consultation/projets)
+  async recordClientInteraction(agentId, clientId) {
+    try {
+      // Vérifier/ajouter la colonne last_interaction_at si besoin
+      let hasLastInteractionColumn = false;
+      try {
+        const cols = await databaseService.query('SHOW COLUMNS FROM agent_clients');
+        const names = (cols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasLastInteractionColumn = names.includes('last_interaction_at');
+      } catch (e) {
+        hasLastInteractionColumn = false;
+      }
+
+      if (!hasLastInteractionColumn) {
+        try {
+          await databaseService.run('ALTER TABLE agent_clients ADD COLUMN last_interaction_at DATETIME NULL');
+          hasLastInteractionColumn = true;
+        } catch (e) {
+          // Ignorer si la colonne existe déjà ou si l'ALTER échoue
+        }
+      }
+
+      // Mettre à jour ou créer le lien agent-client
+      const link = await databaseService.get(
+        'SELECT id FROM agent_clients WHERE agent_id = ? AND client_id = ? LIMIT 1',
+        [agentId, clientId]
+      );
+
+      if (link && link.id) {
+        if (hasLastInteractionColumn) {
+          await databaseService.run(
+            'UPDATE agent_clients SET last_interaction_at = NOW(), updated_at = NOW(), status = "active" WHERE id = ?',
+            [link.id]
+          );
+        } else {
+          await databaseService.run(
+            'UPDATE agent_clients SET updated_at = NOW(), status = "active" WHERE id = ?',
+            [link.id]
+          );
+        }
+      } else {
+        if (hasLastInteractionColumn) {
+          await databaseService.run(
+            'INSERT INTO agent_clients (agent_id, client_id, status, assigned_at, last_interaction_at, created_at, updated_at) VALUES (?, ?, "active", NOW(), NOW(), NOW(), NOW())',
+            [agentId, clientId]
+          );
+        } else {
+          await databaseService.run(
+            'INSERT INTO agent_clients (agent_id, client_id, status, assigned_at, created_at, updated_at) VALUES (?, ?, "active", NOW(), NOW(), NOW())',
+            [agentId, clientId]
+          );
+        }
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur recordClientInteraction:', error);
+      return { success: false, error: error.message };
     }
   }
 }

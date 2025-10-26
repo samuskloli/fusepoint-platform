@@ -173,6 +173,16 @@ class ProjectTemplateService {
         templateId
       ]);
 
+      // Mettre à jour les widgets si fournis dans la payload
+      if (Array.isArray(templateData.widgets)) {
+        try {
+          await this.updateTemplateWidgets(templateId, templateData.widgets);
+        } catch (widgetsError) {
+          systemLogsService.error('Erreur lors de la mise à jour des widgets du modèle (updateTemplate)', 'project_templates', agentId, null, { templateId, error: widgetsError.message });
+          return { success: false, error: widgetsError.message };
+        }
+      }
+
       systemLogsService.info('Modèle de projet mis à jour', 'project_templates', agentId, null, { templateId, name: templateData.name });
       return { success: true, data: { id: templateId } };
     } catch (error) {
@@ -195,6 +205,61 @@ class ProjectTemplateService {
       return { success: true };
     } catch (error) {
       systemLogsService.error('Erreur lors de la suppression du modèle', 'project_templates', agentId, null, { templateId, error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Dupliquer un modèle
+   */
+  async duplicateTemplate(templateId, agentId) {
+    try {
+      // Récupérer le modèle original
+      const originalTemplateResult = await this.getTemplateById(templateId);
+      if (!originalTemplateResult.success) {
+        return originalTemplateResult;
+      }
+
+      const originalTemplate = originalTemplateResult.data;
+
+      // Créer le nouveau modèle avec un nom modifié
+      const duplicatedName = `${originalTemplate.name} (Copie)`;
+      
+      const result = await databaseService.run(`
+        INSERT INTO project_templates (
+          name, description, category, tags, 
+          estimated_duration, estimated_budget, 
+          created_by, is_active
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      `, [
+        duplicatedName,
+        originalTemplate.description,
+        originalTemplate.category,
+        JSON.stringify(originalTemplate.tags || []),
+        originalTemplate.estimated_duration,
+        originalTemplate.estimated_budget,
+        agentId
+      ]);
+
+      const newTemplateId = result.insertId;
+
+      // Copier les widgets du modèle original
+      if (originalTemplate.widgets && originalTemplate.widgets.length > 0) {
+        await this.updateTemplateWidgets(newTemplateId, originalTemplate.widgets);
+      }
+
+      systemLogsService.info('Modèle de projet dupliqué', 'project_templates', agentId, null, { 
+        originalTemplateId: templateId, 
+        newTemplateId, 
+        name: duplicatedName 
+      });
+      
+      return { success: true, data: { id: newTemplateId, name: duplicatedName } };
+    } catch (error) {
+      systemLogsService.error('Erreur lors de la duplication du modèle', 'project_templates', agentId, null, { 
+        templateId, 
+        error: error.message 
+      });
       return { success: false, error: error.message };
     }
   }

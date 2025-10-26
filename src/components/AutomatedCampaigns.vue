@@ -323,9 +323,14 @@
 
 <script>
 import marketingAutomationService from '../services/marketingAutomationService.js';
+import { useTranslation } from '@/composables/useTranslation';
 
 export default {
   name: 'AutomatedCampaigns',
+  setup() {
+    const { t } = useTranslation();
+    return { t };
+  },
   data() {
     return {
       activeCampaigns: [],
@@ -426,7 +431,7 @@ export default {
       this.loadData();
     },
     stopCampaign(campaignId) {
-      if (confirm('Êtes-vous sûr de vouloir arrêter cette campagne ?')) {
+      if (confirm(this.t('common.confirmations.stopCampaign'))) {
         marketingAutomationService.stopCampaign(campaignId);
         this.loadData();
       }

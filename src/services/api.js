@@ -1,8 +1,24 @@
 import axios from 'axios'
+import tokenManager from './tokenManager.js'
+
+// Déterminer une base relative quand l'app est servie via une IP locale
+const apiEnv = import.meta.env.VITE_API_URL
+const backendEnv = import.meta.env.VITE_BACKEND_URL
+const host = typeof window !== 'undefined' ? window.location.hostname : ''
+const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
+
+// Si l'app est ouverte via une IP locale (ex: 192.168.x.x), utiliser base relative
+const baseURL = isLocalNetworkHost
+  ? ''
+  : (apiEnv && apiEnv.startsWith('http')
+      ? apiEnv.replace(/\/+$/, '')
+      : backendEnv && backendEnv.startsWith('http')
+        ? backendEnv.replace(/\/+$/, '')
+        : '') // par défaut, relatif à l'origine (Vite proxy gère '/api')
 
 // Configuration de base pour les requêtes API
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseURL,
   timeout: 20000,
   headers: {
     'Content-Type': 'application/json'
@@ -10,20 +26,10 @@ const api = axios.create({
   withCredentials: true
 })
 
-// Intercepteur pour les requêtes
-api.interceptors.request.use(
-  (config) => {
-    // Ajouter le token d'authentification si disponible
-    const token = localStorage.getItem('accessToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+// Abonner cette instance au gestionnaire de tokens centralisé
+tokenManager.subscribe(api, 'api.js')
+
+// Note: L'intercepteur de requête est maintenant géré par le TokenManager
 
 // Intercepteur pour les réponses
 api.interceptors.response.use(
@@ -41,43 +47,21 @@ api.interceptors.response.use(
     error.status = status
     error.payload = data
 
-    // Gestion des erreurs globales
+    // Gestion 401: rafraîchissement token (chemin toujours relatif)
     if (status === 401 && !originalRequest._retry) {
-      const isDeleteRequest = error.config?.method === 'delete' && error.config?.url?.includes('/clients/')
-      const hasPasswordInMessage = (data.message || '').toLowerCase().includes('mot de passe') || (data.message || '').toLowerCase().includes('password')
-      const hasPasswordInError = (data.error || '').toLowerCase().includes('mot de passe') || (data.error || '').toLowerCase().includes('password')
-      const isDeletePasswordError = isDeleteRequest && (hasPasswordInMessage || hasPasswordInError)
-
-      if (!isDeletePasswordError) {
-        const refreshToken = localStorage.getItem('refreshToken')
-        if (refreshToken) {
-          originalRequest._retry = true
-          try {
-            const backendUrl = import.meta.env.VITE_API_URL || api.defaults.baseURL || 'http://localhost:3000'
-            const response = await axios.post(`${backendUrl}/api/auth/refresh`, { refreshToken })
-            const { accessToken } = response.data
-            localStorage.setItem('accessToken', accessToken)
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`
-            return api(originalRequest)
-          } catch (refreshError) {
-            localStorage.removeItem('accessToken')
-            localStorage.removeItem('refreshToken')
-            localStorage.removeItem('sessionToken')
-            localStorage.removeItem('user')
-            window.location.href = '/login'
-          }
-        } else {
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
-          localStorage.removeItem('sessionToken')
-          localStorage.removeItem('user')
-          window.location.href = '/login'
+      originalRequest._retry = true
+      try {
+        await axios.post('/api/auth/refresh', {}, { withCredentials: true })
+        const newToken = localStorage.getItem('accessToken')
+        if (newToken) {
+          originalRequest.headers = originalRequest.headers || {}
+          originalRequest.headers.Authorization = `Bearer ${newToken}`
         }
+        return api(originalRequest)
+      } catch (refreshError) {
+        localStorage.removeItem('accessToken')
+        return Promise.reject(refreshError)
       }
-    } else if (status === 403) {
-      console.error('Accès refusé:', message)
-    } else if (status >= 500) {
-      console.error('Erreur serveur:', message)
     }
 
     return Promise.reject(error)

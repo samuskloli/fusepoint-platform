@@ -1,8 +1,3 @@
-/**
- * Index of English translations
- * Imports and unifies all English translation modules
- */
-
 import common from './common.js';
 import interfaceTranslations from './interface.js';
 import resetPassword from './resetPassword.js';
@@ -36,6 +31,8 @@ import multiTenant from './multiTenant.js';
 import roles from './roles.js';
 import categories from './categories.js'
 import priorities from './priorities.js'
+import files from './files.js'
+import servicesManagement from './servicesManagement.js'
 
 export default {
   common,
@@ -71,4 +68,6 @@ export default {
   roles,
   categories,
   priorities,
+  files,
+  servicesManagement
 };

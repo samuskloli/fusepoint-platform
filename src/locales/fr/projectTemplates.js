@@ -116,5 +116,13 @@ export default {
   publicTemplateHelp: 'Si activé, ce modèle est visible par tous les utilisateurs de votre organisation.',
   allowCustomization: 'Autoriser la personnalisation',
   allowCustomizationHelp: 'Autoriser des modifications des détails et des widgets lors de la création d\'un projet à partir de ce modèle',
-  duplicate: 'Dupliquer'
+  duplicate: 'Dupliquer',
+  
+  // Nouvelles traductions pour les filtres et widgets non développés
+  searchWidgets: 'Rechercher des widgets...',
+  allWidgets: 'Tous les widgets',
+  developedWidgets: 'Widgets développés',
+  undevelopedWidgets: 'Widgets non développés',
+  notDeveloped: 'Non développé',
+  widgetNotDeveloped: 'Le widget "{name}" n\'est pas encore développé et ne peut pas être sélectionné.'
 };

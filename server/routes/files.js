@@ -146,6 +146,7 @@ router.get('/signed/:token', async (req, res) => {
     }
 
     if (!info || !info.originalPath || !fs.existsSync(info.originalPath)) {
+      console.warn(`⚠️ Signed GET 404 fileId=${payload.fileId} intent=${payload.intent} originalPath=${info?.originalPath} exists=${info?.originalPath ? fs.existsSync(info.originalPath) : 'none'}`)
       return res.status(404).json({ success: false, error: 'Fichier introuvable' });
     }
 

@@ -253,6 +253,7 @@
 <script>
 import facebookService from '@/services/facebookService';
 import instagramService from '@/services/instagramService';
+import { useTranslation } from '@/composables/useTranslation';
 // Google Analytics service removed
 
 export default {
@@ -284,6 +285,10 @@ export default {
              this.instagramStatus.isConnected || 
              false; // Google Analytics removed
     }
+  },
+  created() {
+    const { t } = useTranslation();
+    this.t = t;
   },
   mounted() {
     this.checkConnectionStatus();
@@ -469,7 +474,7 @@ export default {
         // Si réparation automatique possible
         if (diagnostic.canAutoFix) {
           const confirmRepair = confirm(
-            `Problèmes détectés:\n${diagnostic.issues.join('\n')}\n\nVoulez-vous tenter une réparation automatique?`
+            this.t('socialMedia.confirmAutoRepair', { issues: diagnostic.issues.join('\n') })
           );
           
           if (confirmRepair) {
