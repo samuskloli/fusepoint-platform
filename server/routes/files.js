@@ -19,18 +19,40 @@ function signPayload(payload) {
 }
 
 function verifyToken(token) {
-  const [data, sig] = String(token).split('.');
-  if (!data || !sig) return null;
-  const expected = crypto.createHmac('sha256', SIGNING_SECRET).update(data).digest('hex');
-  if (expected !== sig) return null;
   try {
+    const [data, sig] = String(token).split('.');
+    if (!data || !sig) return null;
+    
+    const expected = crypto.createHmac('sha256', SIGNING_SECRET).update(data).digest('hex');
+    if (expected !== sig) return null;
+    
     const json = Buffer.from(data, 'base64url').toString('utf8');
     const payload = JSON.parse(json);
-    if (!payload.exp || payload.exp < Date.now()) return null;
+    
+    if (payload.exp && payload.exp < Date.now()) return null;
+    
     return payload;
   } catch (e) {
     return null;
   }
+}
+
+function getMimeType(fileName) {
+  const ext = path.extname(fileName || '').toLowerCase();
+  const mimeMap = {
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.webp': 'image/webp',
+    '.svg': 'image/svg+xml',
+    '.pdf': 'application/pdf',
+    '.txt': 'text/plain',
+    '.zip': 'application/zip',
+    '.doc': 'application/msword',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  };
+  return mimeMap[ext] || 'application/octet-stream';
 }
 
 async function resolveFileById(fileId) {
@@ -118,66 +140,58 @@ router.post('/signed-url', authenticateToken, async (req, res) => {
 // Streams the resource after verifying signature and expiration
 router.get('/signed/:token', async (req, res) => {
   try {
-    const payload = verifyToken(req.params.token);
+    const { token } = req.params;
+    const payload = verifyToken(token);
+    
     if (!payload) {
-      return res.status(403).json({ success: false, error: 'Token invalide ou expiré' });
+      return res.status(403).json({ error: 'Invalid or expired token' });
     }
 
-    // Contrôle d'accès identique à la génération d'URL signée
-    const tenantId = req.tenantId ?? (req.user?.tenantId || req.user?.company_id);
-    // Accès basé uniquement sur le token signé (la génération a déjà fait le contrôle)
-    // Ne pas imposer req.tenantId ici pour permettre l’accès via URL signée
-    const fileRow = await resolveFileById(payload.fileId);
-    let info;
+    const { fileId } = payload;
+    const fileResult = await resolveFileById(fileId);
+    
+    let filePath = null;
+    let fileName = null;
+    
+    if (fileResult && fileResult.originalPath && fs.existsSync(fileResult.originalPath)) {
+      // Fichier trouvé via la base de données
+      filePath = fileResult.originalPath;
+      fileName = fileResult.fileName;
+    } else {
+      // Fallback: chercher directement dans le répertoire uploads
+      const directFilePath = path.join(process.cwd(), 'uploads', fileId);
+      if (fs.existsSync(directFilePath)) {
+        filePath = directFilePath;
+        fileName = fileId;
+      }
+    }
+    
+    if (!filePath || !fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
     try {
-      const clientId = fileRow.client_id || fileRow.clientId;
-      const projectId = fileRow.project_id || fileRow.projectId;
-      const fileName = fileRow.name || fileRow.filename || fileRow.original_name || fileRow.originalName;
-      const directPath = fileRow.path || fileRow.file_path;
-      const originalPath = directPath && fs.existsSync(directPath)
-        ? directPath
-        : (clientId && projectId && fileName
-            ? path.join(process.cwd(), 'uploads', 'clients', String(clientId), 'projects', String(projectId), 'files', String(fileName))
-            : null);
-      info = { row: fileRow, clientId, projectId, fileName, originalPath };
-    } catch (err) {
-      console.error('❌ Erreur accès fichier via token signé:', err);
-      return res.status(500).json({ success: false, error: 'Erreur serveur lors de l\'accès via token' });
+      const stats = fs.statSync(filePath);
+      const mimeType = getMimeType(fileName);
+      
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', stats.size);
+      
+      if (payload.download) {
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      }
+      
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+      
+    } catch (error) {
+      console.error('Error reading file:', error);
+      return res.status(500).json({ error: 'Error reading file' });
     }
-
-    if (!info || !info.originalPath || !fs.existsSync(info.originalPath)) {
-      console.warn(`⚠️ Signed GET 404 fileId=${payload.fileId} intent=${payload.intent} originalPath=${info?.originalPath} exists=${info?.originalPath ? fs.existsSync(info.originalPath) : 'none'}`)
-      return res.status(404).json({ success: false, error: 'Fichier introuvable' });
-    }
-
-    const stream = fs.createReadStream(info.originalPath);
-    stream.on('error', (e) => {
-      console.error('❌ Erreur lecture fichier:', e);
-      return res.status(500).json({ success: false, error: 'Erreur lecture fichier' });
-    });
-
-    // Déterminer le content-type basique
-    const ext = path.extname(info.fileName || '').toLowerCase();
-    const mimeMap = {
-      '.jpg': 'image/jpeg',
-      '.jpeg': 'image/jpeg',
-      '.png': 'image/png',
-      '.gif': 'image/gif',
-      '.pdf': 'application/pdf',
-      '.txt': 'text/plain',
-      '.zip': 'application/zip'
-    };
-    const contentType = mimeMap[ext] || 'application/octet-stream';
-    res.setHeader('Content-Type', contentType);
-
-    if (payload.intent === 'download') {
-      res.setHeader('Content-Disposition', `attachment; filename="${info.fileName || 'file'}"`);
-    }
-
-    stream.pipe(res);
+    
   } catch (error) {
-    console.error('❌ Erreur accès via signed URL:', error);
-    return res.status(500).json({ success: false, error: 'Erreur serveur' });
+    console.error('Error in /signed/:token route:', error);
+    return res.status(500).json({ error: 'Internal server error' });
   }
 });
 

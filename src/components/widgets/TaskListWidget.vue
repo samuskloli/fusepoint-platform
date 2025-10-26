@@ -149,15 +149,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import BaseWidget from './shared/components/BaseWidget.vue'
 import TaskModal from '../modals/TaskModal.vue'
 import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
-import projectManagementService from '@/services/projectManagementService'
+// import projectManagementService from '@/services/projectManagementService'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
+import { useMultiTenantApi } from '@/services/multiTenantService'
 
 // Props
 interface Props {
   projectId: string
   widgetData?: any
   widget?: any
+  readonly?: boolean
 }
 
 const props = defineProps<Props>()
@@ -170,13 +172,19 @@ const emit = defineEmits<{
 // Composables
 const { success, error: showError } = useNotifications()
 const { t } = useTranslation()
+const { 
+  getTasks: apiGetTasks,
+  createTask: apiCreateTask,
+  updateTask: apiUpdateTask,
+  deleteTask: apiDeleteTask
+} = useMultiTenantApi()
 
 // État réactif
 const loading = ref(false)
-const error = ref(null)
-const tasks = ref([])
+const error = ref<string|null>(null)
+const tasks = ref<any[]>([])
 const statusFilter = ref('all')
-const selectedTask = ref(null)
+const selectedTask = ref<any|null>(null)
 const showAddTaskModal = ref(false)
 const showEditTaskModal = ref(false)
 const showConfigModal = ref(false)
@@ -250,12 +258,12 @@ const filterOptions = computed(() => [
 ])
 
 // Méthodes utilitaires
-const isOverdue = (task) => {
+const isOverdue = (task: any) => {
   if (!task.due_date || task.status === 'completed') return false
   return new Date(task.due_date) < new Date()
 }
 
-const formatDate = (dateString) => {
+const formatDate = (dateString: string) => {
   if (!dateString) return ''
   const date = new Date(dateString)
   return date.toLocaleDateString('fr-FR', {
@@ -264,111 +272,130 @@ const formatDate = (dateString) => {
     year: 'numeric'
   })
 }
-    
-    // Méthodes
-    const loadTasks = async () => {
-      loading.value = true
-      error.value = null
-      
-      try {
-        const result = await projectManagementService.getProjectTasks(props.projectId)
-        if (result.success) {
-          tasks.value = result.data || []
-        } else {
-          error.value = result.error
+
+// Mapping entre API multi-tenant et widget
+const mapApiTaskToWidgetTask = (apiTask: any) => ({
+  id: apiTask.id,
+  title: apiTask.title,
+  description: apiTask.description,
+  status: apiTask.status === 'done' ? 'completed' : 'pending',
+  priority: apiTask.priority,
+  due_date: apiTask.due_date,
+  assignee: undefined // assigned_to (id) non résolu en objet
+})
+
+const mapWidgetUpdatesToApi = (data: any) => ({
+  title: data.title,
+  description: data.description,
+  priority: data.priority,
+  due_date: data.due_date,
+  status: data.status === 'completed' ? 'done' : 'in_progress',
+  assigned_to: data.assignee?.id
+})
+
+const mapWidgetCreateToApi = (data: any) => ({
+  title: data.title,
+  description: data.description,
+  priority: data.priority,
+  due_date: data.due_date,
+  assigned_to: data.assignee?.id
+})
+
+// Méthodes
+const loadTasks = async () => {
+  loading.value = true
+  error.value = null
+  
+  try {
+    const result = await apiGetTasks()
+    if (result.success) {
+      const list = (result.data?.tasks ?? [])
+      tasks.value = list.map(mapApiTaskToWidgetTask)
+    } else {
+      error.value = result.error ?? t('errors.loadingFailed')
+    }
+  } catch (err) {
+    console.error('Erreur lors du chargement des tâches:', err)
+    error.value = t('errors.loadingFailed')
+    showError('Erreur lors du chargement des tâches')
+  } finally {
+    loading.value = false
+  }
+}
+
+const toggleTaskStatus = async (task: any) => {
+  if (props.readonly) return
+  
+  const newStatus = task.status === 'completed' ? 'pending' : 'completed'
+  
+  try {
+    await apiUpdateTask(Number(task.id), { status: newStatus === 'completed' ? 'done' : 'in_progress' })
+    task.status = newStatus
+    success(t('widgets.taskList.taskUpdated'))
+  } catch (err) {
+    console.error('Erreur lors de la mise à jour de la tâche:', err)
+    showError(t('errors.updateFailed'))
+  }
+}
+
+const selectTask = (task: any) => {
+  if (props.readonly) return
+  selectedTask.value = task
+  showEditTaskModal.value = true
+}
+
+const editTask = (task: any) => {
+  selectedTask.value = task
+  showEditTaskModal.value = true
+}
+
+const deleteTask = async (task: any) => {
+  if (!confirm(t('widgets.taskList.confirmDelete'))) return
+  
+  try {
+    await apiDeleteTask(Number(task.id))
+    tasks.value = tasks.value.filter(t => t.id !== task.id)
+    success(t('widgets.taskList.taskDeleted'))
+  } catch (err) {
+    console.error('Erreur lors de la suppression de la tâche:', err)
+    showError(t('errors.deleteFailed'))
+  }
+}
+
+const saveTask = async (taskData: any) => {
+  try {
+    if (taskData.id) {
+      // Mise à jour
+      const res = await apiUpdateTask(Number(taskData.id), mapWidgetUpdatesToApi(taskData))
+      if (res.success) {
+        const index = tasks.value.findIndex(t => t.id === taskData.id)
+        if (index !== -1) {
+          tasks.value[index] = mapApiTaskToWidgetTask(res.data?.task || taskData)
         }
-      } catch (err) {
-        console.error('Erreur lors du chargement des tâches:', err)
-        error.value = t('errors.loadingFailed')
-        showError('Erreur lors du chargement des tâches')
-      } finally {
-        loading.value = false
+      }
+      if (res.success) {
+        success(t('widgets.taskList.taskUpdated'))
+        closeTaskModal()
+      } else {
+        showError(res.error || t('errors.updateFailed'))
+      }
+    } else {
+      // Création
+      const res = await apiCreateTask(mapWidgetCreateToApi(taskData))
+      if (res.success) {
+        const newTask = mapApiTaskToWidgetTask(res.data?.task)
+        tasks.value.push(newTask)
+        success(t('widgets.taskList.taskCreated'))
+        closeTaskModal()
+      } else {
+        showError(res.error || t('errors.saveFailed'))
       }
     }
-    
-    const toggleTaskStatus = async (task) => {
-      if (props.readonly) return
-      
-      const newStatus = task.status === 'completed' ? 'pending' : 'completed'
-      
-      try {
-        const result = await projectManagementService.updateTask(task.id, {
-          ...task,
-          status: newStatus
-        })
-        
-        if (result.success) {
-          task.status = newStatus
-          success(t('widgets.taskList.taskUpdated'))
-        } else {
-          showError(result.error)
-        }
-      } catch (err) {
-        console.error('Erreur lors de la mise à jour de la tâche:', err)
-        showError(t('errors.updateFailed'))
-      }
-    }
-    
-    const selectTask = (task) => {
-      if (props.readonly) return
-      selectedTask.value = task
-      showEditTaskModal.value = true
-    }
-    
-    const editTask = (task) => {
-      selectedTask.value = task
-      showEditTaskModal.value = true
-    }
-    
-    const deleteTask = async (task) => {
-      if (!confirm(t('widgets.taskList.confirmDelete'))) return
-      
-      try {
-        const result = await projectManagementService.deleteTask(task.id)
-        if (result.success) {
-          tasks.value = tasks.value.filter(t => t.id !== task.id)
-          success(t('widgets.taskList.taskDeleted'))
-        } else {
-          showError(result.error)
-        }
-      } catch (err) {
-        console.error('Erreur lors de la suppression de la tâche:', err)
-        showError(t('errors.deleteFailed'))
-      }
-    }
-    
-    const saveTask = async (taskData) => {
-      try {
-        let result
-        
-        if (taskData.id) {
-          // Mise à jour
-          result = await projectManagementService.updateTask(taskData.id, taskData)
-          if (result.success) {
-            const index = tasks.value.findIndex(t => t.id === taskData.id)
-            if (index !== -1) {
-              tasks.value[index] = result.data
-            }
-          }
-        } else {
-          // Création
-          result = await projectManagementService.createTask(props.projectId, taskData)
-          if (result.success) {
-            tasks.value.push(result.data)
-          }
-        }
-        
-        if (result.success) {
-          success(taskData.id ? t('widgets.taskList.taskUpdated') : t('widgets.taskList.taskCreated'))
-          closeTaskModal()
-        } else {
-          showError(result.error)
-        }
-      } catch (err) {
-        console.error('Erreur lors de la sauvegarde de la tâche:', err)
-        showError(t('errors.saveFailed'))
-      }
-    }
+  } catch (err) {
+    console.error('Erreur lors de la sauvegarde de la tâche:', err)
+    showError(t('errors.saveFailed'))
+  }
+}
     
     const closeTaskModal = () => {
       showAddTaskModal.value = false
@@ -385,7 +412,7 @@ const toggleWidget = () => {
   emit('widget-updated', updatedWidget)
 }
     
-    const updateConfig = (newConfig) => {
+    const updateConfig = (newConfig: any) => {
       widgetConfig.value = { ...widgetConfig.value, ...newConfig }
       emit('widget-updated', widgetConfig.value)
       showConfigModal.value = false

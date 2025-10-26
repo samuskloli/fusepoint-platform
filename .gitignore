@@ -98,4 +98,6 @@ server/uploads/
 # Uploads and previews
 uploads/
 public/uploads/
+public/uploads
+public/backup_redirects
 server/tmp-preview/

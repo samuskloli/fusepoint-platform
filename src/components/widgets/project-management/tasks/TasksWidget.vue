@@ -100,6 +100,7 @@ import AddTaskModal from './components/AddTaskModal.vue'
 import TasksConfigModal from './components/TasksConfigModal.vue'
 import { useTranslation } from '@/composables/useTranslation'
 import type { Task, TaskStatus, TaskPriority } from './types'
+import { useMultiTenantApi } from '@/services/multiTenantService'
 
 interface Props {
   widget: any
@@ -108,8 +109,8 @@ interface Props {
 
 const props = defineProps<Props>()
 const { t } = useTranslation()
+const { getTasks: apiGetTasks, createTask: apiCreateTask, updateTask: apiUpdateTask, deleteTask: apiDeleteTask } = useMultiTenantApi()
 
-// Utilisation du composable widget
 const {
   loading,
   error,
@@ -126,36 +127,78 @@ const {
   handleError
 } = useWidget(props.widget)
 
-// États locaux
 const tasks = ref<Task[]>([])
 const selectedStatus = ref<string>('all')
 const selectedPriority = ref<string>('all')
 const showAddTaskModal = ref(false)
 
-// Statistiques calculées
+// Mapper une tâche API vers le format du widget
+const mapApiTaskToWidgetTask = (apiTask: any): Task => {
+  const statusMap: Record<string, TaskStatus> = {
+    todo: 'pending',
+    in_progress: 'in_progress',
+    done: 'completed',
+    cancelled: 'pending'
+  }
+  const priorityMap: Record<string, TaskPriority> = {
+    low: 'low',
+    medium: 'medium',
+    high: 'high',
+    urgent: 'high'
+  }
+  return {
+    id: String(apiTask.id),
+    title: apiTask.title,
+    description: apiTask.description || '',
+    status: statusMap[apiTask.status] || 'pending',
+    priority: priorityMap[apiTask.priority] || 'medium',
+    assignedTo: apiTask.assigned_to ? String(apiTask.assigned_to) : undefined,
+    dueDate: apiTask.due_date || undefined,
+    createdAt: apiTask.created_at,
+    updatedAt: apiTask.updated_at || apiTask.created_at,
+    projectId: props.projectId,
+    tags: [],
+    estimatedHours: undefined,
+    actualHours: undefined,
+    dependencies: [],
+    attachments: []
+  }
+}
+
+// Mapper les mises à jour du widget vers l’API
+const mapWidgetUpdatesToApi = (updates: Partial<Task>) => {
+  const statusReverseMap: Record<TaskStatus, string> = {
+    pending: 'todo',
+    in_progress: 'in_progress',
+    completed: 'done'
+  }
+  const payload: any = {}
+  if (updates.title !== undefined) payload.title = updates.title
+  if (updates.description !== undefined) payload.description = updates.description
+  if (updates.status !== undefined) payload.status = statusReverseMap[updates.status]
+  if (updates.priority !== undefined) payload.priority = updates.priority
+  if (updates.assignedTo !== undefined) payload.assigned_to = updates.assignedTo ? Number(updates.assignedTo) : null
+  if (updates.dueDate !== undefined) payload.due_date = updates.dueDate
+  return payload
+}
+
 const stats = computed(() => {
   const total = tasks.value.length
   const completed = tasks.value.filter(t => t.status === 'completed').length
   const inProgress = tasks.value.filter(t => t.status === 'in_progress').length
   const pending = tasks.value.filter(t => t.status === 'pending').length
-  
   return { total, completed, inProgress, pending }
 })
 
-// Tâches filtrées
 const filteredTasks = computed(() => {
   let filtered = tasks.value
-  
   if (selectedStatus.value !== 'all') {
     filtered = filtered.filter(task => task.status === selectedStatus.value)
   }
-  
   if (selectedPriority.value !== 'all') {
     filtered = filtered.filter(task => task.priority === selectedPriority.value)
   }
-  
   return filtered.sort((a, b) => {
-    // Tri par priorité puis par date de création
     const priorityOrder = { high: 3, medium: 2, low: 1 }
     if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
       return priorityOrder[b.priority] - priorityOrder[a.priority]
@@ -164,13 +207,13 @@ const filteredTasks = computed(() => {
   })
 })
 
-// Chargement des données
 const loadData = async () => {
   try {
     setLoading(true)
-    const response = await widgetApiService.getWidgetData(props.projectId, 'tasks')
-    tasks.value = Array.isArray(response?.tasks) ? response.tasks : []
-    setData(response)
+    const resp = await apiGetTasks()
+    const apiTasks = resp?.data?.tasks || []
+    tasks.value = apiTasks.map(mapApiTaskToWidgetTask)
+    setData({ tasks: tasks.value, stats: resp?.data?.stats || {} })
   } catch (err) {
     handleError(err)
   } finally {
@@ -178,15 +221,21 @@ const loadData = async () => {
   }
 }
 
-// Gestion des tâches
 const addTask = async (taskData: Partial<Task>) => {
   try {
     setLoading(true)
-    const newTask = await widgetApiService.updateWidgetData(props.projectId, 'tasks', {
-      action: 'create',
-      task: taskData
-    })
-    tasks.value.unshift(newTask)
+    const payload: any = {
+      title: taskData.title!,
+      description: taskData.description,
+      priority: taskData.priority || 'medium',
+      assigned_to: taskData.assignedTo ? Number(taskData.assignedTo) : undefined,
+      due_date: taskData.dueDate
+    }
+    const resp = await apiCreateTask(payload)
+    const created = resp?.data?.task
+    if (created) {
+      tasks.value.unshift(mapApiTaskToWidgetTask(created))
+    }
     showAddTaskModal.value = false
   } catch (err) {
     handleError(err)
@@ -197,14 +246,13 @@ const addTask = async (taskData: Partial<Task>) => {
 
 const updateTask = async (taskId: string, updates: Partial<Task>) => {
   try {
-    const updatedTask = await widgetApiService.updateWidgetData(props.projectId, 'tasks', {
-      action: 'update',
-      taskId,
-      updates
-    })
-    const index = tasks.value.findIndex(t => t.id === taskId)
-    if (index !== -1) {
-      tasks.value[index] = { ...tasks.value[index], ...updatedTask }
+    const resp = await apiUpdateTask(Number(taskId), mapWidgetUpdatesToApi(updates))
+    const updated = resp?.data?.task
+    if (updated) {
+      const index = tasks.value.findIndex(t => t.id === taskId)
+      if (index !== -1) {
+        tasks.value[index] = mapApiTaskToWidgetTask(updated)
+      }
     }
   } catch (err) {
     handleError(err)
@@ -213,10 +261,7 @@ const updateTask = async (taskId: string, updates: Partial<Task>) => {
 
 const deleteTask = async (taskId: string) => {
   try {
-    await widgetApiService.updateWidgetData(props.projectId, 'tasks', {
-      action: 'delete',
-      taskId
-    })
+    await apiDeleteTask(Number(taskId))
     tasks.value = tasks.value.filter(t => t.id !== taskId)
   } catch (err) {
     handleError(err)
@@ -226,7 +271,6 @@ const deleteTask = async (taskId: string) => {
 const toggleTaskStatus = async (taskId: string) => {
   const task = tasks.value.find(t => t.id === taskId)
   if (!task) return
-  
   const newStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed'
   await updateTask(taskId, { status: newStatus })
 }
@@ -237,14 +281,13 @@ const filterTasks = () => {
 
 const saveConfiguration = async (config: any) => {
   try {
-    await WidgetApiService.saveWidgetConfig(props.widget.id, config)
+    await widgetApiService.saveWidgetConfig(props.widget.id, config)
     hideConfiguration()
   } catch (err) {
     handleError(err)
   }
 }
 
-// Chargement initial
 onMounted(() => {
   if (props.widget.isEnabled) {
     loadData()

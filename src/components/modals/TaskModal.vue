@@ -48,7 +48,7 @@
           <!-- Statut -->
           <div>
             <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('tasks.status') }}
+              {{ t('common.status') }}
             </label>
             <select
               id="status"
@@ -65,7 +65,7 @@
           <!-- Priorité -->
           <div>
             <label for="priority" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('tasks.priority') }}
+              {{ t('common.priority') }}
             </label>
             <select
               id="priority"

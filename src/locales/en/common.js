@@ -13,6 +13,7 @@ export default {
   "saving": "Saving",
   "active": "Active",
   "status": "Status",
+  "priority": "Priority",
   "actions": "Actions",
   "done": "Done",
   "retry": "Retry",

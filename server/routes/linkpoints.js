@@ -54,7 +54,8 @@ router.get('/global-stats', async (req, res) => {
     const daily = await databaseService.query(
       `SELECT DATE(occurred_at) AS day,
               SUM(event_type='scan') AS scans,
-              SUM(event_type='click') AS clicks
+              SUM(event_type='click') AS clicks,
+              SUM(event_type='vcard_add') AS vcard_adds
        FROM linkpoint_events
        WHERE linkpoint_id IN (
          SELECT id FROM linkpoints WHERE (owner_user_id=? OR company_id=?) AND archived=0
@@ -68,14 +69,16 @@ router.get('/global-stats', async (req, res) => {
     const totals = daily.reduce((acc, d) => {
       acc.scans += Number(d.scans || 0);
       acc.clicks += Number(d.clicks || 0);
+      acc.vcard_adds += Number(d.vcard_adds || 0);
       return acc;
-    }, { scans: 0, clicks: 0 });
+    }, { scans: 0, clicks: 0, vcard_adds: 0 });
 
     const ctr = totals.scans > 0 ? (totals.clicks * 100.0) / totals.scans : 0;
     const lastScanDate = daily.filter(d => Number(d.scans || 0) > 0).slice(-1)[0]?.day || null;
     const avgPerDay = {
       scans: range > 0 ? totals.scans / range : 0,
-      clicks: range > 0 ? totals.clicks / range : 0
+      clicks: range > 0 ? totals.clicks / range : 0,
+      vcard_adds: range > 0 ? totals.vcard_adds / range : 0
     };
 
     res.json({ daily, totals, ctr, lastScanDate, avgPerDay });
@@ -133,8 +136,20 @@ router.get('/stats-by-link', async (req, res) => {
       [...lpIds, range]
     );
 
+    // Total vCard adds per linkpoint in range
+    const vcardAddsByLinkpoint = await databaseService.query(
+      `SELECT linkpoint_id, COUNT(*) AS vcard_adds
+       FROM linkpoint_events
+       WHERE event_type='vcard_add'
+         AND linkpoint_id IN (${lpIds.map(() => '?').join(',')})
+         AND occurred_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       GROUP BY linkpoint_id`,
+      [...lpIds, range]
+    );
+
     // Assemble results per linkpoint
     const scansMap = new Map(scansByLinkpoint.map(r => [r.linkpoint_id, Number(r.scans || 0)]));
+    const vcardMap = new Map(vcardAddsByLinkpoint.map(r => [r.linkpoint_id, Number(r.vcard_adds || 0)]));
     const clicksGrouped = new Map();
     for (const row of clicksByLink) {
       const key = row.linkpoint_id;
@@ -154,6 +169,7 @@ router.get('/stats-by-link', async (req, res) => {
       slug: lp.slug,
       total_scans: scansMap.get(lp.id) || 0,
       total_clicks: (clicksGrouped.get(lp.id) || []).reduce((sum, l) => sum + l.clicks, 0),
+      total_vcard_adds: vcardMap.get(lp.id) || 0,
       links: clicksGrouped.get(lp.id) || []
     }));
 
@@ -216,7 +232,8 @@ router.get('/:id', async (req, res) => {
     const stats7 = await databaseService.query(
       `SELECT DATE(occurred_at) AS day,
               SUM(event_type='scan') AS scans,
-              SUM(event_type='click') AS clicks
+              SUM(event_type='click') AS clicks,
+              SUM(event_type='vcard_add') AS vcard_adds
        FROM linkpoint_events WHERE linkpoint_id=? AND occurred_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
        GROUP BY day ORDER BY day ASC`,
       [id]
@@ -224,7 +241,8 @@ router.get('/:id', async (req, res) => {
     const stats30 = await databaseService.query(
       `SELECT DATE(occurred_at) AS day,
               SUM(event_type='scan') AS scans,
-              SUM(event_type='click') AS clicks
+              SUM(event_type='click') AS clicks,
+              SUM(event_type='vcard_add') AS vcard_adds
        FROM linkpoint_events WHERE linkpoint_id=? AND occurred_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
        GROUP BY day ORDER BY day ASC`,
       [id]

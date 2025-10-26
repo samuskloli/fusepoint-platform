@@ -1133,3 +1133,63 @@ router.get('/:clientId/projects/:projectId/widgets',
 );
 
 module.exports = router;
+// DELETE /api/clients/:clientId/projects/:projectId/widgets/tasks/:taskId
+router.delete('/:clientId/projects/:projectId/widgets/tasks/:taskId',
+  authenticateToken,
+  validateScope,
+  requireProjectEdit,
+  async (req, res) => {
+    try {
+      const { clientId, projectId } = req.validatedScope;
+      const { taskId } = req.params;
+
+      // Vérifier que la tâche appartient au scope
+      const [task] = await databaseService.query(
+        'SELECT id FROM tasks WHERE id = ? AND client_id = ? AND project_id = ?',
+        [taskId, clientId, projectId]
+      );
+
+      if (!task) {
+        return res.status(404).json({
+          success: false,
+          error: 'Tâche non trouvée'
+        });
+      }
+
+      // Détecter les colonnes disponibles de la table tasks
+      const columns = await databaseService.query('SHOW COLUMNS FROM tasks');
+      const colNames = columns.map(c => c.Field);
+      const has = (name) => colNames.includes(name);
+
+      // Marquer la tâche comme annulée et (optionnel) supprimée
+      const updates = [];
+      const updateValues = [];
+
+      updates.push("status = 'cancelled'");
+      if (has('updated_at')) {
+        updates.push('updated_at = NOW()');
+      }
+      if (has('is_deleted')) {
+        updates.push('is_deleted = TRUE');
+      }
+
+      updateValues.push(taskId, clientId, projectId);
+
+      await databaseService.query(
+        `UPDATE tasks SET ${updates.join(', ')} WHERE id = ? AND client_id = ? AND project_id = ?`,
+        updateValues
+      );
+
+      res.json({
+        success: true,
+        message: 'Tâche supprimée avec succès'
+      });
+    } catch (error) {
+      console.error('Erreur suppression tâche:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Erreur lors de la suppression de la tâche'
+      });
+    }
+  }
+);

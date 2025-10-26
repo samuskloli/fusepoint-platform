@@ -10,6 +10,8 @@ const backupService = require('../services/backupService');
 const databaseService = require('../services/databaseService');
 const superAdminAuth = require('../middleware/superAdminAuth');
 const authMiddleware = require('../middleware/auth');
+const BetaSignupService = require('../services/betaSignupService');
+const betaService = new BetaSignupService();
 
 // Utiliser le service importé
 const platformService = platformSettingsService;
@@ -1015,6 +1017,22 @@ router.get('/system/backup/report', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la génération du rapport:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * @route GET /api/super-admin/beta-requests
+ * @desc Lister les demandes d'inscription à la bêta
+ * @access Super Admin
+ */
+router.get('/beta-requests', authMiddleware, superAdminAuth.requireSuperAdmin(), async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    const rows = await betaService.listSignups({ limit: Number(limit), offset: Number(offset) });
+    res.json({ success: true, data: rows });
+  } catch (error) {
+    console.error('❌ Erreur liste beta-requests:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });
   }
 });
 

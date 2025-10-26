@@ -33,6 +33,7 @@ import categories from './categories.js'
 import priorities from './priorities.js'
 import files from './files.js'
 import servicesManagement from './servicesManagement.js'
+import tasks from './tasks.js'
 
 export default {
   common,
@@ -69,5 +70,6 @@ export default {
   categories,
   priorities,
   files,
-  servicesManagement
+  servicesManagement,
+  tasks
 };

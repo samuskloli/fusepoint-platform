@@ -11,7 +11,7 @@
     <!-- Generated mini-page -->
     <div v-else-if="lp && lp.type === 'generated'" class="w-full max-w-[420px] sm:max-w-md mx-auto">
       <div :class="[cardClass, 'text-center']">
-        <img v-if="(lp.logo_url || lp.publicOptions?.logo_url)" :src="lp.logo_url || lp.publicOptions?.logo_url" alt="logo" :class="['mx-auto h-16 w-16 object-cover mb-3', logoClass]" />
+        <img v-if="logoUrl" :src="logoUrl" alt="logo" :class="['mx-auto h-16 w-16 object-cover mb-3', logoClass]" @error="handleLogoError" />
         <h1 class="text-xl font-semibold">{{ lp.name || lp.publicOptions?.title || lp.slug }}</h1>
         <p class="text-sm mt-1" :class="sloganClass">{{ sloganText }}</p>
         <div class="mt-6 space-y-3">
@@ -123,6 +123,63 @@ const buttonClass = computed(() => {
 // vCard
 const vcardEnabled = computed(() => Boolean(theme.value?.vcard_enabled))
 
+// Télécharger la vCard depuis l'API, avec fallback client si indisponible
+const downloadVCard = async () => {
+  try {
+    if (!vcardEnabled.value) return
+    const res = await axios.get(`/api/linkpoints/public/${slug}/vcard`, { responseType: 'blob' })
+    const blob = res.data
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${slug}.vcf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    // Fallback: générer la vCard côté client si les données sont présentes dans le thème
+    try {
+      const v = theme.value?.vcard || null
+      if (!v) return
+      const escapeVal = (val) => String(val || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '')
+      const fullName = `${v.first_name || ''} ${v.last_name || ''}`.trim()
+      let vcf = 'BEGIN:VCARD\n'
+      vcf += 'VERSION:3.0\n'
+      if (fullName) vcf += `FN:${escapeVal(fullName)}\n`
+      if (v.last_name || v.first_name) vcf += `N:${escapeVal(v.last_name || '')};${escapeVal(v.first_name || '')};;;\n`
+      if (v.organization) vcf += `ORG:${escapeVal(v.organization)}\n`
+      if (v.title) vcf += `TITLE:${escapeVal(v.title)}\n`
+      if (v.phone) vcf += `TEL;TYPE=WORK,VOICE:${escapeVal(v.phone)}\n`
+      if (v.email) vcf += `EMAIL;TYPE=WORK:${escapeVal(v.email)}\n`
+      if (v.website) {
+        const site = /^https?:\/\//.test(v.website) ? v.website : `https://${v.website}`
+        vcf += `URL:${escapeVal(site)}\n`
+      }
+      if (v.address) vcf += `ADR;TYPE=WORK:;;${escapeVal(v.address)};;;;\n`
+      const now = new Date()
+      const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      vcf += `REV:${timestamp}\n`
+      vcf += 'END:VCARD\n'
+      const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${slug}.vcf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e2) {
+      console.error('vCard fallback client échoué:', e2)
+    }
+  }
+}
 const normalizeUrl = (u) => {
   if (!u) return '#'
   const hasProto = /^https?:\/\//i.test(u)
@@ -131,7 +188,7 @@ const normalizeUrl = (u) => {
 
 const handleClick = async (b) => {
   try {
-    await axios.post(`/api/linkpoints/public/${slug}/click`, { link_id: b.id || null, url: b.url })
+    await axios.post(`/api/linkpoints/public/${slug}/click`, { linkId: b.id || null, url: b.url })
   } catch {}
   const u = normalizeUrl(b.url)
   window.open(u, '_blank', 'noopener')
@@ -152,17 +209,43 @@ const tryLocalBackupFallback = async (s) => {
     if (!bk) return false
     lp.value = {
       name: bk.publicOptions?.title || bk.slug,
-      type: bk.type === 'external_url' ? 'external' : bk.type === 'links_hub' ? 'links' : 'generated',
+      type: bk.type === 'external_url' ? 'external' : bk.type === 'links_hub' ? 'generated' : 'generated',
       slug: bk.slug,
       logo_url: bk.publicOptions?.logo_url || null,
       external_url: bk.destination?.url || null,
-      publicOptions: bk.publicOptions || null
+      publicOptions: bk.publicOptions || null,
+      theme: bk.publicOptions?.theme || bk.theme || null
     }
     links.value = Array.isArray(bk.destination)
       ? bk.destination.map((l, idx) => ({ id: idx + 1, label: l.label || 'Ouvrir', url: l.url }))
       : []
     return true
   } catch (e) {
+    // Fallback supplémentaire en développement: lecture directe via /@fs depuis VITE_BACKUP_DIR
+    try {
+      if (import.meta.env.DEV && import.meta.env.VITE_BACKUP_DIR) {
+        const base = String(import.meta.env.VITE_BACKUP_DIR).replace(/\/+$/, '')
+        const encodedBase = encodeURI(base)
+        const res = await axios.get(`/@fs/${encodedBase}/${encodeURIComponent(s)}.json`)
+        const bk = res?.data
+        if (!bk) return false
+        lp.value = {
+          name: bk.publicOptions?.title || bk.slug,
+          type: bk.type === 'external_url' ? 'external' : bk.type === 'links_hub' ? 'generated' : 'generated',
+          slug: bk.slug,
+          logo_url: bk.publicOptions?.logo_url || null,
+          external_url: bk.destination?.url || null,
+          publicOptions: bk.publicOptions || null,
+          theme: bk.publicOptions?.theme || bk.theme || null
+        }
+        links.value = Array.isArray(bk.destination)
+          ? bk.destination.map((l, idx) => ({ id: idx + 1, label: l.label || 'Ouvrir', url: l.url }))
+          : []
+        return true
+      }
+    } catch (e2) {
+      // ignore, retour false
+    }
     return false
   }
 }
@@ -205,9 +288,9 @@ onMounted(async () => {
   } catch {
     paidEarly.value = false
   }
-  // 2) Activer le loader immédiatement si gratuit
+  // 2) Afficher le loader si non-payant pendant la récupération
   showLoader.value = !paidEarly.value
-  // 3) Charger les données principales
+  // 3) Charger les données principales; utiliser la sauvegarde uniquement en cas d'échec
   await loadForSlug(slug)
 })
 watch(() => route.params.slug, async (newSlug, oldSlug) => {
@@ -221,4 +304,19 @@ watch(() => route.params.slug, async (newSlug, oldSlug) => {
     await loadForSlug(newSlug)
   }
 })
+
+// Logo: normalisation d’URL et fallback visuel
+const logoError = ref(false)
+const logoUrl = computed(() => {
+  if (logoError.value) return '/fusepoint-logo.svg'
+  const candidate = lp.value?.logo_url || lp.value?.publicOptions?.logo_url || ''
+  if (!candidate) return ''
+  const hasProto = /^https?:\/\//i.test(candidate)
+  const isAbsolutePath = candidate.startsWith('/')
+  if (hasProto || isAbsolutePath) return candidate
+  if (/^uploads\//.test(candidate)) return `/${candidate}`
+  return `https://${candidate}`
+})
+const handleLogoError = () => { logoError.value = true }
+
 </script>

@@ -13,6 +13,7 @@ export default {
   "saving": "Enregistrement en cours",
   "active": "Actif",
   "status": "Statut",
+  "priority": "Priorité",
   "actions": "Actions",
   "done": "Terminé",
   "retry": "Réessayer",

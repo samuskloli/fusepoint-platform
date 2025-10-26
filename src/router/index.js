@@ -67,6 +67,7 @@ import AgentPrestataires from '../views/AgentPrestataires.vue'
 
 // Super Admin Dashboard
 import SuperAdminDashboard from '../views/SuperAdminDashboard.vue'
+import SuperAdminBetaRequests from '../views/SuperAdminBetaRequests.vue'
 
 // Admin Dashboard
 import Admin from '../views/Admin.vue'
@@ -439,6 +440,12 @@ const routes = [
     path: '/super-admin',
     name: 'SuperAdminDashboard',
     component: SuperAdminDashboard,
+    beforeEnter: requireSuperAdmin
+  },
+  {
+    path: '/super-admin/beta-requests',
+    name: 'SuperAdminBetaRequests',
+    component: SuperAdminBetaRequests,
     beforeEnter: requireSuperAdmin
   },
   {

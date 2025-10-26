@@ -227,44 +227,25 @@
                      </div>
                    </div>
                    <div class="p-4">
-                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-4">
                        <div>
--                        <div class="text-xs text-gray-500">Visites (scans)</div>
-+                        <div class="text-xs text-gray-500">Total scans</div>
+                         <div class="text-xs text-gray-500">Total scans</div>
                          <div class="text-lg font-semibold">{{ Math.round(detailTotalsActive.scans) }}</div>
                        </div>
                        <div>
--                        <div class="text-xs text-gray-500">Clics</div>
-+                        <div class="text-xs text-gray-500">Total clics</div>
+                         <div class="text-xs text-gray-500">Total clics</div>
                          <div class="text-lg font-semibold">{{ Math.round(detailTotalsActive.clicks) }}</div>
                        </div>
                        <div>
                          <div class="text-xs text-gray-500">CTR</div>
                          <span :class="ctrBadgeClass(detailCTRActive)" class="px-2 py-1 rounded text-sm font-medium">{{ formatPercent(detailCTRActive) }}</span>
                        </div>
-                     </div>
-+                    <div class="mt-2 text-xs text-gray-600">
-+                      <span class="font-medium">Aide:</span> Un “scan” = visite de la page du LinkPoint. Un “clic” = clic sur un des liens affichés.
-+                      <span v-if="selected && selected.type==='external'" class="ml-1">Ce LinkPoint redirige automatiquement ; seuls les scans sont pertinents.</span>
-+                    </div>
-                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                        <div>
-                         <div class="text-xs text-gray-500 mb-1">Scans ({{ activePeriod }} jours)</div>
-                         <div class="relative">
-                           <svg :width="sparklineWidth" :height="sparklineHeight" viewBox="0 0 200 60" preserveAspectRatio="none" class="w-full h-16">
-                             <polyline :points="sparklineScansPoints" fill="none" stroke="#3B82F6" stroke-width="2" />
-                           </svg>
-                         </div>
-                       </div>
-                       <div>
-                         <div class="text-xs text-gray-500 mb-1">Clics ({{ activePeriod }} jours)</div>
-                         <div class="relative">
-                           <svg :width="sparklineWidth" :height="sparklineHeight" viewBox="0 0 200 60" preserveAspectRatio="none" class="w-full h-16">
-                             <polyline :points="sparklineClicksPoints" fill="none" stroke="#10B981" stroke-width="2" />
-                           </svg>
-                         </div>
+                         <div class="text-xs text-gray-500">vCard ajoutées</div>
+                         <div class="text-lg font-semibold">{{ Math.round(detailTotalsActive.vcard_adds || 0) }}</div>
                        </div>
                      </div>
+                     <!-- Section aide et sparklines supprimée -->
                    </div>
                  </div>
                </div>
@@ -454,7 +435,7 @@
               </div>
             </div>
             <div class="mt-4 text-sm text-gray-600">
-              Dernier scan: {{ detailLastScanDate || '—' }} • CTR moyen: {{ formatPercent(detailCTRActive) }}
+              Dernier scan: {{ detailLastScanDate || '—' }} • CTR moyen: {{ formatPercent(detailCTRActive) }} • vCard ajoutées: {{ detailTotalsActive.vcard_adds || 0 }}
             </div>
           </div>
         </div>
@@ -552,9 +533,13 @@ export default {
     // Totaux pour la carte Statistiques
     detailTotalsActive() {
       const arr = this.detailStatsActive || [];
-      let scans = 0, clicks = 0;
-      for (const d of arr) { scans += Number(d.scans || 0); clicks += Number(d.clicks || 0); }
-      return { scans, clicks };
+      let scans = 0, clicks = 0, vcard_adds = 0;
+      for (const d of arr) { 
+        scans += Number(d.scans || 0); 
+        clicks += Number(d.clicks || 0);
+        vcard_adds += Number(d.vcard_adds || 0);
+      }
+      return { scans, clicks, vcard_adds };
     },
     detailCTRActive() {
       const t = this.detailTotalsActive;
@@ -873,10 +858,10 @@ export default {
       try {
         const res = await linkpointsAPI.statsByLink(this.activePeriod)
         const found = Array.isArray(res?.results) ? res.results.find(r => r.linkpoint_id === this.selected.id) : null
-        this.statsByLink = found || { total_scans: 0, total_clicks: 0, links: [] }
+        this.statsByLink = found || { total_scans: 0, total_clicks: 0, total_vcard_adds: 0, links: [] }
       } catch (e) {
         console.error('Erreur chargement stats par lien:', e)
-        this.statsByLink = { total_scans: 0, total_clicks: 0, links: [] }
+        this.statsByLink = { total_scans: 0, total_clicks: 0, total_vcard_adds: 0, links: [] }
       }
     },
     async restore(item) {

@@ -515,6 +515,15 @@ export class MultiTenantApiService {
     return this.request<ApiResponse<{ task: TaskItem }>>('PATCH', url, updates);
   }
 
+  async deleteTask(
+    clientId: number,
+    projectId: number,
+    taskId: number
+  ): Promise<ApiResponse<void>> {
+    const url = this.buildUrl(clientId, projectId, `/tasks/${taskId}`);
+    return this.request<ApiResponse<void>>('DELETE', url);
+  }
+
   async assignTask(
     clientId: number,
     projectId: number,
@@ -615,6 +624,11 @@ export function useMultiTenantApi() {
     updateTask: async (taskId: number, updates: any) => {
       const { clientId, projectId } = ensureContext();
       return multiTenantApiService.updateTask(clientId, projectId, taskId, updates);
+    },
+
+    deleteTask: async (taskId: number) => {
+      const { clientId, projectId } = ensureContext();
+      return multiTenantApiService.deleteTask(clientId, projectId, taskId);
     },
 
     assignTask: async (taskId: number, userId: number) => {

@@ -134,7 +134,7 @@ router.post('/:slug/scan', async (req, res) => {
 // Enregistrer un clic
 router.post('/:slug/click', async (req, res) => {
   const { slug } = req.params;
-  const { linkId, url } = req.body || {};
+  const { linkId, link_id, url } = req.body || {};
   try {
     const lp = await databaseService.get(
       'SELECT id FROM linkpoints WHERE slug=? AND archived=0',
@@ -150,14 +150,15 @@ router.post('/:slug/click', async (req, res) => {
       return res.json({ ok: true, mode: 'fallback_local' });
     }
 
-    let link_id = null;
-    if (linkId) link_id = linkId;
+    let resolvedLinkId = null;
+    if (linkId) resolvedLinkId = linkId;
+    else if (link_id) resolvedLinkId = link_id;
     else if (url) {
       const link = await databaseService.get(
         'SELECT id FROM linkpoint_links WHERE linkpoint_id=? AND url=?',
         [lp.id, url]
       );
-      link_id = link?.id || null;
+      resolvedLinkId = link?.id || null;
     }
 
     const ip = geoService.getClientIp(req);
@@ -169,7 +170,7 @@ router.post('/:slug/click', async (req, res) => {
 
     await databaseService.run(
       'INSERT INTO linkpoint_events (linkpoint_id, event_type, link_id, occurred_at, ip, user_agent, referrer, country_code, region, device_type) VALUES (?, "click", ?, NOW(), ?, ?, ?, ?, ?, ?)',
-      [lp.id, link_id, ip, ua, ref, country_code, region, device_type]
+      [lp.id, resolvedLinkId, ip, ua, ref, country_code, region, device_type]
     );
 
     await databaseService.run(
@@ -198,7 +199,8 @@ router.get('/:slug/stats', async (req, res) => {
     const daily = await databaseService.query(
       `SELECT DATE(occurred_at) AS day,
               SUM(event_type='scan') AS scans,
-              SUM(event_type='click') AS clicks
+              SUM(event_type='click') AS clicks,
+              SUM(event_type='vcard_add') AS vcard_adds
        FROM linkpoint_events
        WHERE linkpoint_id=? AND occurred_at >= DATE_SUB(CURDATE(), INTERVAL ? DAY)
        GROUP BY day
@@ -263,6 +265,22 @@ router.get('/:slug/vcard', async (req, res) => {
 
     // Générer le contenu vCard
     const vcardContent = VCardService.generateVCard(theme.vcard);
+
+    // Journaliser l'ajout vCard comme événement
+    try {
+      const ip = geoService.getClientIp(req);
+      const ua = req.headers['user-agent'] || '';
+      const ref = req.headers['referer'] || '';
+      const { country_code, region } = geoService.lookupGeo(ip);
+      const device_type = classifyDeviceType(ua);
+      await databaseService.run(
+        'INSERT INTO linkpoint_events (linkpoint_id, event_type, occurred_at, ip, user_agent, referrer, country_code, region, device_type) VALUES (?, "vcard_add", NOW(), ?, ?, ?, ?, ?, ?)',
+        [lp.id, ip, ua, ref, country_code, region, device_type]
+      );
+    } catch (logErr) {
+      // Ne pas bloquer la livraison de la vCard en cas d'erreur de log
+      console.warn('Log vcard_add failed:', logErr && logErr.message ? logErr.message : logErr);
+    }
 
     res.setHeader('Content-Type', 'text/vcard; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${slug}.vcf"`);

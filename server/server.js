@@ -51,6 +51,8 @@ const projectTasksRoutes = require('./routes/projectTasks');
 const projectWidgetsRoutes = require('./routes/projectWidgets');
 const linkpointsRoutes = require('./routes/linkpoints');
 const pushRoutes = require('./routes/push');
+// Ajouter routes publiques génériques
+const publicRoutes = require('./routes/public');
 const geoService = require('./services/geoService');
 const backupSvc = require('./services/linkpointBackup');
 const fallbackStats = require('./services/fallbackStats');
@@ -63,7 +65,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware de sécurité - CSP désactivée pour éviter les blocages
 app.use(helmet({
-  contentSecurityPolicy: false
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
 
 // Configuration CORS optimisée pour production et développement
@@ -256,6 +259,8 @@ async function initializeDatabase() {
 // Routes publiques (sans authentification)
 app.use('/api/auth', authRoutes);
 app.use('/api/linkpoints/public', linkpointsPublicRoutes);
+// Monter les routes publiques avant le middleware d'auth global
+app.use('/api/public', publicRoutes);
 
 // Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth et GET /api/files/signed)
 app.use('/api', (req, res, next) => {
