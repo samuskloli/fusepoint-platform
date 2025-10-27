@@ -116,6 +116,9 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Compte inexistant' });
     } else if (error.message === 'Mot de passe incorrect') {
       return res.status(401).json({ error: 'Mot de passe incorrect' });
+    } else if (error.message === 'Email ou mot de passe incorrect') {
+      // Harmoniser le message combiné renvoyé par AuthService
+      return res.status(401).json({ error: 'Mot de passe incorrect' });
     }
     
     const payload = { error: 'Erreur lors de la connexion' };
