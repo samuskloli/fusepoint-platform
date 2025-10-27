@@ -29,15 +29,15 @@ async function checkAndResetPasswords() {
             console.log(`✅ Mot de passe réinitialisé à: ${newPassword}`);
         }
 
-        // 2. Vérifier admin@fusepoint.com
-        console.log('\n2. Vérification de admin@fusepoint.com...');
+        // 2. Vérifier info@fusepoint.ch
+        console.log('\n2. Vérification de info@fusepoint.ch...');
         const admin = await databaseService.query(
             'SELECT id, email, password_hash FROM users WHERE email = ?',
-            ['admin@fusepoint.com']
+            ['info@fusepoint.ch']
         );
 
         if (admin.length === 0) {
-            console.log('❌ Utilisateur admin@fusepoint.com non trouvé');
+            console.log('❌ Utilisateur info@fusepoint.ch non trouvé');
         } else {
             console.log(`✅ Utilisateur trouvé (ID: ${admin[0].id})`);
             console.log(`   Mot de passe hashé: ${admin[0].password_hash ? 'Présent' : 'Absent'}`);
@@ -48,7 +48,7 @@ async function checkAndResetPasswords() {
             
             await databaseService.query(
                 'UPDATE users SET password_hash = ? WHERE email = ?',
-                [hashedPassword, 'admin@fusepoint.com']
+                [hashedPassword, 'info@fusepoint.ch']
             );
             console.log(`✅ Mot de passe réinitialisé à: ${newPassword}`);
         }
@@ -57,7 +57,7 @@ async function checkAndResetPasswords() {
         console.log('\n3. Vérification des rôles...');
         const users = await databaseService.query(
             'SELECT id, email, role, is_active FROM users WHERE email IN (?, ?)',
-            ['samuskl@gmail.com', 'admin@fusepoint.com']
+            ['samuskl@gmail.com', 'info@fusepoint.ch']
         );
 
         users.forEach(user => {

@@ -489,11 +489,16 @@ const routes = [
     path: '/auth-debug-temp',
     name: 'AuthDebugTemp',
     component: AuthDebugTemp
+  },
+  {
+    path: '/install',
+    name: 'Install',
+    component: () => import('../views/Install.vue')
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/app/'),
   routes
 })
 

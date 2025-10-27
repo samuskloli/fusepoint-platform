@@ -6,7 +6,7 @@ async function updateSubscriptionStatus() {
     console.log('🔄 Initialisation de la base de données...');
     await databaseService.initialize();
     
-    const userId = 1; // admin@fusepoint.com
+    const userId = 1; // info@fusepoint.ch
     console.log(`👤 Mise à jour de l'abonnement pour l'utilisateur ID: ${userId}`);
     
     // Récupérer les entreprises de l'utilisateur

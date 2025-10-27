@@ -43,7 +43,7 @@ async function testDashboardAPI() {
         // 3. Authentification de l'agent
         console.log('\n3. Authentification de l\'agent...');
         const agentAuth = await axios.post(`${BASE_URL}/auth/login`, {
-            email: 'admin@fusepoint.com',
+            email: 'info@fusepoint.ch',
             password: 'admin123'
         });
 

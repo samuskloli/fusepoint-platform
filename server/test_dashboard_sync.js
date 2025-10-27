@@ -6,7 +6,7 @@ const BASE_URL = 'http://localhost:3000';
 // Données de test
 const CLIENT_EMAIL = 'samuskl@gmail.com';
 const CLIENT_PASSWORD = 'password';
-const AGENT_EMAIL = 'admin@fusepoint.com';
+const AGENT_EMAIL = 'info@fusepoint.ch';
 const AGENT_PASSWORD = 'password';
 const PROJECT_ID = 1;
 

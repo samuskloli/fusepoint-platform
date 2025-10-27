@@ -60,7 +60,7 @@ async function runTests() {
   const loginResult = await testEndpoint(`${API_BASE}/auth/login`, {
     method: 'POST',
     body: JSON.stringify({
-      email: 'admin@fusepoint.com',
+      email: 'info@fusepoint.ch',
       password: 'admin123'
     })
   });

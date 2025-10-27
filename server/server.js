@@ -56,6 +56,7 @@ const publicRoutes = require('./routes/public');
 const geoService = require('./services/geoService');
 const backupSvc = require('./services/linkpointBackup');
 const fallbackStats = require('./services/fallbackStats');
+const installRoutes = require('./routes/install');
 
 const app = express();
 app.set('etag', 'strong');
@@ -261,6 +262,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/linkpoints/public', linkpointsPublicRoutes);
 // Monter les routes publiques avant le middleware d'auth global
 app.use('/api/public', publicRoutes);
+// Route d'installation (protégée par env INSTALL_ENABLED)
+app.use('/api/install', installRoutes);
 
 // Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth et GET /api/files/signed)
 app.use('/api', (req, res, next) => {

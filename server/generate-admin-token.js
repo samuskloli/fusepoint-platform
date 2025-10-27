@@ -7,7 +7,7 @@ const JWT_SECRET = 'c562c4171abd11ef5a40aa858d7702db810d2adcfdcd64a6e1af8bb4243c
 const adminPayload = {
   id: 1,
   userId: 1,
-  email: 'admin@fusepoint.com',
+  email: 'info@fusepoint.ch',
   role: 'super_admin',
   company_id: 1,
   first_name: 'Admin',

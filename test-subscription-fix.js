@@ -9,7 +9,7 @@ async function testSubscriptionFix() {
     // Test 1: Connexion
     console.log('1️⃣ Test de connexion...');
     const loginResponse = await axios.post(`${API_BASE_URL}/auth/login`, {
-      email: 'admin@fusepoint.com',
+      email: 'info@fusepoint.ch',
       password: 'admin123'
     });
 

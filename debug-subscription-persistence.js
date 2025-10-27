@@ -14,7 +14,7 @@ async function debugSubscriptionPersistence() {
 
     // 1. Vérifier l'état actuel en base de données
     console.log('1️⃣ Vérification de l\'état en base de données...');
-    const userId = 1; // admin@fusepoint.com
+    const userId = 1; // info@fusepoint.ch
     const companies = await databaseService.getUserCompanies(userId);
     
     if (!companies || companies.length === 0) {
@@ -46,7 +46,7 @@ async function debugSubscriptionPersistence() {
     // 3. Test de connexion API
     console.log('\n3️⃣ Test de connexion via API...');
     const loginResponse = await axios.post(`${API_BASE_URL}/auth/login`, {
-      email: 'admin@fusepoint.com',
+      email: 'info@fusepoint.ch',
       password: 'admin123'
     });
 

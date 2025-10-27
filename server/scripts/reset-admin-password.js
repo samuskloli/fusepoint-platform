@@ -12,7 +12,7 @@ async function resetAdminPassword() {
     await mariadbService.initialize();
     console.log('✅ Connexion à MariaDB établie');
     
-    const email = 'admin@fusepoint.com';
+    const email = 'info@fusepoint.ch';
     const newPassword = 'admin123';
     
     // Vérifier si l'utilisateur existe

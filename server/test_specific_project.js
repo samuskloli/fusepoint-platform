@@ -66,7 +66,7 @@ async function testProjectDashboard() {
         }
         console.log('✅ Client authentifié');
 
-        const agentToken = await authenticateUser('admin@fusepoint.com', 'admin123');
+        const agentToken = await authenticateUser('info@fusepoint.ch', 'admin123');
         if (!agentToken) {
             console.log('❌ Impossible d\'authentifier l\'agent');
             return;
@@ -77,7 +77,7 @@ async function testProjectDashboard() {
         console.log('\n2. Récupération des dashboards...');
         
         const clientDashboard = await getDashboard(clientToken, 'samuskl@gmail.com (CLIENT)');
-        const agentDashboard = await getDashboard(agentToken, 'admin@fusepoint.com (AGENT)');
+        const agentDashboard = await getDashboard(agentToken, 'info@fusepoint.ch (AGENT)');
 
         // 3. Comparer les résultats
         console.log('\n3. Comparaison des résultats...');

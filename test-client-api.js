@@ -19,7 +19,7 @@ async function testClientAPI() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        email: 'admin@fusepoint.com',
+        email: 'info@fusepoint.ch',
         password: 'admin123'
       })
     });

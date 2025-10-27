@@ -18,7 +18,7 @@ async function resetAdminPassword() {
     // Initialiser la connexion
     await dbService.initialize();
     
-    const email = 'admin@fusepoint.com';
+    const email = 'info@fusepoint.ch';
     const newPassword = 'admin123';
     
     // Vérifier que l'utilisateur existe

@@ -1,0 +1,39 @@
+# Fusepoint Platform - Routing et headers pour SPA sous /app
+RewriteEngine On
+
+# Séparer API des réécritures SPA
+RewriteCond %{REQUEST_URI} ^/api/ [OR]
+RewriteCond %{REQUEST_URI} ^/uploads/
+RewriteRule ^ - [L]
+
+# SPA: toutes les routes /app/* -> app/index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} ^/app/
+RewriteRule ^app/.*$ /app/index.html [L]
+
+# Landing: toutes les autres routes non-fichiers -> index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^.*$ /index.html [L]
+
+# Headers de sécurité basiques
+Header always set X-Content-Type-Options nosniff
+Header always set X-Frame-Options DENY
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Cache pour assets statiques
+<FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+  ExpiresActive On
+  ExpiresDefault "access plus 1 month"
+  Header append Cache-Control "public"
+</FilesMatch>
+
+# No-cache pour les HTML
+<FilesMatch "^(index\.html|app/index\.html)$">
+  ExpiresActive On
+  ExpiresDefault "access plus 0 seconds"
+  Header set Cache-Control "no-cache, no-store, must-revalidate"
+  Header set Pragma "no-cache"
+</FilesMatch>
