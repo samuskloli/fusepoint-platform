@@ -5,11 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fusepoint – Que tout marche, simplement.</title>
   <meta name="description" content="Fusepoint simplifie la vie des entreprises. Une approche claire, un accompagnement humain, des outils connectés. Tout marche, enfin." />
+  <meta name="theme-color" content="#4f46e5" />
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
   <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet" />
   <style>
+    html { scroll-behavior: smooth; }
+    .scroll-target { scroll-margin-top: 80px; }
     .timeline-line { position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #c7d2fe 0%, #6366f1 50%, #4f46e5 100%); opacity: 0.4; z-index: 0; }
     .anim-container { width: 90px; height: 90px; margin: 0 auto; }
   </style>
@@ -17,20 +20,20 @@
 <body class="bg-gradient-to-b from-indigo-50 to-white text-gray-800">
 
 <!-- HERO -->
-<section class="relative flex flex-col items-center justify-center text-center py-32 px-6 overflow-hidden" data-aos="fade-up">
+<section class="relative flex flex-col items-center justify-center text-center py-24 md:py-32 px-4 md:px-6 overflow-hidden" data-aos="fade-up">
   <div class="max-w-3xl mx-auto relative z-10">
-    <h1 class="text-5xl font-bold mb-6 leading-tight">Vous n’avez pas besoin d’un énième outil.<br><span class="text-indigo-600">Vous avez besoin que tout marche.</span></h1>
-    <p class="text-lg text-gray-600 mb-8">Fusepoint remet de la simplicité dans votre quotidien d’entrepreneur. Moins de stress, plus de clarté, et une vraie structure pour votre communication, vos ventes et vos clients.</p>
-    <div class="flex flex-col sm:flex-row justify-center gap-4">
-      <a href="#demo" class="bg-indigo-600 text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-md hover:bg-indigo-500 transition">Je veux que ça marche</a>
-      <a href="#fonctionnement" class="border border-gray-300 px-8 py-4 rounded-lg font-semibold text-lg hover:border-indigo-400 transition">Voir comment ça marche</a>
+    <h1 class="text-3xl md:text-5xl font-bold mb-4 md:mb-6 leading-tight">Vous faites déjà beaucoup.<br><span class="text-indigo-600">Fusepoint vous aide à le faire mieux.</span></h1>
+    <p class="text-base md:text-lg text-gray-600 mb-6 md:mb-8">Parce qu’une entreprise qui communique avec clarté inspire confiance. Fusepoint vous aide à structurer votre image et à mieux connecter avec vos clients.</p>
+    <div class="w-full flex flex-col sm:flex-row justify-center gap-3 md:gap-4">
+      <a href="#early" class="w-full sm:w-auto text-center bg-indigo-600 text-white px-6 md:px-8 py-4 rounded-lg font-semibold text-base md:text-lg shadow-md hover:bg-indigo-500 transition">S’inscrire à la bêta</a>
+      <a href="#fonctionnement" class="w-full sm:w-auto text-center border border-gray-300 px-6 md:px-8 py-4 rounded-lg font-semibold text-base md:text-lg hover:border-indigo-400 transition">Voir comment ça marche</a>
     </div>
   </div>
-  <img src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1400&q=80" alt="Collaboration simple et efficace" class="absolute top-0 left-0 w-full h-full object-cover opacity-10">
+  <img loading="lazy" src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1400&q=80" alt="Collaboration simple et efficace" class="absolute top-0 left-0 w-full h-full object-cover opacity-10">
 </section>
 
 <!-- COMMENT ÇA MARCHE -->
-<section id="fonctionnement" class="py-28 bg-white relative overflow-hidden">
+<section id="fonctionnement" class="scroll-target py-20 md:py-28 bg-white relative overflow-hidden">
   <div class="max-w-6xl mx-auto px-6 text-center relative">
     <h2 class="text-4xl font-bold mb-6" data-aos="fade-up">Comment ça marche ?</h2>
     <p class="text-gray-600 mb-16 text-lg">Une méthode claire en 4 étapes. Vous gardez le contrôle, sans la complexité.</p>
@@ -62,7 +65,7 @@
 </section>
 
 <!-- VALEUR EN 30 JOURS -->
-<section id="valeur" class="py-24 bg-gray-50">
+<section id="valeur" class="scroll-target py-16 md:py-24 bg-gray-50">
   <div class="max-w-6xl mx-auto px-6">
     <div class="text-center mb-14">
       <h2 class="text-4xl font-bold mb-3">Ce que vous obtenez dès le 1er mois</h2>
@@ -88,14 +91,14 @@
   </div>
 </section>
 <!-- QR DYNAMIQUES (INCLUS) -->
-<section id="qr-dynamique" class="py-24 bg-white">
-  <div class="max-w-6xl mx-auto px-6">
-    <div class="grid md:grid-cols-2 gap-10 items-center">
+    <section id="qr-dynamique" class="scroll-target py-16 md:py-24 bg-white">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
+        <div class="grid md:grid-cols-2 gap-8 md:gap-10 items-center">
       <!-- Texte clair et simple -->
       <div>
         <h2 class="text-3xl md:text-4xl font-bold mb-4">QR codes dynamiques — inclus dans la plateforme</h2>
-        <p class="text-gray-700 text-lg mb-6">Ce sont des <strong>QR codes physiques</strong> (stickers, affiches, packaging…) que vous placez dans la vraie vie. <br>Leur particularité ? <strong>Vous pouvez changer leur destination</strong> depuis Fusepoint <strong>sans réimprimer</strong> le QR.</p>
-        <ul class="text-gray-700 space-y-3">
+            <p class="text-gray-700 text-lg leading-relaxed mb-6">Ce sont des <strong>QR codes physiques</strong> (stickers, affiches, packaging…) que vous placez dans la vraie vie. <br>Leur particularité ? <strong>Vous pouvez changer leur destination</strong> depuis Fusepoint <strong>sans réimprimer</strong> le QR.</p>
+            <ul class="text-gray-700 space-y-4 md:space-y-3">
           <li class="flex gap-3"><span>✅</span><span><strong>Modifiable à tout moment</strong> : mettez à jour l’URL, la page, l’offre ou le formulaire en 1 clic.</span></li>
           <li class="flex gap-3"><span>✅</span><span><strong>Physique → digital</strong> : transformez une vitrine, un sac ou un flyer en point d’entrée utile.</span></li>
           <li class="flex gap-3"><span>✅</span><span><strong>Suivi intégré</strong> : voyez les scans, les retours et ce qui convertit.</span></li>
@@ -126,24 +129,24 @@
 </section>
 
 <!-- SUIVI DES PROJETS (ESPACE PARTAGÉ) -->
-<section id="projets" class="py-24 bg-gray-50">
-  <div class="max-w-6xl mx-auto px-6">
+    <section id="projets" class="scroll-target py-16 md:py-24 bg-gray-50">
+      <div class="max-w-6xl mx-auto px-4 md:px-6">
     <div class="grid md:grid-cols-2 gap-10 items-center">
       <!-- Animation principale : board / kanban -->
       <div class="order-1 md:order-1 flex justify-center">
         <div id="animProjectsMain" style="width:380px;height:380px" aria-label="Tableau de projets partagé"></div>
       </div>
       <!-- Texte explicatif -->
-      <div class="order-2 md:order-2">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Un espace projets partagé — vous & votre agent</h2>
-        <p class="text-gray-700 text-lg mb-6">Tout est centralisé dans un seul tableau : idées, tâches, priorités, échéances. Vous voyez ce qui avance, ce qui bloque, et qui fait quoi — en temps réel, avec votre <strong>agent dédié</strong>.</p>
-        <ul class="text-gray-700 space-y-3">
-          <li class="flex gap-3"><span>✅</span><span><strong>Vue claire</strong> (liste, kanban, calendrier) selon vos habitudes.</span></li>
-          <li class="flex gap-3"><span>✅</span><span><strong>Responsabilités nettes</strong> : vous assignez, on exécute, on suit.</span></li>
-          <li class="flex gap-3"><span>✅</span><span><strong>Rituels simples</strong> : points rapides, priorités de la semaine, mise à jour instantanée.</span></li>
-          <li class="flex gap-3"><span>✅</span><span><strong>Historique & documents</strong> au même endroit, fini les liens dispersés.</span></li>
-        </ul>
-      </div>
+          <div class="order-2 md:order-2">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4">Un espace projets partagé — vous & votre agent</h2>
+            <p class="text-gray-700 text-lg leading-relaxed mt-2 mb-7">Tout est centralisé dans un seul tableau : idées, tâches, priorités, échéances. Vous voyez ce qui avance, ce qui bloque, et qui fait quoi — en temps réel, avec votre <strong>agent dédié</strong>.</p>
+            <ul class="text-gray-700 mt-6 pl-1 md:pl-2 space-y-5 md:space-y-4">
+              <li class="flex gap-4 items-start"><span>✅</span><span><strong>Vue claire</strong> (liste, kanban, calendrier) selon vos habitudes.</span></li>
+              <li class="flex gap-4 items-start"><span>✅</span><span><strong>Responsabilités nettes</strong> : vous assignez, on exécute, on suit.</span></li>
+              <li class="flex gap-4 items-start"><span>✅</span><span><strong>Rituels simples</strong> : points rapides, priorités de la semaine, mise à jour instantanée.</span></li>
+              <li class="flex gap-4 items-start"><span>✅</span><span><strong>Historique & documents</strong> au même endroit, fini les liens dispersés.</span></li>
+            </ul>
+          </div>
     </div>
 
     <!-- Mini démo visuelle en 3 étapes -->
@@ -164,7 +167,7 @@
 </section>
 
 <!-- ACCÈS ANTICIPÉ / BETA -->
-<section id="early" class="py-24 bg-white">
+<section id="early" class="scroll-target py-20 md:py-24 bg-white">
   <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-10 items-center">
     <div class="order-2 md:order-1">
       <h2 class="text-3xl md:text-4xl font-bold mb-4">Fusepoint arrive bientôt</h2>
@@ -237,11 +240,11 @@
 </div>
 
 <!-- CTA FINAL -->
-<section id="demo" class="py-28 bg-indigo-600 text-white text-center" data-aos="fade-up">
+<section id="demo" class="scroll-target py-20 md:py-28 bg-indigo-600 text-white text-center" data-aos="fade-up">
   <div class="max-w-4xl mx-auto px-6">
     <h2 class="text-4xl font-bold mb-4">Fini les promesses. Place aux résultats.</h2>
     <p class="text-lg mb-8 text-indigo-100">Fusepoint, c’est la clarté, la structure et le suivi que votre entreprise attendait.</p>
-    <a href="#contact" class="bg-white text-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg shadow-md hover:bg-indigo-50 transition">Demander une démo</a>
+    <a href="#contact" class="inline-flex w-full sm:w-auto justify-center bg-white text-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg shadow-md hover:bg-indigo-50 transition">Demander une démo</a>
   </div>
 </section>
 
