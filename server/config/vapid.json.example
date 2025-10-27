@@ -1,0 +1,5 @@
+{
+  "publicKey": "REPLACE_WITH_YOUR_VAPID_PUBLIC_KEY",
+  "privateKey": "REPLACE_WITH_YOUR_VAPID_PRIVATE_KEY",
+  "mailto": "mailto:admin@example.com"
+}
