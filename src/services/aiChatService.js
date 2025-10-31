@@ -86,10 +86,16 @@ class AIChatService {
 
   // Méthode pour vérifier si un client a un agent attribué
   async checkAgentAssignment(clientId) {
+    const token = this.getAuthToken();
+    // Ne pas appeler l'API si non authentifié ou pas d'ID
+    if (!token || !clientId) {
+      return { hasAssignedAgent: false, data: null };
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/api/client/${clientId}/assigned-agent`, {
         headers: {
-          'Authorization': `Bearer ${this.getAuthToken()}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -100,7 +106,7 @@ class AIChatService {
         throw new Error('Erreur lors de la vérification de l\'attribution');
       }
     } catch (error) {
-      console.error('Erreur lors de la vérification de l\'attribution:', error);
+      console.warn('Erreur lors de la vérification de l\'attribution:', error);
       return { hasAssignedAgent: false, data: null };
     }
   }

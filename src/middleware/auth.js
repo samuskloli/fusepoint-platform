@@ -34,6 +34,15 @@ export const requireGuest = (to, from, next) => {
   console.log('👤 Vérification guest pour:', to.path);
   
   if (authService.isAuthenticated()) {
+    // Si un token est présent mais expiré, nettoyer et laisser accéder à /login
+    if (authService.isTokenExpired()) {
+      console.warn('⚠️ Token expiré détecté en mode guest, nettoyage et accès au login');
+      authService.clearTokens();
+      authService.clearUser();
+      authService.clearCompanies();
+      next();
+      return;
+    }
     console.log('✅ Utilisateur déjà connecté, redirection vers /dashboard');
     next('/dashboard');
   } else {

@@ -1,3 +1,4 @@
+// Charger l'environnement depuis la racine par défaut
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -14,6 +15,15 @@ const nodemailer = require('nodemailer');
 const multer = require('multer');
 const sharp = require('sharp');
 const debugRoutes = require('./routes/debugDb');
+
+// Charger également l'environnement spécifique au serveur si présent
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+} catch (_) {}
+// Charger la configuration MariaDB dédiée si disponible
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '.env.mariadb') });
+} catch (_) {}
 
 // Services
 const aiChatService = require('./services/aiChatService');

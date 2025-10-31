@@ -78,6 +78,22 @@ pm2 restart fusepoint-frontend
 pm2 restart fusepoint-api
 ```
 
+## Réinstallation rapide (script)
+
+Pour réinstaller entièrement l’application sur le serveur distant via SSH, utilisez le script prêt à l’emploi:
+
+```bash
+# Sur votre machine locale (dans le repo)
+chmod +x scripts/reinstall-remote.sh
+./scripts/reinstall-remote.sh <ssh_user> <ssh_host> \
+  --path /srv/customer/sites/fusepoint.ch/fusepoint-platform \
+  --branch main \
+  --pm2-config ecosystem.prod.config.js
+```
+
+- Le script effectue: arrêt/suppression PM2, `git reset --hard origin/<branch>`, `npm ci` racine et `server/`, `npm run build`, redémarrage PM2 avec `ecosystem.prod.config.js`, et vérifications de santé.
+- Assurez-vous que les fichiers `.env` (racine et `server/.env`) sont présents et correctement configurés.
+
 ## Sécurité
 - Ne jamais commiter les `.env`.
 - Utiliser des secrets uniques par environnement.

@@ -17,6 +17,9 @@ import VueI18nPlugin from './plugins/i18n.js'
 // Token Manager plugin
 import TokenManagerPlugin from './plugins/tokenManager.js'
 
+// Font Awesome CSS pour les balises <i class="fas ...">
+import '@fortawesome/fontawesome-free/css/all.css'
+
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'

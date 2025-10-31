@@ -22,7 +22,7 @@
 <header class="sticky top-0 bg-white border-b border-indigo-100 z-50">
   <div class="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
     <a href="/" class="flex items-center gap-3">
-      <lottie-player src="public/lotties/point.json" background="transparent" speed="1" style="width:32px;height:32px;display:block" loop autoplay aria-label="Icône réseau"></lottie-player>
+      <lottie-player src="/uploads/lotties/point.json?v=20251027" background="transparent" speed="1" style="width:32px;height:32px;display:block" loop autoplay aria-label="Icône réseau"></lottie-player>
       <span class="font-semibold text-indigo-700">Fusepoint</span>
     </a>
     <nav class="hidden md:flex items-center gap-6 text-gray-700">
@@ -80,7 +80,7 @@
 
       <!-- Step 2 -->
       <div class="bg-white border border-indigo-100 p-8 rounded-2xl shadow-md w-72 transform transition hover:-translate-y-2 hover:shadow-2xl relative z-10" data-aos="zoom-in" data-aos-delay="200">
-        <lottie-player id="anim-platform" src="public/lotties/platform_fallback.json" background="transparent" speed="1" style="width: 90px; height: 90px; display:block;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Accès à la plateforme" renderer="svg"></lottie-player>
+        <lottie-player id="anim-platform" src="/uploads/lotties/platform_fallback.json?v=20251027" background="transparent" speed="1" style="width: 90px; height: 90px; display:block;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Accès à la plateforme" renderer="svg"></lottie-player>
         <h3 class="text-2xl font-semibold text-indigo-600 mb-3">2. Accès à la plateforme</h3>
         <p class="text-gray-700">Un tableau clair où vous suivez tout : projets, avancement, actions en cours et résultats.</p>
       </div>
@@ -113,7 +113,7 @@
 
     <div class="mt-20 grid md:grid-cols-2 gap-10 items-center px-6" data-aos="fade-up" data-aos-delay="200">
       <div class="flex justify-center" data-aos="zoom-in">
-        <lottie-player src="/lotties/website-building-of-shopping-sale.json" background="transparent" speed="1" class="w-64 h-64 md:w-96 md:h-96" loop autoplay poster="/fusepoint-logo.svg" aria-label="Plateforme Fusepoint" renderer="svg"></lottie-player>
+        <lottie-player id="animWebsite" src="/uploads/lotties/website-building-of-shopping-sale.json?v=20251027" background="transparent" speed="1" class="w-64 h-64 md:w-96 md:h-96" loop autoplay poster="/fusepoint-logo.svg" aria-label="Plateforme Fusepoint" renderer="svg"></lottie-player>
       </div>
       <div class="bg-gradient-to-br from-white to-indigo-50 p-6 md:p-10 rounded-3xl shadow-xl transform hover:-translate-y-2 transition max-w-none md:max-w-xl w-full mx-auto md:mx-0 break-words" style="hyphens:auto">
         <h3 class="text-3xl font-bold text-indigo-600 mb-4">Tout au même endroit</h3>
@@ -385,8 +385,8 @@
   (function(){
     const el = document.getElementById('anim-platform');
     if (!el) return;
-    const primary = 'public/lotties/platform_fallback.json';
-    const backup = 'public/lotties/platform.json';
+    const primary = '/uploads/lotties/platform_fallback.json?v=20251027';
+    const backup = '/uploads/lotties/platform.json?v=20251027';
     const test = async () => {
       try {
         const res = await fetch(primary, { method: 'GET', mode: 'cors', cache: 'no-store' });
@@ -433,15 +433,41 @@
   // Initialiser les animations des nouvelles sections
   loadAnim('animBenefit1','https://assets10.lottiefiles.com/packages/lf20_5ngs2ksb.json');
   loadAnim('animBenefit2','https://assets4.lottiefiles.com/packages/lf20_3vbOcw.json');
-  loadAnim('animBenefit3','public/lotties/customer.json');
-  loadAnimWithFallback('animQRMain','public/lotties/QR Code.json','https://assets3.lottiefiles.com/packages/lf20_9zduqf5t.json');
+  loadAnim('animBenefit3','/uploads/lotties/customer.json?v=20251027');
+  loadAnimWithFallback('animQRMain','/uploads/lotties/QR Code.json?v=20251027','https://assets3.lottiefiles.com/packages/lf20_9zduqf5t.json');
   loadAnim('animQRTrack','https://assets3.lottiefiles.com/packages/lf20_puciaact.json');
-  loadAnim('animCustomer','public/lotties/customer.json');
+  loadAnim('animCustomer','/uploads/lotties/customer.json?v=20251027');
   // Suivi des projets (espace partagé) - utilisation des fichiers locaux quand disponibles
-  loadAnim('animProjectsMain','public/lotties/Network icon.json'); // icône réseau - fichier local
+  // Icône réseau locale avec fallback sur un point minimal
+  loadAnimWithFallback('animProjectsMain','/uploads/lotties/Network icon.json?v=20251027','/uploads/lotties/point.json?v=20251027');
   loadAnim('animProjectsBoard','https://lottie.host/69e1e54d-1060-4a31-a89a-1597339b3666/mynPo8z3vI.json'); // moving cards/kanban
   // Early Access: accompagnement continu
-  loadAnimWithFallback('animEarlyRight','public/lotties/work in progress.json','https://assets1.lottiefiles.com/packages/lf20_ydo1amjm.json');
+  loadAnimWithFallback('animEarlyRight','/uploads/lotties/work in progress.json?v=20251027','https://assets1.lottiefiles.com/packages/lf20_ydo1amjm.json');
+</script>
+
+<script>
+  // Fallback générique pour le <lottie-player> de la section "Plateforme"
+  (function(){
+    const el = document.getElementById('animWebsite');
+    if (!el) return;
+    const primary = '/uploads/lotties/website-building-of-shopping-sale.json?v=20251027';
+    const backup = 'https://assets3.lottiefiles.com/packages/lf20_puciaact.json';
+    const test = async () => {
+      try {
+        const res = await fetch(primary, { method: 'GET', mode: 'cors', cache: 'no-store' });
+        if (!res.ok) throw new Error('status ' + res.status);
+        if (el.getAttribute('src') !== primary) el.setAttribute('src', primary);
+      } catch (err) {
+        // Basculer sur un fallback distant si le fichier local est absent
+        el.setAttribute('src', backup);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', test);
+    } else {
+      test();
+    }
+  })();
 </script>
 </body>
 </html>

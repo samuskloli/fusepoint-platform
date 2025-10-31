@@ -30,8 +30,8 @@
     "emitDecoratorMetadata": true
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "server/**/*.ts",
+    "server/**/*.js"
   ],
   "exclude": [
     "node_modules",

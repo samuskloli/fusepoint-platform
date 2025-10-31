@@ -110,9 +110,12 @@ export default {
         
         // Utiliser l'ID du client passé en prop ou l'utilisateur connecté
         const clientIdToCheck = props.clientId || authStore.user?.id
+        const accessToken = authService.getAccessToken?.() || localStorage.getItem('accessToken')
         
-        if (!clientIdToCheck) {
+        // Ne pas appeler l'API si pas d'utilisateur ou pas de token (ex: page de login)
+        if (!clientIdToCheck || !accessToken) {
           console.warn('Aucun ID client disponible pour vérifier l\'attribution')
+          loading.value = false
           return
         }
         
@@ -127,7 +130,7 @@ export default {
           }
         }
       } catch (error) {
-        console.error('Erreur lors de la vérification de l\'attribution:', error)
+        console.warn('Erreur lors de la vérification de l\'attribution:', error)
         if (error.response?.status === 401) {
           // Problème d'authentification, laisser le middleware gérer
           console.log('Problème d\'authentification détecté')

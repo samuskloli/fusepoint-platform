@@ -24,19 +24,19 @@ export type {
   EventReminder,
   EventRecurrence,
   CalendarEvent,
-  EventFilter,
-  EventStats,
+  CalendarFilter,
+  CalendarStats,
   CalendarWidgetConfig,
   CreateEventData,
   UpdateEventData,
-  TimeSlot,
+  CalendarTimeSlot,
   CalendarDay,
   CalendarWeek,
   CalendarMonth,
-  TeamMember,
-  MonthViewProps,
-  WeekViewProps,
-  DayViewProps,
-  ListViewProps,
-  EventItemProps
+  CalendarViewProps,
+  CalendarEventProps,
+  CalendarConfigProps
 } from './types'
+
+// Alias pour éviter les conflits de type TeamMember avec team-management
+export type { TeamMember as CalendarTeamMember } from './types'

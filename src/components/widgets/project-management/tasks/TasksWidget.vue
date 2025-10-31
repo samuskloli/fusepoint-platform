@@ -100,7 +100,8 @@ import AddTaskModal from './components/AddTaskModal.vue'
 import TasksConfigModal from './components/TasksConfigModal.vue'
 import { useTranslation } from '@/composables/useTranslation'
 import type { Task, TaskStatus, TaskPriority } from './types'
-import { useMultiTenantApi } from '@/services/multiTenantService'
+import { useMultiTenantApi, useMultiTenant } from '@/services/multiTenantService'
+import projectManagementService from '@/services/projectManagementService'
 
 interface Props {
   widget: any
@@ -110,6 +111,9 @@ interface Props {
 const props = defineProps<Props>()
 const { t } = useTranslation()
 const { getTasks: apiGetTasks, createTask: apiCreateTask, updateTask: apiUpdateTask, deleteTask: apiDeleteTask } = useMultiTenantApi()
+
+// Multi-tenant context helpers
+const { validateContext, setContext } = useMultiTenant()
 
 const {
   loading,
@@ -207,9 +211,39 @@ const filteredTasks = computed(() => {
   })
 })
 
+// Résoudre et initialiser le contexte à partir du projectId si nécessaire
+const resolveContextFromProject = async () => {
+  try {
+    if (validateContext()) return
+    if (!props.projectId) return
+    const resp = await projectManagementService.getProjectDetails(String(props.projectId))
+    if (resp?.success && resp.data) {
+      const project = resp.data
+      const clientIdNum = Number(project.client_id ?? project.clientId ?? project.client?.id)
+      const projectIdNum = Number(project.id ?? props.projectId)
+      if (!clientIdNum || Number.isNaN(clientIdNum) || !projectIdNum || Number.isNaN(projectIdNum)) return
+      const clientCtx = {
+        id: clientIdNum,
+        name: project.client?.name ?? '',
+        status: project.client?.status ?? 'active'
+      }
+      const projectCtx = {
+        id: projectIdNum,
+        name: project.name ?? '',
+        status: project.status ?? 'active',
+        client_id: clientIdNum
+      }
+      setContext(clientCtx, projectCtx)
+    }
+  } catch (e) {
+    console.error('Échec de la résolution du contexte pour TasksWidget', e)
+  }
+}
+
 const loadData = async () => {
   try {
     setLoading(true)
+    await resolveContextFromProject()
     const resp = await apiGetTasks()
     const apiTasks = resp?.data?.tasks || []
     tasks.value = apiTasks.map(mapApiTaskToWidgetTask)
@@ -288,8 +322,9 @@ const saveConfiguration = async (config: any) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (props.widget.isEnabled) {
+    await resolveContextFromProject()
     loadData()
   }
 })

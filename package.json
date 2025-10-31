@@ -11,9 +11,15 @@
     "restore-env": "cp .env.backup .env 2>/dev/null || echo 'Aucune sauvegarde trouvée'",
     "start:frontend": "node infomaniak-server.js",
     "deploy:infomaniak": "chmod +x deploy-infomaniak-nodejs.sh && ./deploy-infomaniak-nodejs.sh",
-    "start:infomaniak": "chmod +x start-infomaniak.sh && ./start-infomaniak.sh"
+    "start:infomaniak": "chmod +x start-infomaniak.sh && ./start-infomaniak.sh",
+    "deploy:htaccess": "chmod +x scripts/deploy-htaccess.sh && ./scripts/deploy-htaccess.sh",
+    "deploy:remote": "chmod +x scripts/deploy-remote.sh && ./scripts/deploy-remote.sh",
+    "prune:prod:dry": "bash scripts/prune-for-production.sh",
+    "prune:prod": "bash scripts/prune-for-production.sh --apply",
+    "prune:prod:archive": "bash scripts/prune-for-production.sh --apply --archive"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@fortawesome/fontawesome-svg-core": "^7.0.0",
     "@fortawesome/free-regular-svg-icons": "^7.0.0",
     "@fortawesome/free-solid-svg-icons": "^7.0.0",

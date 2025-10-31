@@ -96,8 +96,16 @@ const routes = [
       // Vérifier l'authentification de manière synchrone
       const token = localStorage.getItem('accessToken');
       const user = localStorage.getItem('user');
-      
-      if (token && user) {
+      const expiresAt = localStorage.getItem('tokenExpiresAt');
+
+      // Considérer expiré si horodatage manquant ou invalide
+      let isExpired = true;
+      if (expiresAt) {
+        const expiryDate = new Date(expiresAt);
+        isExpired = Number.isNaN(expiryDate.getTime()) || new Date() >= expiryDate;
+      }
+
+      if (token && user && !isExpired) {
         return '/dashboard';
       } else {
         return '/login';

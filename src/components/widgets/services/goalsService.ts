@@ -1,4 +1,4 @@
-import type { Goal, GoalStatus, GoalPriority } from '../GoalsWidget.vue'
+import type { Goal, GoalStatus, GoalPriority } from '../goals/types'
 
 // Service simulé pour la gestion des objectifs
 export const goalsService = {
@@ -220,4 +220,4 @@ export const goalsService = {
 }
 
 // Export des types pour une utilisation externe
-export type { Goal, GoalStatus, GoalPriority } from '../GoalsWidget.vue'
+export type { Goal, GoalStatus, GoalPriority } from '../goals/types'

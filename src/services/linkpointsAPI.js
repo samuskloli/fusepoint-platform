@@ -67,7 +67,7 @@ export default {
     const origin = (isLocalHost && devPublic && /^https?:\/\//.test(devPublic))
       ? devPublic.replace(/\/+$/, '')
       : originDefault
-    return `${origin}/l/${slug}`
+    return `${origin}/app/l/${slug}`
   },
 
 }

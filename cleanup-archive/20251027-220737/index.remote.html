@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fusepoint – Que tout marche, simplement.</title>
+  <meta name="description" content="Fusepoint simplifie la vie des entreprises. Une approche claire, un accompagnement humain, des outils connectés. Tout marche, enfin." />
+  <meta name="theme-color" content="#4f46e5" />
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://unpkg.com/@lottiefiles/lottie-player@1.5.7/dist/lottie-player.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet" />
+  <style>
+     html { scroll-behavior: smooth; }
+     /* Décalage des ancres pour le header sticky */
+     .scroll-target { scroll-margin-top: 80px; }
+     .timeline-line { position: absolute; top: 50%; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, #c7d2fe 0%, #6366f1 50%, #4f46e5 100%); opacity: 0.4; z-index: 0; }
+    </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+</head>
+<body class="bg-gradient-to-b from-indigo-50 to-white text-gray-800">
+<header class="sticky top-0 bg-white border-b border-indigo-100 z-50">
+  <div class="max-w-6xl mx-auto px-4 md:px-6 py-3 flex items-center justify-between">
+    <a href="/" class="flex items-center gap-3">
+      <lottie-player src="/uploads/lotties/point.json" background="transparent" speed="1" style="width:32px;height:32px;display:block" loop autoplay aria-label="Icône réseau"></lottie-player>
+      <span class="font-semibold text-indigo-700">Fusepoint</span>
+    </a>
+    <nav class="hidden md:flex items-center gap-6 text-gray-700">
+      <a href="#fonctionnement" class="hover:text-indigo-600">Fonctionnement</a>
+      <a href="#demo" class="hover:text-indigo-600">Demo</a>
+      <a href="/app/login" class="hover:text-indigo-600">Se connecter</a>
+    </nav>
+    <div class="flex items-center gap-3">
+      <a href="/app/login" class="inline-flex px-4 py-2 rounded-lg font-semibold border border-indigo-600 text-indigo-700 hover:bg-indigo-50 transition">Se connecter</a>
+      <a href="/#early-access" class="hidden md:inline-flex bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold shadow-md hover:bg-indigo-500 transition">S’inscrire à la bêta</a>
+      <button id="menu-toggle" class="md:hidden p-2 rounded-lg border border-gray-300 hover:border-indigo-400" aria-label="Ouvrir le menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="md:hidden fixed inset-x-0 top-16 bottom-0 bg-white z-40 border-t border-indigo-100 px-6 py-6 hidden overflow-y-auto">
+    <nav class="flex flex-col gap-2 text-gray-700">
+      <a href="#fonctionnement" class="py-2 rounded hover:text-indigo-600">Fonctionnement</a>
+      <a href="#demo" class="py-2 rounded hover:text-indigo-600">Demo</a>
+      <a href="/app/login" class="py-2 rounded hover:text-indigo-600">Se connecter</a>
+      <a href="/#early-access" class="mt-2 inline-flex items-center justify-center px-4 py-3 rounded-lg bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-500">S’inscrire à la bêta</a>
+    </nav>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="relative flex flex-col items-center justify-center text-center py-24 md:py-32 px-4 md:px-6 overflow-hidden" data-aos="fade-up">
+  <div class="max-w-3xl mx-auto relative z-10">
+    <h1 class="text-3xl md:text-5xl font-bold mb-4 md:mb-6 leading-tight" data-aos="fade-up" data-aos-delay="100">Vous faites déjà beaucoup.<br><span class="text-indigo-600">Fusepoint vous aide à le faire mieux.</span></h1>
+          <p class="text-base md:text-lg text-gray-600 mb-6 md:mb-8" data-aos="fade-up" data-aos-delay="200">Parce qu’une entreprise qui communique avec clarté inspire confiance. Fusepoint vous aide à structurer votre image et à mieux connecter avec vos clients.</p>
+    <div class="w-full flex flex-col sm:flex-row justify-center gap-3 md:gap-4" data-aos="zoom-in" data-aos-delay="300">
+      <a href="/#early-access" class="w-full sm:w-auto text-center bg-indigo-600 text-white px-6 md:px-8 py-4 rounded-lg font-semibold text-base md:text-lg shadow-md hover:bg-indigo-500 transition">S’inscrire à la bêta</a>
+      <a href="#fonctionnement" class="w-full sm:w-auto text-center border border-gray-300 px-6 md:px-8 py-4 rounded-lg font-semibold text-base md:text-lg hover:border-indigo-400 transition">Voir comment ça marche</a>
+    </div>
+  </div>
+  <img loading="lazy" src="https://images.unsplash.com/photo-1556761175-4b46a572b786?auto=format&fit=crop&w=1400&q=80" alt="Collaboration simple et efficace" class="absolute top-0 left-0 w-full h-full object-cover opacity-10">
+</section>
+
+<!-- COMMENT ÇA MARCHE + TIMELINE VISUELLE -->
+<section id="fonctionnement" class="scroll-target py-20 md:py-28 bg-white relative overflow-hidden">
+  <div class="max-w-6xl mx-auto px-6 text-center relative">
+    <h2 class="text-4xl font-bold mb-6" data-aos="fade-up">Comment ça marche ?</h2>
+    <p class="text-gray-600 mb-16 text-lg" data-aos="fade-up" data-aos-delay="100">Une méthode claire en 4 étapes. Vous gardez le contrôle, sans la complexité.</p>
+
+    <!-- Timeline -->
+    <div class="relative flex flex-col md:flex-row justify-between items-center space-y-12 md:space-y-0">
+      <div class="timeline-line hidden md:block"></div>
+
+      <!-- Step 1 -->
+      <div class="bg-white border border-indigo-100 p-8 rounded-2xl shadow-md w-72 transform transition hover:-translate-y-2 hover:shadow-2xl relative z-10" data-aos="zoom-in" data-aos-delay="100">
+        <lottie-player src="https://assets4.lottiefiles.com/packages/lf20_4kx2q32n.json" background="transparent" speed="1" style="width: 90px; height: 90px;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Agent dédié"></lottie-player>
+        <h3 class="text-2xl font-semibold text-indigo-600 mb-3">1. Votre agent dédié</h3>
+        <p class="text-gray-700">Un interlocuteur humain qui comprend vos enjeux et reste à vos côtés à chaque étape.</p>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="bg-white border border-indigo-100 p-8 rounded-2xl shadow-md w-72 transform transition hover:-translate-y-2 hover:shadow-2xl relative z-10" data-aos="zoom-in" data-aos-delay="200">
+        <lottie-player id="anim-platform" src="/uploads/lotties/platform_fallback.json" background="transparent" speed="1" style="width: 90px; height: 90px; display:block;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Accès à la plateforme" renderer="svg"></lottie-player>
+        <h3 class="text-2xl font-semibold text-indigo-600 mb-3">2. Accès à la plateforme</h3>
+        <p class="text-gray-700">Un tableau clair où vous suivez tout : projets, avancement, actions en cours et résultats.</p>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="bg-white border border-indigo-100 p-8 rounded-2xl shadow-md w-72 transform transition hover:-translate-y-2 hover:shadow-2xl relative z-10" data-aos="zoom-in" data-aos-delay="300">
+        <lottie-player src="https://assets3.lottiefiles.com/packages/lf20_puciaact.json" background="transparent" speed="1" style="width: 90px; height: 90px;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Audit stratégique"></lottie-player>
+        <h3 class="text-2xl font-semibold text-indigo-600 mb-3">3. Audit stratégique</h3>
+        <p class="text-gray-700">Nous analysons vos points forts et vos blocages pour créer un plan d’action simple et concret.</p>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="bg-white border border-indigo-100 p-8 rounded-2xl shadow-md w-72 transform transition hover:-translate-y-2 hover:shadow-2xl relative z-10" data-aos="zoom-in" data-aos-delay="400">
+        <lottie-player src="https://assets4.lottiefiles.com/packages/lf20_lk80fpsm.json" background="transparent" speed="1" style="width: 90px; height: 90px;" loop autoplay poster="/fusepoint-logo.svg" aria-label="Mise en action"></lottie-player>
+        <h3 class="text-2xl font-semibold text-indigo-600 mb-3">4. Mise en action</h3>
+        <p class="text-gray-700">On déploie les actions prioritaires, on suit les retours clients et on améliore en continu.</p>
+      </div>
+    </div>
+
+    <!-- Nouveau bloc visuel explicatif -->
+    <div class="mt-24 grid md:grid-cols-2 gap-10 items-center px-6" data-aos="fade-up">
+      <div class="bg-gradient-to-br from-indigo-50 to-white p-6 md:p-10 rounded-3xl shadow-xl transform hover:-translate-y-2 transition max-w-none md:max-w-xl w-full mx-auto md:mx-0 break-words" style="hyphens:auto">
+        <h3 class="text-3xl font-bold text-indigo-600 mb-4">Chaque entreprise a son histoire</h3>
+        <p class="text-gray-700 text-lg leading-relaxed">C’est pourquoi Fusepoint ne se contente pas d’outils : nous vous accompagnons dans la durée. Votre agent connaît votre activité, vos clients, vos objectifs et vos contraintes. Ensemble, vous avancez étape par étape vers une meilleure structure, plus de visibilité et des résultats mesurables.</p>
+      </div>
+      <div class="flex justify-center" data-aos="zoom-in">
+        <lottie-player src="https://assets1.lottiefiles.com/packages/lf20_ydo1amjm.json" background="transparent" speed="1" class="w-64 h-64 md:w-[400px] md:h-[400px]" loop autoplay poster="/fusepoint-logo.svg" aria-label="Accompagnement continu" renderer="svg"></lottie-player>
+      </div>
+    </div>
+
+    <div class="mt-20 grid md:grid-cols-2 gap-10 items-center px-6" data-aos="fade-up" data-aos-delay="200">
+      <div class="flex justify-center" data-aos="zoom-in">
+        <lottie-player src="/uploads/lotties/website-building-of-shopping-sale.json" background="transparent" speed="1" class="w-64 h-64 md:w-96 md:h-96" loop autoplay poster="/fusepoint-logo.svg" aria-label="Plateforme Fusepoint" renderer="svg"></lottie-player>
+      </div>
+      <div class="bg-gradient-to-br from-white to-indigo-50 p-6 md:p-10 rounded-3xl shadow-xl transform hover:-translate-y-2 transition max-w-none md:max-w-xl w-full mx-auto md:mx-0 break-words" style="hyphens:auto">
+        <h3 class="text-3xl font-bold text-indigo-600 mb-4">Tout au même endroit</h3>
+        <p class="text-gray-700 text-base md:text-lg leading-relaxed">Vous n’avez plus à jongler entre dix prestataires. Tout se passe au même endroit : la plateforme Fusepoint. Vous y retrouvez vos suivis, vos échanges, vos statistiques et vos prochaines actions. Simple, fluide et humain.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VALEUR EN 30 JOURS -->
+<section id="valeur" class="scroll-target py-16 md:py-24 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="text-center mb-14">
+      <h2 class="text-4xl font-bold mb-3">Ce que vous obtenez dès le 1er mois</h2>
+      <p class="text-gray-600 text-lg">Du concret, pas du blabla : clarté, priorités et premiers retours clients exploitables.</p>
+    </div>
+    <div class="grid md:grid-cols-3 gap-8">
+      <div class="bg-white rounded-2xl shadow-md p-8 hover:shadow-lg transition" data-aos="zoom-in">
+        <div id="animBenefit1" class="anim-container" style="width:90px;height:90px;margin:0 auto"></div>
+        <h3 class="text-xl font-semibold text-indigo-600 mb-2">Feuille de route claire</h3>
+        <p class="text-gray-700">Objectifs priorisés, actions hebdomadaires, responsabilités simples.</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-md p-8 hover:shadow-lg transition" data-aos="zoom-in" data-aos-delay="100">
+        <div id="animBenefit2" class="anim-container" style="width:90px;height:90px;margin:0 auto"></div>
+        <h3 class="text-xl font-semibold text-indigo-600 mb-2">Outils connectés</h3>
+        <p class="text-gray-700">Un seul espace pour vos projets, vos supports et vos chiffres clés.</p>
+      </div>
+      <div class="bg-white rounded-2xl shadow-md p-8 hover:shadow-lg transition" data-aos="zoom-in" data-aos-delay="200">
+        <div id="animBenefit3" class="anim-container" style="width:90px;height:90px;margin:0 auto"></div>
+        <h3 class="text-xl font-semibold text-indigo-600 mb-2">Retours clients réels</h3>
+        <p class="text-gray-700">Liens physiques→digital inclus (souvent payants ailleurs), feedbacks centralisés, décisions évidentes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- QR DYNAMIQUES (INCLUS) -->
+<section id="qr-dynamique" class="scroll-target py-16 md:py-24 bg-white">
+  <div class="max-w-6xl mx-auto px-4 md:px-6">
+    <div class="grid md:grid-cols-2 gap-10 items-center">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">QR codes dynamiques — inclus dans la plateforme</h2>
+        <p class="text-gray-700 text-lg leading-relaxed mb-6">Ce sont des <strong>QR codes physiques</strong> (stickers, affiches, packaging…) que vous placez dans la vraie vie. <br>Leur particularité ? <strong>Vous pouvez changer leur destination</strong> depuis Fusepoint <strong>sans réimprimer</strong> le QR.</p>
+        <ul class="text-gray-700 space-y-4 md:space-y-3">
+          <li class="flex gap-3"><span>✅</span><span><strong>Modifiable à tout moment</strong> : mettez à jour l’URL, la page, l’offre ou le formulaire en 1 clic.</span></li>
+          <li class="flex gap-3"><span>✅</span><span><strong>Physique → digital</strong> : transformez une vitrine, un sac ou un flyer en point d’entrée utile.</span></li>
+          <li class="flex gap-3"><span>✅</span><span><strong>Suivi intégré</strong> : voyez les scans, les retours et ce qui convertit.</span></li>
+          <li class="flex gap-3"><span>✅</span><span><strong>Inclus dans Fusepoint</strong> (souvent payant ailleurs).</span></li>
+        </ul>
+      </div>
+      <div class="flex justify-center">
+        <div id="animQRMain" style="width:360px;height:360px" aria-label="QR dynamique scanné"></div>
+      </div>
+    </div>
+    <div class="mt-12 grid lg:grid-cols-3 gap-6">
+      <div class="bg-gray-50 rounded-2xl p-6 shadow-sm">
+        <h3 class="font-semibold text-indigo-600 mb-2">1) Vous placez le QR physique</h3>
+        <p class="text-gray-700 text-sm">Vitrine, comptoir, flyer, packaging…</p>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-6 shadow-sm flex items-center justify-center">
+        <div id="animQRTrack" style="width:120px;height:120px" aria-label="Mise à jour facile"></div>
+      </div>
+      <div class="bg-gray-50 rounded-2xl p-6 shadow-sm">
+        <h3 class="font-semibold text-indigo-600 mb-2">2) Vous changez la destination en 1 clic</h3>
+        <p class="text-gray-700 text-sm">Nouvelle offre ? Nouveau formulaire ? Pas besoin de réimprimer.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Bloc animation client (local) -->
+<div class="py-12 bg-white">
+  <div class="max-w-6xl mx-auto px-6 flex justify-center">
+    <div id="animCustomer" style="width:240px;height:240px" aria-label="Client"></div>
+  </div>
+</div>
+
+<!-- SUIVI DES PROJETS (ESPACE PARTAGÉ) -->
+<section id="projets" class="scroll-target py-16 md:py-24 bg-gray-50">
+  <div class="max-w-6xl mx-auto px-4 md:px-6">
+    <div class="grid md:grid-cols-2 gap-10 items-center">
+      <div class="order-1 md:order-1 flex justify-center">
+        <div id="animProjectsMain" style="width:100%;max-width:380px;aspect-ratio:1/1;height:auto" aria-label="Tableau de projets partagé"></div>
+      </div>
+      <div class="order-2 md:order-2">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Un espace projets partagé — vous & votre agent</h2>
+        <p class="text-gray-700 text-lg leading-relaxed mt-2 mb-7 break-words">Tout est centralisé dans un seul tableau : idées, tâches, priorités, échéances. Vous voyez ce qui avance, ce qui bloque, et qui fait quoi — en temps réel, avec votre <strong>agent dédié</strong>.</p>
+        <ul class="text-gray-700 mt-6 pl-1 md:pl-2 space-y-5 md:space-y-4 break-words">
+          <li class="flex gap-4 items-start"><span class="flex-shrink-0">✅</span><span class="min-w-0 break-words"><strong>Vue claire</strong> (liste, kanban, calendrier) selon vos habitudes.</span></li>
+          <li class="flex gap-4 items-start"><span class="flex-shrink-0">✅</span><span class="min-w-0 break-words"><strong>Responsabilités nettes</strong> : vous assignez, on exécute, on suit.</span></li>
+          <li class="flex gap-4 items-start"><span class="flex-shrink-0">✅</span><span class="min-w-0 break-words"><strong>Rituels simples</strong> : points rapides, priorités de la semaine, mise à jour instantanée.</span></li>
+          <li class="flex gap-4 items-start"><span class="flex-shrink-0">✅</span><span class="min-w-0 break-words"><strong>Historique & documents</strong> au même endroit, fini les liens dispersés.</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ACCÈS ANTICIPÉ / BÊTA -->
+<section id="early-access" class="scroll-target py-20 bg-white">
+  <div class="container mx-auto px-4">
+    <div class="relative overflow-hidden rounded-2xl ring-1 ring-indigo-100 border border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-purple-50 shadow-xl p-6 md:p-10">
+      <div class="grid md:grid-cols-2 gap-8 items-center">
+        <div data-aos="fade-right" class="text-center md:text-left">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-sm font-semibold mb-4">
+            <span>Beta ouverte</span>
+          </div>
+          <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-4">Participez à la construction de Fusepoint</h2>
+          <p class="text-lg text-gray-800">Fusepoint n’est pas qu’un outil — c’est une nouvelle manière simple de piloter votre activité.</p>
+          <p class="text-lg text-gray-700 mb-6">Avant le lancement officiel, nous accueillons quelques utilisateurs tests pour co‑construire les derniers détails.</p>
+          <p class="text-base text-gray-900 font-semibold mb-4">En rejoignant la liste d’attente, vous :</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="flex items-start gap-3 bg-white/80 backdrop-blur-sm ring-1 ring-gray-200 rounded-xl p-4 shadow-sm">
+              <div class="text-xl">🎟️</div>
+              <div class="text-sm text-gray-800">Accédez en avant‑première aux fonctionnalités clés</div>
+            </div>
+            <div class="flex items-start gap-3 bg-white/80 backdrop-blur-sm ring-1 ring-gray-200 rounded-xl p-4 shadow-sm">
+              <div class="text-xl">🤝</div>
+              <div class="text-sm text-gray-800">Échangez avec notre équipe et votre agent dédié</div>
+            </div>
+            <div class="flex items-start gap-3 bg-white/80 backdrop-blur-sm ring-1 ring-gray-200 rounded-xl p-4 shadow-sm">
+              <div class="text-xl">💬</div>
+              <div class="text-sm text-gray-800">Partagez vos retours pour améliorer Fusepoint</div>
+            </div>
+            <div class="flex items-start gap-3 bg-white/80 backdrop-blur-sm ring-1 ring-gray-200 rounded-xl p-4 shadow-sm">
+              <div class="text-xl">🚀</div>
+              <div class="text-sm text-gray-800">Profitez d’un accès gratuit pendant la phase Beta</div>
+            </div>
+          </div>
+          <p class="text-gray-700 mt-6">Votre expérience et vos idées contribueront directement à faire évoluer Fusepoint.</p>
+          <a href="#" data-open-early class="mt-6 inline-flex w-full sm:w-auto items-center justify-center gap-2 px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600">
+            Je participe
+            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10.293 15.707a1 1 0 010-1.414L13.586 11H4a1 1 0 110-2h9.586l-3.293-3.293a1 1 0 111.414-1.414l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0z"/></svg>
+          </a>
+        </div>
+        <div data-aos="fade-left" class="flex items-center justify-center md:justify-end">
+          <div id="animEarlyRight" class="w-48 h-48 md:w-64 md:h-64 pointer-events-none select-none" aria-label="Work in progress"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Modal Early Access -->
+<div id="early-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+  <div class="max-w-lg mx-auto mt-24 bg-white rounded-xl shadow-xl p-6">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-xl font-semibold text-gray-900">Accès anticipé</h3>
+      <button id="close-early-modal" class="text-gray-500 hover:text-gray-700">\u2715</button>
+    </div>
+    <form class="space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label for="first_name" class="block text-sm font-medium text-gray-700">Prénom</label>
+          <input id="first_name" type="text" placeholder="Ex: Alex" class="mt-1 w-full px-4 py-2 border rounded-lg">
+        </div>
+        <div>
+          <label for="last_name" class="block text-sm font-medium text-gray-700">Nom</label>
+          <input id="last_name" type="text" placeholder="Ex: Martin" class="mt-1 w-full px-4 py-2 border rounded-lg">
+        </div>
+      </div>
+      <div>
+        <label for="company" class="block text-sm font-medium text-gray-700">Entreprise <span class="text-gray-500">(optionnel)</span></label>
+        <input id="company" type="text" placeholder="Ex: Entreprise SA" class="mt-1 w-full px-4 py-2 border rounded-lg">
+      </div>
+      <div>
+        <label for="contact" class="block text-sm font-medium text-gray-700">Email de contact *</label>
+        <input id="contact" type="email" placeholder="vous@entreprise.com" class="mt-1 w-full px-4 py-2 border rounded-lg">
+      </div>
+      <div>
+        <label for="usecase" class="block text-sm font-medium text-gray-700">Cas d’usage principal</label>
+        <textarea id="usecase" rows="3" placeholder="Décrivez brièvement votre besoin" class="mt-1 w-full px-4 py-2 border rounded-lg"></textarea>
+      </div>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="close-early-modal-2" class="px-4 py-2 rounded-lg border">Annuler</button>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white">Envoyer la demande</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- CTA FINAL -->
+<section id="demo" class="scroll-target py-20 md:py-28 bg-indigo-600 text-white text-center" data-aos="fade-up">
+  <div class="max-w-4xl mx-auto px-6">
+    <h2 class="text-4xl font-bold mb-4">Fini les promesses. Place aux résultats.</h2>
+    <p class="text-lg mb-8 text-indigo-100">Fusepoint, c’est la clarté, la structure et le suivi que votre entreprise attendait.</p>
+    <a href="/#early-access" class="inline-flex w-full sm:w-auto justify-center bg-white text-indigo-700 px-8 py-4 rounded-lg font-semibold text-lg shadow-md hover:bg-indigo-50 transition">S’inscrire à la bêta</a>
+  </div>
+</section>
+
+<footer class="bg-gray-900 text-gray-400 text-center py-6">
+  <p>© <span id="year"></span> Fusepoint — Que tout marche, simplement.</p>
+</footer>
+
+<link rel="preconnect" href="https://assets1.lottiefiles.com"/>
+<link rel="preconnect" href="https://assets3.lottiefiles.com"/>
+<link rel="preconnect" href="https://assets4.lottiefiles.com"/>
+<link rel="preconnect" href="https://assets9.lottiefiles.com"/>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+  AOS.init({duration: 800, once: true});
+  const toggle = document.getElementById('menu-toggle');
+  const mobile = document.getElementById('mobile-menu');
+  if (toggle && mobile) {
+    const body = document.body;
+    const links = mobile.querySelectorAll('a');
+    const setExpanded = (val) => toggle.setAttribute('aria-expanded', val ? 'true' : 'false');
+    const open = () => { mobile.classList.remove('hidden'); body.classList.add('overflow-hidden'); setExpanded(true); };
+    const close = () => { mobile.classList.add('hidden'); body.classList.remove('overflow-hidden'); setExpanded(false); };
+    toggle.addEventListener('click', () => {
+      if (mobile.classList.contains('hidden')) open(); else close();
+    });
+    links.forEach(l => l.addEventListener('click', close));
+  }
+
+  // Early Access modal handlers
+  const earlyModal = document.getElementById('early-modal');
+  const closeEarly = document.getElementById('close-early-modal');
+  const closeEarly2 = document.getElementById('close-early-modal-2');
+  const openEarlyButtons = document.querySelectorAll('#open-early-modal, [data-open-early]');
+
+  if (earlyModal && openEarlyButtons.length) {
+    openEarlyButtons.forEach(btn => btn.addEventListener('click', () => earlyModal.classList.remove('hidden')));
+  }
+  const hideEarly = () => earlyModal && earlyModal.classList.add('hidden');
+  if (closeEarly) closeEarly.addEventListener('click', hideEarly);
+  if (closeEarly2) closeEarly2.addEventListener('click', hideEarly);
+  if (earlyModal) {
+    earlyModal.addEventListener('click', (e) => {
+      if (e.target === earlyModal) hideEarly();
+    });
+
+    // Soumission du formulaire d'accès anticipé
+    const form = earlyModal.querySelector('form');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const first_name = form.querySelector('#first_name')?.value?.trim() || '';
+        const last_name = form.querySelector('#last_name')?.value?.trim() || '';
+        const company = form.querySelector('#company')?.value?.trim() || '';
+        const contact = form.querySelector('#contact')?.value?.trim() || '';
+        const usecase = form.querySelector('#usecase')?.value?.trim() || '';
+        const submitBtn = form.querySelector('button[type="submit"]');
+        const originalText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Envoi…'; }
+        try {
+          const res = await fetch('/api/public/beta-signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ first_name, last_name, company, contact, usecase })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data?.message || 'Erreur lors de l’envoi');
+          hideEarly();
+          alert('Merci ! Votre demande a bien été envoyée.');
+        } catch (err) {
+          alert(err?.message || 'Une erreur est survenue.');
+        } finally {
+          if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = originalText || 'Envoyer la demande'; }
+        }
+      });
+    }
+  }
+</script>
+
+<script>
+  // Fallback programmatique pour l’animation "Accès à la plateforme"
+  (function(){
+    const el = document.getElementById('anim-platform');
+    if (!el) return;
+    const primary = '/uploads/lotties/platform_fallback.json';
+    const backup = '/uploads/lotties/platform.json';
+    const test = async () => {
+      try {
+        const res = await fetch(primary, { method: 'GET', mode: 'cors', cache: 'no-store' });
+        if (!res.ok) throw new Error('status ' + res.status);
+        if (el.getAttribute('src') !== primary) el.setAttribute('src', primary);
+      } catch (err) {
+        // Basculer sur l’autre fichier local si le primary échoue
+        el.setAttribute('src', backup);
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', test);
+    } else {
+      test();
+    }
+  })();
+</script>
+
+<script>
+  function loadAnim(id, path){
+    const el = document.getElementById(id);
+    if(!el) return;
+    lottie.loadAnimation({container: el, renderer: 'svg', loop: true, autoplay: true, path: encodeURI(path)});
+  }
+  // Fallback local→remote pour l'animation QR principale
+  function loadAnimWithFallback(id, primary, backup){
+    const el = document.getElementById(id);
+    if(!el) return;
+    const p = encodeURI(primary);
+    fetch(p, { method: 'GET', mode: 'cors', cache: 'no-store' })
+      .then(res => {
+        if(!res.ok) throw new Error('status ' + res.status);
+        return res.json();
+      })
+      .then(json => {
+        lottie.loadAnimation({ container: el, renderer: 'svg', loop: true, autoplay: true, animationData: json });
+        console.log('QR local chargé:', p);
+      })
+      .catch(err => {
+        console.warn('QR local indisponible, fallback distant:', err);
+        lottie.loadAnimation({ container: el, renderer: 'svg', loop: true, autoplay: true, path: backup });
+      });
+  }
+  // Initialiser les animations des nouvelles sections
+  loadAnim('animBenefit1','https://assets10.lottiefiles.com/packages/lf20_5ngs2ksb.json');
+  loadAnim('animBenefit2','https://assets4.lottiefiles.com/packages/lf20_3vbOcw.json');
+  loadAnim('animBenefit3','/uploads/lotties/customer.json');
+  loadAnimWithFallback('animQRMain','/uploads/lotties/QR Code.json','https://assets3.lottiefiles.com/packages/lf20_9zduqf5t.json');
+  loadAnim('animQRTrack','https://assets3.lottiefiles.com/packages/lf20_puciaact.json');
+  loadAnim('animCustomer','/uploads/lotties/customer.json');
+  // Suivi des projets (espace partagé) - utilisation des fichiers locaux quand disponibles
+  loadAnim('animProjectsMain','/uploads/lotties/Network icon.json'); // icône réseau - fichier local
+  loadAnim('animProjectsBoard','https://lottie.host/69e1e54d-1060-4a31-a89a-1597339b3666/mynPo8z3vI.json'); // moving cards/kanban
+  // Early Access: accompagnement continu
+  loadAnimWithFallback('animEarlyRight','public/lotties/work in progress.json','https://assets1.lottiefiles.com/packages/lf20_ydo1amjm.json');
+</script>
+</body>
+</html>

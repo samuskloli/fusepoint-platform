@@ -137,7 +137,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Goal, GoalStatus, GoalPriority } from '../GoalsWidget.vue'
+import type { Goal, GoalStatus, GoalPriority } from '../goals/types'
 
 // Composables simulés
 const { t } = {

@@ -1,6 +1,7 @@
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import path from 'path';
+import fs from 'fs';
 import compression from 'compression';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -14,6 +15,16 @@ const app = express();
 // Supporte les ports fournis par la plateforme (PORT), fallback sur FRONTEND_PORT ou 8080
 const PORT = process.env.PORT || process.env.FRONTEND_PORT || 8080;
 const API_PORT = process.env.API_PORT || 3000;
+// Racine des fichiers servables (permet de forcer /sites/fusepoint.ch via env), avec fallback si introuvable
+let ROOT = process.env.SITE_ROOT || __dirname;
+try {
+  const candidate = path.join(ROOT, 'dist', 'index.html');
+  if (!fs.existsSync(candidate)) {
+    ROOT = __dirname;
+  }
+} catch (_) {
+  ROOT = __dirname;
+}
 
 // Origines autorisées pour CORS
 const allowedOriginsEnv = (process.env.ALLOWED_ORIGINS || '')
@@ -68,12 +79,12 @@ app.use('/uploads/lotties', express.static(path.join(__dirname, 'public', 'lotti
   maxAge: '1d'
 }));
 
-// Servir les fichiers statiques du frontend
-app.use(express.static(path.join(__dirname, 'dist'), {
-  maxAge: '1d', // Cache pour les assets
-  setHeaders: (res, path) => {
-    // Pas de cache pour index.html
-    if (path.endsWith('index.html')) {
+// Servir d'abord sous le préfixe /app pour correspondre au base Vite en production
+app.use('/app', express.static(path.join(ROOT, 'dist'), {
+  maxAge: '1d',
+  redirect: false, // Évite les redirections implicites avec slash qui perturbent le proxy
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
@@ -82,15 +93,16 @@ app.use(express.static(path.join(__dirname, 'dist'), {
 }));
 
 // Servir localement les lotties sous /uploads/lotties depuis public/lotties (prioritaire sur le proxy)
-app.use('/uploads/lotties', express.static(path.join(__dirname, 'public', 'lotties'), {
+app.use('/uploads/lotties', express.static(path.join(ROOT, 'public', 'lotties'), {
   maxAge: '1d'
 }));
 
-// Servir aussi sous le préfixe /app pour correspondre au base Vite en production
-app.use('/app', express.static(path.join(__dirname, 'dist'), {
-  maxAge: '1d',
-  setHeaders: (res, path) => {
-    if (path.endsWith('index.html')) {
+// Servir ensuite les fichiers statiques globaux du frontend
+app.use(express.static(path.join(ROOT, 'dist'), {
+  maxAge: '1d', // Cache pour les assets
+  redirect: false, // Évite les redirections implicites
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('index.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
@@ -108,8 +120,11 @@ app.head('/health', (req, res) => {
 
 // Gestion des routes SPA
 // 1) Les routes sous /app/* doivent renvoyer l'index de la SPA app
-app.get('/app/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'app', 'index.html'));
+//    uniquement pour les routes sans extension (évite d'intercepter les assets)
+app.get('/app/*', (req, res, next) => {
+  const cleanPath = (req.path || '').split('?')[0];
+  if (cleanPath.includes('.')) return next();
+  res.sendFile(path.join(ROOT, 'dist', 'app', 'index.html'));
 });
 
 // 2) Fallback global: renvoyer l'index marketing pour toutes les autres routes non-API
@@ -117,7 +132,7 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API endpoint not found' });
   }
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(ROOT, 'dist', 'index.html'));
 });
 
 // Gestion des erreurs
@@ -132,7 +147,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Frontend server running on port ${PORT}`);
   console.log(`📡 Proxying API requests to http://localhost:${API_PORT}`);
   console.log(`🌐 Frontend available at: http://localhost:${PORT}`);
-  console.log(`📁 Serving static files from: ${path.join(__dirname, 'dist')}`);
+  console.log(`📁 Serving static files from: ${path.join(ROOT, 'dist')}`);
 });
 
 // Gestion propre de l'arrêt

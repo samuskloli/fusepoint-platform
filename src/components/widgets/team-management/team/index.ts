@@ -39,7 +39,7 @@ export type {
   
   // Types pour l'organigramme
   OrgNode as OrgNodeType
-} from './types.js'
+} from './types'
 
 // Export des types
-export type * from './types.js'
+export type * from './types'

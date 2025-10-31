@@ -1,0 +1,34 @@
+{
+  "directories": [
+    "docs",
+    ".vscode",
+    ".trae",
+    "tests",
+    "packages",
+    "backup_redirects",
+    "exports",
+    "scripts/debug"
+  ],
+  "files": [
+    "auth-debug.html",
+    "fix-auth.html",
+    "index.remote.html",
+    "app.index.remote.html",
+    "dist.index.remote.html",
+    "compare-widgets.cjs",
+    "deep-widget-analysis.cjs",
+    "debug-templates.js",
+    "debug-db-connections.js",
+    "test-auth.js",
+    "test-client-api.js",
+    "test-slug-generation.js",
+    "test-subscription-api.js"
+  ],
+  "server_patterns": [
+    "server/debug-*.js",
+    "server/test_*.js",
+    "server/tests",
+    "server/setup_and_test.js"
+  ],
+  "notes": "Ce fichier définit les items à supprimer lors de la purge de production. Ajustez selon vos besoins."
+}
