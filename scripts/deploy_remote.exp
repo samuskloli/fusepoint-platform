@@ -1,0 +1,99 @@
+#!/usr/bin/expect -f
+
+# Déploiement non interactif avec mot de passe via expect
+# Paramètres à adapter ci-dessous si nécessaire
+
+set timeout 120
+
+# Crédentials et cibles
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+set domain "https://fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+proc do_scp {src remote_path pass} {
+  # Supporte fichiers et répertoires (-r si src est un répertoire)
+  if {[file isdirectory $src]} {
+    spawn scp -r -q $src $remote_path
+  } else {
+    spawn scp -q $src $remote_path
+  }
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts "Etape 1/9: Préparer les dossiers dist/app, app/assets et uploads/lotties sur le serveur…"
+do_ssh $remote $pass "mkdir -p $docroot/dist $docroot/dist/app $docroot/app/assets $docroot/uploads/lotties"
+
+puts "Etape 2/9: Déployer .htaccess racine et sous-dossiers dist/"
+do_scp "./.htaccess.remote" "$remote:$docroot/.htaccess" $pass
+do_scp "./dist/.htaccess" "$remote:$docroot/dist/.htaccess" $pass
+do_scp "./dist/app/.htaccess" "$remote:$docroot/dist/app/.htaccess" $pass
+
+puts "Etape 3/9: Déployer index racine (landing) et index SPA (/app/index.html)"
+# Sauvegarde index existant côté serveur
+do_ssh $remote $pass "test -f '$docroot/index.html' && cp -a '$docroot/index.html' '$docroot/index.html.bak.'\`date +%Y%m%d%H%M%S\`"
+do_scp "./dist/index.html" "$remote:$docroot/index.html" $pass
+do_scp "./dist/app/index.html" "$remote:$docroot/app/index.html" $pass
+
+puts "Etape 4/9: Déployer assets Vite vers /dist/assets (pour Node) et /app/assets (pour Apache)"
+# Assets pour le serveur Node (server.js sert /app/assets depuis ../dist/assets)
+do_scp "./dist/assets" "$remote:$docroot/dist/" $pass
+# Copie également vers /app/assets pour compatibilité avec un éventuel serving Apache direct
+do_scp "./dist/assets" "$remote:$docroot/app/" $pass
+
+puts "Etape 5/9: Déployer icônes publiques (favicon et logo)"
+do_scp "./public/fusepoint-icon.svg" "$remote:$docroot/app/fusepoint-icon.svg" $pass
+do_scp "./public/fusepoint-logo.svg" "$remote:$docroot/fusepoint-logo.svg" $pass
+
+puts "Etape 6/9: Déployer Lotties locaux vers /uploads/lotties/"
+do_scp "./public/lotties" "$remote:$docroot/uploads/" $pass
+
+puts "Etape 7/9: Vérifier la présence des fichiers clés côté serveur"
+do_ssh $remote $pass "ls -l $docroot/.htaccess $docroot/index.html $docroot/dist/app/index.html $docroot/dist/.htaccess $docroot/dist/app/.htaccess $docroot/app/assets | sed -n '1,50p'"
+
+puts "Etape 8/9: Redémarrer PM2 si présent (API/Frontend)"
+do_ssh $remote $pass "pm2 ls || true"
+do_ssh $remote $pass "pm2 restart fusepoint-api || true; pm2 restart fusepoint-frontend || true; sleep 2; pm2 ls || true"
+
+puts "Etape 9/9: Tests HTTP (depuis le serveur)"
+# Récupérer un JS d'assets pour test Content-Type
+spawn ssh -o StrictHostKeyChecking=accept-new $remote "basename \`ls -1 $docroot/app/assets/*.js | head -n 1\`"
+expect {
+  -re ".*password:" { send "$pass\r"; exp_continue }
+  -re "\r\n(.*)\r\n" { set asset_js $expect_out(1,string) }
+}
+expect eof
+
+if {[info exists asset_js]} {
+  puts "• Asset JS détecté: $asset_js"
+  # Test Content-Type JS
+  do_ssh $remote $pass "echo -n 'Content-Type JS: '; curl -sI $domain/app/assets/$asset_js | grep -i '^Content-Type'"
+} else {
+  puts "[!] Aucun asset JS détecté sous $docroot/app/assets"
+}
+
+# Test SPA index
+spawn ssh -o StrictHostKeyChecking=accept-new $remote "curl -s -o /dev/null -w '%{http_code} %{content_type}' $domain/app/login"
+expect {
+  -re ".*password:" { send "$pass\r"; exp_continue }
+  -re "\r\n(.*)\r\n" { puts "• /app/login => $expect_out(1,string)" }
+}
+expect eof
+
+# Test Lottie JSON Content-Type
+do_ssh $remote $pass "echo -n 'Content-Type Lottie point.json: '; curl -sI $domain/uploads/lotties/point.json | grep -i '^Content-Type'"
+
+puts "Déploiement terminé. Vérifiez https://fusepoint.ch/app/ et les animations Lottie."

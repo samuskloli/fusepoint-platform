@@ -575,10 +575,17 @@ app.get('/', (req, res) => {
   // Serve compiled SPA assets under /app (JS/CSS/images/fonts)
   // IMPORTANT: declared AFTER the /app catch-all so that `next()` above falls through to this static server
   // In production builds, assets are under dist/assets and dist/app/*; in dev, serve from app/* if present
+  // Serveer d'abord les assets compilés sous dist/, puis fallback vers app/ pour le dev
   const staticRootProd = path.join(__dirname, '..', 'dist');
   const staticRootDev = path.join(__dirname, '..', 'app');
-  const staticRoot = fs.existsSync(staticRootProd) ? staticRootProd : staticRootDev;
-  app.use('/app', express.static(staticRoot));
+  if (fs.existsSync(staticRootProd)) {
+    // Préciser explicitement le sous-dossier assets pour éviter toute ambiguïté
+    app.use('/app/assets', express.static(path.join(staticRootProd, 'assets')));
+    // Et servir également le reste (images, manifest, etc.) depuis dist/
+    app.use('/app', express.static(staticRootProd));
+  }
+  // Fallback dev (si dist n'est pas présent ou pour fichiers non présents dans dist)
+  app.use('/app', express.static(staticRootDev));
 
 // Redirection publique traquée (QR dynamique)
 app.get('/r/:slug', async (req, res) => {
