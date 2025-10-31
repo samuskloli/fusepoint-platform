@@ -52,3 +52,32 @@ Commits inclus:
 - 4ae3f0c Sync: push complet de tous les changements en cours (serveur, scripts, config, vues) (Samuel Oliveira)
 - 041d4a0 Landing mobile: marges/espacements sections QR & Projets, fix débordement texte et conteneurs anim responsives (Samuel Oliveira)
 
+## Déploiement 2025-10-31T23:02:40Z
+Serveur: 57-104359.ssh.hosting-ik.com
+Branche: main
+Chemin distant: /srv/customer/sites/fusepoint.ch
+
+Commits inclus:
+- 55ccde4 chore(deploy): pousser toutes les mises à jour locales (modale widgets, sélection multiple, DnD, corrections UI/serveur) (Samuel Oliveira)
+- b3dc70b chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend) (Samuel Oliveira)
+- d65408d fix(agent): make getAgentClients resilient to remote DB schema (conditional joins and order by fallback) (Samuel Oliveira)
+- 6cbfc7c docs(changelog): ajouter entrée détaillée pour le déploiement du 2025-10-31 (fix routing SPA, correctifs MIME des assets, scripts de déploiement) (Samuel Oliveira)
+- 1874bfc fix(frontend-assets): servir /app/assets depuis dist/assets avec fallback vers app/ pour éviter les 404 JSON et erreurs MIME; mise à jour script de déploiement pour copier les assets vers dist/ et app/ (Samuel Oliveira)
+- edce426 fix(routing): servir le frontend depuis le backend (/, /app/* fallback); corrige chemins PM2 prod; ajoute scripts de déploiement et changelog (Samuel Oliveira)
+- d683d3b 🚀 Préparation déploiement: correction bug redirection LinkPoints + nettoyage code (Samuel Oliveira)
+- bf6ba08 chore(prod): ajouter PM2 ecosystem pour fusepoint.ch, doc de déploiement, mise à jour des .env.example et ajustements CORS/login (Samuel Oliveira)
+- d523dd4 Security: remove VAPID keys file; ignore and provide example (Samuel Oliveira)
+- d914039 Sync: push complet de tous les changements en cours (serveur, scripts, config, vues) (Samuel Oliveira)
+- 3c0fd56 Landing mobile: marges/espacements sections QR & Projets, fix débordement texte et conteneurs anim responsives (Samuel Oliveira)
+- 31b9069 chore(repo): sync remaining changes; stop tracking .env.development; ignore symlinked public uploads/backup_redirects (Samuel Oliveira)
+- 7e81695 feat(beta): add first/last name; company optional; update SuperAdmin table (Samuel Oliveira)
+- 61dd10d docs: add remote server installation and update scripts (Samuel Oliveira)
+- 16fae8b Refactor: ClientStatusDemo migrated to RoleLayout; remove AgentSidebar usage (Samuel Oliveira)
+- e1b3dca Cleanup: Notifications via RoleLayout; .gitignore tmp/uploads; untrack temp; remove obsolete AgentSidebar (Samuel Oliveira)
+- f04f568 Snapshot: sauvegarde complète + Librairie Widgets intégrée (menu latéral unifié); correction ProjectTemplatesManagement et SVG (Fusepoint Dev)
+- 5b994eb Nettoyage du projet: suppression des fichiers temporaires et de test (Samuel Oliveira)
+- ad1e5d6 Mise à jour complète de la plateforme Fusepoint - Correction suppression projets et améliorations UI/UX (Samuel Oliveira)
+- 9a78ed3 🔒 SÉCURITÉ: Suppression des fichiers avec mots de passe du versioning (Samuel Oliveira)
+- 16aaa66 ✨ Design & Documentation: Mise à jour professionnelle (Samuel Oliveira)
+- bc75add Update .env.development (samuskloli)
+
