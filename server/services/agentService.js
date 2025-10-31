@@ -207,6 +207,9 @@ class AgentService {
   async getAgentClients(agentId, filters = {}) {
     try {
       // Construire la requête avec possibilité de tri par dernière interaction
+      // Construire la requête de base pour récupérer les clients,
+      // en tenant compte du fait que certains environnements peuvent ne pas avoir la colonne users.agent_id.
+      console.log('🔎 [AgentService.getAgentClients] agentId param:', agentId, 'filters:', filters);
       let query = `
         SELECT 
           u.id,
@@ -222,27 +225,96 @@ class AgentService {
           agent.first_name as agent_first_name,
           agent.last_name as agent_last_name
         FROM users u
-        LEFT JOIN users agent ON agent.id = u.agent_id
       `;
-      
       const params = [];
-      
-      // Joindre agent_clients pour le tri par dernière interaction si agentId spécifié
+
+      // Détecter dynamiquement la présence de la colonne agent_id dans la table users
+      let hasUserAgentIdCol = false;
+      let hasUserUpdatedAtCol = true;
+      let hasUserCreatedAtCol = true;
+      try {
+        const userCols = await databaseService.query('SHOW COLUMNS FROM users');
+        const userColNames = (userCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasUserAgentIdCol = userColNames.includes('agent_id');
+        hasUserUpdatedAtCol = userColNames.includes('updated_at');
+        hasUserCreatedAtCol = userColNames.includes('created_at');
+      } catch (e) {
+        hasUserAgentIdCol = false;
+        // Si nous ne pouvons pas détecter les colonnes, assumer qu'elles existent (comportement historique)
+        hasUserUpdatedAtCol = true;
+        hasUserCreatedAtCol = true;
+      }
+
+      // Détecter l'existence de la table agent_clients (en prod distante, elle peut ne pas exister)
+      let acTableExists = false;
+      try {
+        const acTableRows = await databaseService.query("SHOW TABLES LIKE 'agent_clients'");
+        acTableExists = Array.isArray(acTableRows) && acTableRows.length > 0;
+      } catch (e) {
+        acTableExists = false;
+      }
+
+      // Nous joignons agent_clients pour supporter le tri par dernière interaction et, si nécessaire,
+      // servir de source d'attribution quand users.agent_id n'existe pas.
+      let acJoined = false;
+      let acJoinedWithAgentConstraint = false;
       let hasLastInteractionColumn = false;
       let hasAcUpdatedAt = false;
-      try {
-        const acCols = await databaseService.query('SHOW COLUMNS FROM agent_clients');
-        const acNames = (acCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
-        hasLastInteractionColumn = acNames.includes('last_interaction_at');
-        hasAcUpdatedAt = acNames.includes('updated_at');
-      } catch (e) {
-        hasLastInteractionColumn = false;
-        hasAcUpdatedAt = false;
+      let hasAcAgentIdCol = false;
+      let hasAcClientIdCol = false;
+      let hasAcStatusCol = false;
+      if (acTableExists) {
+        try {
+          const acCols = await databaseService.query('SHOW COLUMNS FROM agent_clients');
+          const acNames = (acCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+          hasLastInteractionColumn = acNames.includes('last_interaction_at');
+          hasAcUpdatedAt = acNames.includes('updated_at');
+          hasAcAgentIdCol = acNames.includes('agent_id');
+          hasAcClientIdCol = acNames.includes('client_id');
+          hasAcStatusCol = acNames.includes('status');
+        } catch (e) {
+          hasLastInteractionColumn = false;
+          hasAcUpdatedAt = false;
+          hasAcAgentIdCol = false;
+          hasAcClientIdCol = false;
+          hasAcStatusCol = false;
+        }
       }
-      
-      if (filters.agentId !== null && filters.agentId !== undefined) {
-        query += ' LEFT JOIN agent_clients ac ON ac.client_id = u.id AND ac.agent_id = ? AND ac.status = "active"';
-        params.push(filters.agentId);
+
+      // Joindre agent_clients en fonction des filtres
+      if (acTableExists) {
+        // Joindre seulement si la colonne client_id existe; sinon, ignorer la jointure pour éviter erreurs
+        if (hasAcClientIdCol) {
+          let joinOn = ' LEFT JOIN agent_clients ac ON ac.client_id = u.id';
+          if (filters.agentId !== null && filters.agentId !== undefined && hasAcAgentIdCol) {
+            joinOn += ' AND ac.agent_id = ?';
+            params.push(filters.agentId);
+            acJoinedWithAgentConstraint = true;
+          }
+          if (hasAcStatusCol) {
+            joinOn += ' AND ac.status = "active"';
+          }
+          query += joinOn;
+          acJoined = true;
+        } else {
+          console.warn('⚠️ [AgentService.getAgentClients] agent_clients existe mais sans client_id: jointure ignorée.');
+        }
+      } else {
+        // Pas de table agent_clients: ne pas tenter de joindre, éviter les erreurs 500
+        console.warn('⚠️ [AgentService.getAgentClients] Table agent_clients absente: bascule sans JOIN (environnement distant)');
+      }
+
+      // Joindre l'utilisateur agent en fonction de la disponibilité de users.agent_id
+      if (hasUserAgentIdCol) {
+        query += ' LEFT JOIN users agent ON agent.id = u.agent_id';
+      } else {
+        // En absence de users.agent_id, utiliser l'agent via agent_clients si disponible
+        if (acTableExists && hasAcAgentIdCol) {
+          query += ' LEFT JOIN users agent ON agent.id = ac.agent_id';
+        } else {
+          // Sinon, aucune jointure possible vers l'agent
+          query += ' LEFT JOIN users agent ON 1 = 0';
+        }
       }
       
       // Clause WHERE de base
@@ -250,8 +322,18 @@ class AgentService {
       
       // Filtrer par agent si spécifié (seulement pour les agents normaux)
       if (filters.agentId !== null && filters.agentId !== undefined) {
-        query += ' AND u.agent_id = ?';
-        params.push(filters.agentId);
+        if (hasUserAgentIdCol) {
+          // Environnement avec users.agent_id -> filtre standard
+          query += ' AND u.agent_id = ?';
+          params.push(filters.agentId);
+        } else if (!acJoinedWithAgentConstraint && acTableExists && hasAcAgentIdCol && acJoined) {
+          // Environnement sans users.agent_id -> filtrer via agent_clients si non déjà contraint dans le JOIN
+          query += ' AND ac.agent_id = ?';
+          params.push(filters.agentId);
+        } else if (!hasUserAgentIdCol && (!acTableExists || !hasAcAgentIdCol)) {
+          // Impossible de filtrer par agent en absence de users.agent_id et de agent_clients
+          console.warn('⚠️ [AgentService.getAgentClients] Filtrage par agentId impossible (users.agent_id absent, agent_clients absent). Le résultat ne sera pas restreint.');
+        }
       }
       
       // Filtrer par statut si spécifié
@@ -269,11 +351,17 @@ class AgentService {
       }
       
       // Tri: dernière interaction si disponible et agentId présent, sinon par mise à jour/création
-      if (filters.agentId !== null && filters.agentId !== undefined) {
+      if (filters.agentId !== null && filters.agentId !== undefined && acTableExists && acJoined) {
         const interactionExpr = hasLastInteractionColumn ? 'ac.last_interaction_at' : (hasAcUpdatedAt ? 'ac.updated_at' : 'NULL');
-        query += ` ORDER BY COALESCE(${interactionExpr}, u.updated_at, u.created_at) DESC`;
+        const userOrderExpr = (hasUserUpdatedAtCol && hasUserCreatedAtCol)
+          ? 'COALESCE(u.updated_at, u.created_at)'
+          : (hasUserUpdatedAtCol ? 'u.updated_at' : (hasUserCreatedAtCol ? 'u.created_at' : 'u.id'));
+        query += ` ORDER BY COALESCE(${interactionExpr}, ${userOrderExpr}) DESC`;
       } else {
-        query += ' ORDER BY u.updated_at DESC, u.created_at DESC';
+        const userOrderExpr = (hasUserUpdatedAtCol && hasUserCreatedAtCol)
+          ? 'u.updated_at DESC, u.created_at DESC'
+          : (hasUserUpdatedAtCol ? 'u.updated_at DESC' : (hasUserCreatedAtCol ? 'u.created_at DESC' : 'u.id DESC'));
+        query += ` ORDER BY ${userOrderExpr}`;
       }
       
       // Pagination
@@ -287,10 +375,27 @@ class AgentService {
         }
       }
 
+      console.log('🧩 [AgentService.getAgentClients] Schema detection:', {
+        hasUserAgentIdCol,
+        hasUserUpdatedAtCol,
+        hasUserCreatedAtCol,
+        acTableExists,
+        hasAcAgentIdCol,
+        hasAcClientIdCol,
+        hasAcStatusCol,
+        acJoined,
+        acJoinedWithAgentConstraint,
+        hasLastInteractionColumn,
+        hasAcUpdatedAt
+      });
       const clients = await databaseService.query(query, params);
-      
+      console.log('📊 [AgentService.getAgentClients] Rows returned:', Array.isArray(clients) ? clients.length : 0);
+
+      // Normaliser les types pour éviter les erreurs de sérialisation JSON (BigInt)
       return clients.map(client => ({
         ...client,
+        id: typeof client.id === 'bigint' ? Number(client.id) : client.id,
+        is_active: typeof client.is_active === 'bigint' ? Number(client.is_active) : client.is_active,
         firstName: client.first_name,
         lastName: client.last_name,
         status: client.is_active ? 'active' : 'inactive',
