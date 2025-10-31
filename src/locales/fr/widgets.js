@@ -1,6 +1,7 @@
 export default {
   "widgets": "Widgets",
   "addWidget": "Ajouter un widget",
+  "addMultiple": "Ajouter {count} widgets",
   "addFirstWidget": "Ajouter votre premier widget",
   "addFirstWidgetDescription": "Commencez par ajouter un widget à votre projet",
   "addWidgetDescription": "Parcourez et ajoutez des widgets au tableau de bord",
@@ -13,6 +14,7 @@ export default {
   "widgetRemoved": "Widget supprimé",
   "widgetAdded": "Widget ajouté",
   "added": "Widget ajouté",
+  "addedMultiple": "{count} widgets ajoutés",
   "removed": "Widget supprimé",
   "statusUpdated": "Statut du widget mis à jour",
   "errorMessage": "Erreur du widget : {error}",

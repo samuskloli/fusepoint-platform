@@ -1,0 +1,82 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+
+# Connexion SSH
+spawn ssh RhVNtynnzFS_sam@57-104354.ssh.hosting-ik.com
+expect "password:"
+send "hz_Z6KOp5-20Wv\r"
+expect "$ "
+
+# Arrêter tous les processus Node.js en cours
+send "pkill -f node\r"
+expect "$ "
+
+# Nettoyer complètement les répertoires existants
+send "cd /srv/customer/sites\r"
+expect "$ "
+
+send "rm -rf fusepoint.ch fusepoint-platform fusepoint.ch.backup* fusepoint-platform-backup*\r"
+expect "$ "
+
+send "ls -la\r"
+expect "$ "
+
+# Cloner le projet depuis GitHub
+send "git clone https://github.com/samueloliveira492/fusepoint-platform.git\r"
+expect "$ "
+
+# Créer le lien symbolique pour Apache
+send "ln -s /srv/customer/sites/fusepoint-platform /srv/customer/sites/fusepoint.ch\r"
+expect "$ "
+
+# Vérifier la structure
+send "ls -la\r"
+expect "$ "
+
+# Aller dans le répertoire du projet
+send "cd fusepoint-platform\r"
+expect "$ "
+
+# Installer les dépendances frontend
+send "npm install\r"
+expect "$ "
+
+# Copier les fichiers d'environnement
+send "cp .env.example .env\r"
+expect "$ "
+
+# Aller dans le répertoire server
+send "cd server\r"
+expect "$ "
+
+# Installer les dépendances backend
+send "npm install\r"
+expect "$ "
+
+# Copier le fichier d'environnement backend
+send "cp .env.example .env\r"
+expect "$ "
+
+# Démarrer le serveur en arrière-plan
+send "nohup npm start > server.log 2>&1 &\r"
+expect "$ "
+
+# Attendre un peu pour que le serveur démarre
+send "sleep 5\r"
+expect "$ "
+
+# Vérifier que le serveur fonctionne
+send "ps aux | grep node\r"
+expect "$ "
+
+# Afficher les logs du serveur
+send "tail -20 server.log\r"
+expect "$ "
+
+# Tester la connectivité
+send "curl -I http://localhost:3000 || echo 'Server not responding'\r"
+expect "$ "
+
+send "exit\r"
+expect eof

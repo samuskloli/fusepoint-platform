@@ -9,6 +9,10 @@ RewriteRule ^ - [L]
 RewriteCond %{REQUEST_URI} ^/public/lotties/
 RewriteRule ^ - [L]
 
+# Alias /uploads/lotties -> /public/lotties (si les fichiers sont sous public/)
+RewriteCond %{REQUEST_URI} ^/uploads/lotties/
+RewriteRule ^uploads/lotties/(.*)$ public/lotties/$1 [L]
+
 # Exclure les JSON Lottie du fallback
 RewriteRule ^public/lotties/ - [L]
 
@@ -48,3 +52,6 @@ Header set Pragma "no-cache" env=IS_SPA
   Header set Cache-Control "no-cache, no-store, must-revalidate"
   Header set Pragma "no-cache"
 </FilesMatch>
+
+# Forcer le type MIME JSON pour les .json
+AddType application/json .json

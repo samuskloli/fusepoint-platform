@@ -72,6 +72,20 @@ router.put('/:projectId/dashboard', requireProjectEdit, async (req, res) => {
       });
     }
 
+    // Sécurité: rejeter une mise à jour qui viderait le dashboard (widgetsLayout vide)
+    // sauf si une intention explicite de purge est fournie
+    const widgetsLayoutCandidate = layout.widgetsLayout || layout.widgets || null;
+    if (widgetsLayoutCandidate && typeof widgetsLayoutCandidate === 'object') {
+      const keys = Object.keys(widgetsLayoutCandidate);
+      if (keys.length === 0) {
+        return res.status(400).json({
+          success: false,
+          code: 'EMPTY_WIDGETS_LAYOUT_REJECTED',
+          message: 'Mise à jour refusée: widgetsLayout vide détecté. Pour éviter la suppression accidentelle des widgets lors de la première modification, le serveur rejette les layouts vides.'
+        });
+      }
+    }
+
     // Vérifier If-Match pour la gestion des conflits
     const ifMatch = req.headers['if-match'];
     let versionToCheck = expectedVersion;

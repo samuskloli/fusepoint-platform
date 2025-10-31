@@ -1,0 +1,15 @@
+#!/usr/bin/expect -f
+spawn ssh tt3ae_sam@tt3ae.myd.infomaniak.com
+expect "password:"
+send "UVtY-I6\$u9!2u\r"
+expect "$ "
+send "cd /srv/customer/sites/fusepoint-platform\r"
+expect "$ "
+send "mysql -h tt3ae.myd.infomaniak.com -u tt3ae_sam -p tt3ae_fusepoint < init-mariadb.sql\r"
+expect "password:"
+send "UVtY-I6\$u9!2u\r"
+expect "$ "
+send "echo 'Base de données initialisée'\r"
+expect "$ "
+send "exit\r"
+expect eof

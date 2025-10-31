@@ -7,6 +7,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const agentService = require('../services/agentService');
+const projectService = require('../services/projectService');
 
 // Configuration multer pour upload de fichiers avec namespacing
 const storage = multer.diskStorage({
@@ -254,6 +255,93 @@ router.get('/:clientId/projects/:projectId/widgets/files',
     }
   }
 );
+
+// -------------------------------------------------------------
+// Contexte multi-tenant: listes des clients et projets
+// Ces endpoints fournissent les données attendues par le sélecteur
+// de contexte du frontend (clients/projets par client)
+// -------------------------------------------------------------
+
+// GET /api/clients
+// Retourne la liste des clients accessibles par l'utilisateur courant
+router.get('/', authenticateToken, async (req, res) => {
+  try {
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+
+    // Déterminer l'étendue selon le rôle
+    // - super_admin/admin: voir tous les clients (agentId = null)
+    // - agent: voir ses clients (agentId = userId)
+    // - client/user: ne retourner que lui-même comme contexte
+    if (userRole === 'client' || userRole === 'user') {
+      const name = [req.user?.first_name, req.user?.last_name].filter(Boolean).join(' ').trim() || req.user?.company || req.user?.email;
+      return res.json({
+        success: true,
+        data: [{
+          id: Number(req.user?.company_id ?? req.user?.client_id ?? req.user?.id),
+          name,
+          status: req.user?.is_active ? 'active' : 'inactive'
+        }]
+      });
+    }
+
+    const filters = {
+      agentId: (userRole === 'super_admin' || userRole === 'admin') ? null : userId,
+      status: 'active'
+    };
+
+    const clients = await agentService.getAgentClients(userId, filters);
+
+    // Uniformiser la forme attendue par le frontend
+    const contexts = (clients || []).map(c => ({
+      id: Number(c.id),
+      name: (c.company && String(c.company).trim()) || [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.email,
+      status: c.is_active ? 'active' : 'inactive'
+    }));
+
+    return res.json({ success: true, data: contexts });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des clients (context selector):', error);
+    return res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+  }
+});
+
+// GET /api/clients/:clientId/projects
+// Retourne la liste des projets pour un client spécifique
+router.get('/:clientId/projects', authenticateToken, async (req, res) => {
+  try {
+    const { clientId } = req.params;
+    const userRole = req.user?.role;
+    const userId = req.user?.id;
+
+    // Contrôle d'accès simple: admin/super_admin ont accès à tout
+    // agent: doit avoir accès au client
+    // client/user: doit correspondre au client
+    if (userRole === 'agent') {
+      const hasAccess = await agentService.checkAgentClientAccess(userId, clientId);
+      if (!hasAccess) {
+        return res.status(403).json({ success: false, error: 'Accès refusé au client' });
+      }
+    } else if (userRole === 'client' || userRole === 'user') {
+      const userClientId = req.user?.client_id ?? req.user?.company_id ?? req.user?.id;
+      if (String(userClientId) !== String(clientId)) {
+        return res.status(403).json({ success: false, error: 'Accès refusé' });
+      }
+    }
+
+    const projects = await projectService.getClientProjects(clientId);
+    const contexts = (projects || []).map(p => ({
+      id: Number(p.id),
+      name: (p.name && String(p.name).trim()) || (p.title && String(p.title).trim()) || `Projet ${p.id}`,
+      status: p.status || 'en_cours'
+    }));
+
+    return res.json({ success: true, data: contexts });
+  } catch (error) {
+    console.error('Erreur lors de la récupération des projets (context selector):', error);
+    return res.status(500).json({ success: false, error: 'Erreur interne du serveur' });
+  }
+});
 
 // POST /api/clients/:clientId/projects/:projectId/widgets/files
 router.post('/:clientId/projects/:projectId/widgets/files',

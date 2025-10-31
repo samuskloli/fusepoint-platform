@@ -7,18 +7,42 @@ import tokenManager from './tokenManager.js';
  */
 class AuthService {
   constructor() {
-    // Base relative '/api' pour supporter l'accès via IP locale (proxy Vite)
-    const rawBase = import.meta.env.VITE_API_URL || '/api';
-    this.baseURL = rawBase.startsWith('http')
-      ? `${rawBase.replace(/\/+$/, '')}/api`
-      : rawBase; // e.g., '/api'
-    console.log('🔍 Base URL utilisée:', this.baseURL);
+    // Déterminer dynamiquement la base pour éviter les timeouts sur IP LAN
+    // - Si l'app est ouverte via une IP locale (192.168.x.x, 10.x.x.x, etc.),
+    //   utiliser une base relative '/api' afin que le proxy Vite route vers le backend local.
+    // - Sinon, si VITE_API_URL ou VITE_BACKEND_URL est défini en http, l'utiliser.
+    const apiEnv = import.meta.env.VITE_API_URL;
+    const backendEnv = import.meta.env.VITE_BACKEND_URL;
+    const host = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isDev = !!import.meta.env.DEV;
+    const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1';
+
+    // En développement, forcer une base relative '/api' pour garantir le proxy Vite
+    // Cela évite tout appel absolu direct vers une IP/host qui pourrait ne pas répondre
+    const resolvedBase = isDev
+      ? '/api'
+      : (isLocalNetworkHost
+          ? '/api'
+          : (apiEnv && apiEnv.startsWith('http')
+              ? `${apiEnv.replace(/\/+$/, '')}/api`
+              : backendEnv && backendEnv.startsWith('http')
+                ? `${backendEnv.replace(/\/+$/, '')}/api`
+                : '/api'));
+
+    this.baseURL = resolvedBase;
+    console.log('🔍 Base URL utilisée (authService):', this.baseURL, {
+      host,
+      isDev,
+      apiEnv,
+      backendEnv
+    });
     this.api = axios.create({
       baseURL: this.baseURL,
       timeout: 20000,
       headers: {
         'Content-Type': 'application/json'
-      }
+      },
+      withCredentials: true
     });
 
     // Abonner cette instance au gestionnaire de tokens centralisé

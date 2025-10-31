@@ -153,6 +153,26 @@
           </div>
         </section>
 
+        <!-- Commits récents (détaillés) -->
+        <section class="changelog-section">
+          <h2>🧾 Historique des commits récents</h2>
+          <p class="section-subtitle">Dernières modifications avec date et heure. Cliquez pour voir le commit sur GitHub.</p>
+          <ul class="commits-list">
+            <li v-for="c in recentCommits" :key="c.hash" class="commit-item">
+              <div class="commit-row">
+                <span class="commit-hash">
+                  <a :href="githubCommitUrl(c.hash)" target="_blank" rel="noopener noreferrer">{{ c.hash }}</a>
+                </span>
+                <span class="commit-date">{{ formatGitDate(c.date) }}</span>
+              </div>
+              <div class="commit-subject">{{ c.subject }}</div>
+            </li>
+          </ul>
+          <div class="commit-note">
+            ℹ️ Cette liste est synchronisée manuellement pour l'instant. Je peux automatiser son alimentation depuis git lors du build si vous le souhaitez.
+          </div>
+        </section>
+
         <!-- Roadmap -->
         <section class="changelog-section">
           <h2>🔮 Roadmap Fusepoint Hub</h2>
@@ -278,6 +298,10 @@
 </template>
 
 <script>
+import MarkdownIt from 'markdown-it'
+import commits from '../generated/commits.json'
+import rawChangelog from '../../docs/CHANGELOG.md?raw'
+
 export default {
   name: 'Changelog',
   data() {
@@ -303,12 +327,23 @@ export default {
         'Optimisé pour les développeurs insomniaques',
         'Contient 0% de bugs... enfin on espère 😅'
       ],
-      totalEasterEggs: 8
+      totalEasterEggs: 8,
+      // Chargé depuis src/generated/commits.json
+      recentCommits: commits || [],
+      // CHANGELOG.md rendu en HTML
+      markdownHtml: ''
     }
   },
   mounted() {
     document.title = 'Changelog - Fusepoint Platform'
     this.setupKonamiCode()
+    // Parser le CHANGELOG.md (markdown) en HTML sécurisé
+    try {
+      const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+      this.markdownHtml = md.render(rawChangelog)
+    } catch (e) {
+      this.markdownHtml = '<p>Impossible de charger le CHANGELOG markdown.</p>'
+    }
     // Révéler le bug caché après 5 secondes
     setTimeout(() => {
       this.showHiddenBug = true
@@ -329,6 +364,25 @@ export default {
     },
     getRandomDevFact() {
       return this.devFacts[Math.floor(Math.random() * this.devFacts.length)]
+    },
+    githubCommitUrl(hash) {
+      return `https://github.com/samuskloli/fusepoint-platform/commit/${hash}`
+    },
+    formatGitDate(str) {
+      // Convertit "YYYY-MM-DD HH:mm:ss +ZZZZ" en ISO si possible, sinon affiche tel quel
+      try {
+        const match = str.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-])(\d{2})(\d{2})$/)
+        if (match) {
+          const [, ymd, hms, sign, tzH, tzM] = match
+          const iso = `${ymd}T${hms}${sign}${tzH}:${tzM}`
+          const d = new Date(iso)
+          return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'medium' })
+        }
+        // Fallback
+        return str
+      } catch (e) {
+        return str
+      }
     },
     setupKonamiCode() {
       document.addEventListener('keydown', (e) => {
@@ -413,6 +467,80 @@ export default {
   margin-bottom: 2rem;
   border-bottom: 3px solid #667eea;
   padding-bottom: 0.5rem;
+}
+
+.section-subtitle {
+  margin-top: -1rem;
+  margin-bottom: 1rem;
+  color: #555;
+}
+
+.commits-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.commit-item {
+  background: #f8f9ff;
+  border: 1px solid #e1e5f2;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.commit-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.commit-hash a {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #333;
+  text-decoration: none;
+}
+
+.commit-hash a:hover {
+  text-decoration: underline;
+}
+
+.commit-date {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.commit-subject {
+  color: #333;
+}
+
+.commit-note {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* Markdown rendered content */
+.markdown-content {
+  background: #fdfdfd;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+.markdown-content h1, .markdown-content h2, .markdown-content h3 {
+  color: #333;
+}
+.markdown-content pre {
+  background: #f6f8fa;
+  padding: 0.75rem;
+  border-radius: 6px;
+  overflow: auto;
+}
+.markdown-content code {
+  background: #f6f8fa;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
 }
 
 .feature-category {

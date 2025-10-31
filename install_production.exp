@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+
+set timeout 300
+
+puts "🚀 Installation automatisée de Fusepoint Platform"
+
+# Connexion SSH
+spawn ssh ZDaULDMYSEC_sam@57-104359.ssh.hosting-ik.com
+expect "password:"
+send "35G0ke7I@Fz%~T\r"
+expect "$ "
+
+puts "📋 Nettoyage et préparation..."
+send "pkill -f node; cd sites; rm -rf fusepoint.ch.old; mv fusepoint.ch fusepoint.ch.old\r"
+expect "$ "
+
+puts "📋 Clonage du projet..."
+send "git clone https://github.com/samuskloli/fusepoint-platform.git fusepoint.ch\r"
+expect "$ "
+
+puts "📋 Configuration..."
+send "cd fusepoint.ch && cp .env.example .env && cp server/.env.example server/.env\r"
+expect "$ "
+
+puts "📋 Configuration production..."
+send "sed -i 's|localhost:5173|fusepoint.ch|g' .env server/.env\r"
+expect "$ "
+send "sed -i 's|localhost:3000|fusepoint.ch|g' .env server/.env\r"
+expect "$ "
+send "echo 'NODE_ENV=production' >> server/.env\r"
+expect "$ "
+send "echo 'PORT=3000' >> server/.env\r"
+expect "$ "
+
+puts "📋 Installation dépendances..."
+send "export NODE_OPTIONS='--max-old-space-size=1024' && npm install\r"
+expect "$ "
+
+puts "📋 Build frontend..."
+send "npm run build\r"
+expect "$ "
+
+puts "📋 Démarrage serveur..."
+send "cd server && nohup node server.js > ../app.log 2>&1 &\r"
+expect "$ "
+
+puts "✅ Installation terminée!"
+send "sleep 3 && ps aux | grep node\r"
+expect "$ "
+
+interact

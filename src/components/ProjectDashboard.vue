@@ -148,10 +148,19 @@
           v-for="widget in sortedWidgets" 
           :key="widget.id"
           class="widget-container"
+          :class="{ dragging: draggingWidget && draggingWidget.id === widget.id }"
           :style="getWidgetStyle(widget)"
         >
           <!-- Overlay d'édition -->
           <div v-if="isEditMode" class="widget-edit-overlay">
+            <!-- Poignée de déplacement -->
+            <div 
+              class="drag-handle" 
+              @mousedown="startDrag(widget, $event)" 
+              :title="t('widgets.move') || 'Déplacer le widget'"
+            >
+              <i class="fas fa-grip-vertical"></i>
+            </div>
             <div class="edit-controls">
               <button 
                 @click="moveWidgetUp(widget)"
@@ -465,17 +474,23 @@ export default {
           // Convertir le layout du dashboard en widgets pour l'affichage
           const widgetsLayout = dashboardData.layout.widgetsLayout
           projectWidgets.value = Object.entries(widgetsLayout).map(([widgetKey, layoutData]) => {
-            const widgetType = layoutData.widget_type || widgetKey.replace('widget', '').toLowerCase()
+            // Les clés du layout sont du type "<type>:<widget_id>"
+            const [keyType, keyId] = String(widgetKey).includes(':')
+              ? String(widgetKey).split(':', 2)
+              : [layoutData.widget_type || 'widget', String(widgetKey)]
+            const widgetType = layoutData.widget_type || keyType
+            const widgetId = layoutData.widget_id || layoutData.widgetId || keyId
             return {
-              id: widgetKey,
-              widget_id: widgetKey, // Assurer la cohérence entre id et widget_id
+              id: widgetId,
+              widget_id: widgetId,
               widget_type: widgetType,
               position_x: layoutData.position_x || 0,
               position_y: layoutData.position_y || 0,
               width: layoutData.width || 4,
               height: layoutData.height || 2,
               is_enabled: layoutData.is_enabled !== false,
-              widget_config: layoutData.widget_config || {}
+              widget_config: layoutData.widget_config || {},
+              component_name: layoutData.component_name || undefined
             }
           })
         } else {
@@ -495,17 +510,23 @@ export default {
             if (reloadedDashboard && reloadedDashboard.layout && reloadedDashboard.layout.widgetsLayout) {
               const widgetsLayout = reloadedDashboard.layout.widgetsLayout
               projectWidgets.value = Object.entries(widgetsLayout).map(([widgetKey, layoutData]) => {
-                const widgetType = layoutData.widget_type || widgetKey.replace('widget', '').toLowerCase()
+                // Les clés du layout sont du type "<type>:<widget_id>"
+                const [keyType, keyId] = String(widgetKey).includes(':')
+                  ? String(widgetKey).split(':', 2)
+                  : [layoutData.widget_type || 'widget', String(widgetKey)]
+                const widgetType = layoutData.widget_type || keyType
+                const widgetId = layoutData.widget_id || layoutData.widgetId || keyId
                 return {
-                  id: widgetKey,
-                  widget_id: widgetKey, // Assurer la cohérence entre id et widget_id
+                  id: widgetId,
+                  widget_id: widgetId,
                   widget_type: widgetType,
                   position_x: layoutData.position_x || 0,
                   position_y: layoutData.position_y || 0,
                   width: layoutData.width || 4,
                   height: layoutData.height || 2,
                   is_enabled: layoutData.is_enabled !== false,
-                  widget_config: layoutData.widget_config || {}
+                  widget_config: layoutData.widget_config || {},
+                  component_name: layoutData.component_name || undefined
                 }
               })
             } else {
@@ -524,60 +545,66 @@ export default {
 
     const getDefaultWidgets = () => {
       // Disposition par défaut optimisée pour une vue Overview
-      const now = Date.now()
+      const pid = String(props.projectId || 'project')
+      const mkId = (suffix) => `w_${pid}_${suffix}`
       return [
         {
-          id: `temp-${now}-stats`,
-          widget_id: `temp-${now}-stats`,
+          id: mkId('stats'),
+          widget_id: mkId('stats'),
           widget_type: 'stats',
+          component_name: getWidgetComponent('stats'),
           position_x: 0,
           position_y: 0,
           width: 12,
-          height: 2,
+          height: 3, // plus de hauteur pour afficher les indicateurs
           is_enabled: true,
           widget_config: {}
         },
         {
-          id: `temp-${now}-tasks`,
-          widget_id: `temp-${now}-tasks`,
+          id: mkId('tasks'),
+          widget_id: mkId('tasks'),
           widget_type: 'task_list',
+          component_name: getWidgetComponent('task_list'),
           position_x: 0,
-          position_y: 2,
+          position_y: 4, // espace d'une ligne sous le bloc stats
           width: 8,
-          height: 3,
+          height: 5, // plus de hauteur pour la liste des tâches
           is_enabled: true,
           widget_config: {}
         },
         {
-          id: `temp-${now}-files`,
-          widget_id: `temp-${now}-files`,
+          id: mkId('files'),
+          widget_id: mkId('files'),
           widget_type: 'files',
+          component_name: getWidgetComponent('files'),
           position_x: 8,
-          position_y: 2,
+          position_y: 4, // aligné avec tasks pour la même rangée
           width: 4,
-          height: 3,
+          height: 5, // plus de hauteur pour parcourir les fichiers
           is_enabled: true,
           widget_config: {}
         },
         {
-          id: `temp-${now}-team`,
-          widget_id: `temp-${now}-team`,
+          id: mkId('team'),
+          widget_id: mkId('team'),
           widget_type: 'team',
+          component_name: getWidgetComponent('team'),
           position_x: 0,
-          position_y: 5,
-          width: 12,
-          height: 3,
+          position_y: 10, // laisser de l'espace après la rangée tasks/files
+          width: 6, // demi-largeur pour permettre un agencement en grille
+          height: 4, // hauteur adaptée pour l'équipe
           is_enabled: true,
           widget_config: {}
         },
         {
-          id: `temp-${now}-deliverables`,
-          widget_id: `temp-${now}-deliverables`,
+          id: mkId('deliverables'),
+          widget_id: mkId('deliverables'),
           widget_type: 'deliverables',
-          position_x: 0,
-          position_y: 8,
-          width: 12,
-          height: 3,
+          component_name: getWidgetComponent('deliverables'),
+          position_x: 6, // à côté du widget Équipe
+          position_y: 10, // aligné sur la même rangée que Équipe
+          width: 6, // demi-largeur
+          height: 4, // hauteur adaptée pour les livrables
           is_enabled: true,
           widget_config: {}
         }
@@ -631,7 +658,9 @@ export default {
         }
       }
       return {
+        gridColumnStart: (Number(widget.position_x || 0) + 1),
         gridColumn: `span ${widget.width || 4}`,
+        gridRowStart: (Number(widget.position_y || 0) + 1),
         gridRow: `span ${widget.height || 2}`
       }
     }
@@ -699,8 +728,12 @@ export default {
       const idx = sorted.findIndex(w => w.id === widget.id)
       if (idx <= 0) return
       const above = sorted[idx - 1]
+      // Échanger positions complètes pour éviter les chevauchements
+      const tmpX = widget.position_x
       const tmpY = widget.position_y
+      widget.position_x = above.position_x
       widget.position_y = above.position_y
+      above.position_x = tmpX
       above.position_y = tmpY
       try {
         await Promise.all([persistWidgetPosition(widget), persistWidgetPosition(above)])
@@ -716,8 +749,11 @@ export default {
       const idx = sorted.findIndex(w => w.id === widget.id)
       if (idx === -1 || idx >= sorted.length - 1) return
       const below = sorted[idx + 1]
+      const tmpX = widget.position_x
       const tmpY = widget.position_y
+      widget.position_x = below.position_x
       widget.position_y = below.position_y
+      below.position_x = tmpX
       below.position_y = tmpY
       try {
         await Promise.all([persistWidgetPosition(widget), persistWidgetPosition(below)])
@@ -793,6 +829,105 @@ export default {
         showError(t('errors.saveFailed'))
       }
     }
+
+    // === Déplacement par glisser-déposer ===
+    const draggingWidget = ref(null)
+
+    const startDrag = (widget, event) => {
+      if (!isEditMode.value) return
+      // Empêcher la sélection de texte et la propagation
+      event?.preventDefault?.()
+      event?.stopPropagation?.()
+      const gridEl = document.querySelector('.widgets-grid')
+      const rect = gridEl?.getBoundingClientRect?.()
+      const cellWidth = rect ? (rect.width / (layoutSettings.value?.columns || 12)) : 100
+      const rowUnit = 140
+
+      // Désactiver la sélection pendant le drag
+      try {
+        document.body.style.userSelect = 'none'
+        document.body.style.webkitUserSelect = 'none'
+        document.body.style.msUserSelect = 'none'
+      } catch {}
+
+      draggingWidget.value = {
+        id: widget.id,
+        startX: event?.clientX || 0,
+        startY: event?.clientY || 0,
+        initialX: widget.position_x || 0,
+        initialY: widget.position_y || 0,
+        cellWidth,
+        rowUnit,
+        gridRect: rect
+      }
+
+      // Écouter les mouvements pour empêcher les comportements par défaut
+      window.addEventListener('mousemove', onDragMouseMove)
+      window.addEventListener('mouseup', onDragMouseUp)
+    }
+
+    const onDragMouseMove = (e) => {
+      // Éviter la sélection de texte pendant la glisse et mettre à jour l’aperçu de position
+      e?.preventDefault?.()
+      const r = draggingWidget.value
+      if (!r) return
+      const target = projectWidgets.value.find(w => w.id === r.id)
+      if (!target || !r.gridRect) return
+      const columns = layoutSettings.value?.columns || 12
+      const col = clamp(Math.floor((e.clientX - r.gridRect.left) / r.cellWidth), 0, Math.max(0, columns - (target.width || 1)))
+      const currentBottom = projectWidgets.value.reduce((max, w) => {
+        const h = Number(w.height || 1)
+        const y = Number(w.position_y || 0)
+        return Math.max(max, y + h)
+      }, 0)
+      const maxRow = Math.max(currentBottom, target.position_y || 0)
+      const row = clamp(Math.floor((e.clientY - r.gridRect.top) / r.rowUnit), 0, maxRow)
+      target.position_x = col
+      target.position_y = row
+    }
+
+    const onDragMouseUp = async (e) => {
+      const r = draggingWidget.value
+      if (!r) return
+      // Réactiver la sélection
+      try {
+        document.body.style.userSelect = ''
+        document.body.style.webkitUserSelect = ''
+        document.body.style.msUserSelect = ''
+      } catch {}
+      window.removeEventListener('mousemove', onDragMouseMove)
+      window.removeEventListener('mouseup', onDragMouseUp)
+      draggingWidget.value = null
+
+      try {
+        const target = projectWidgets.value.find(w => w.id === r.id)
+        if (!target) return
+
+        const columns = layoutSettings.value?.columns || 12
+        const rect = r.gridRect
+        if (!rect) return
+        // Calculer la colonne et la ligne de destination en fonction de la position du curseur
+        const col = clamp(Math.floor((e.clientX - rect.left) / r.cellWidth), 0, Math.max(0, columns - (target.width || 1)))
+        const currentBottom = projectWidgets.value.reduce((max, w) => {
+          const h = Number(w.height || 1)
+          const y = Number(w.position_y || 0)
+          return Math.max(max, y + h)
+        }, 0)
+        const maxRow = Math.max(currentBottom, target.position_y || 0)
+        const row = clamp(Math.floor((e.clientY - rect.top) / r.rowUnit), 0, maxRow)
+
+        target.position_x = col
+        target.position_y = row
+
+        await persistWidgetPosition(target)
+        await saveDashboardSettings()
+        // Éviter d’effacer des messages en cours (ex: dans le widget commentaires) avec un toast intrusif
+        // Le layout est bien enregistré en arrière-plan.
+      } catch (err) {
+        console.warn('Drag move failed:', err)
+        showError(t('errors.updateFailed'))
+      }
+    }
     
     const fetchLinkedDataCounts = async (widget) => {
       const counts = { tasks: 0, files: 0, comments: 0, deliverables: 0, checklists: 0 }
@@ -864,11 +999,55 @@ export default {
       const widget = widgetToDelete.value
       if (!widget) return
       try {
-        // Supprimer le widget de la liste locale
-        projectWidgets.value = projectWidgets.value.filter(w => w.id !== widget.id)
+        // Snapshot avant suppression (local)
+        const beforeSnapshot = snapshotCurrentLayout()
+        const beforeCount = Array.isArray(projectWidgets.value) ? projectWidgets.value.length : 0
+        // Supprimer le widget de la liste locale (utiliser la clé composite pour éviter les collisions d'ID)
+        const keyToRemove = getWidgetKey(widget)
+        projectWidgets.value = projectWidgets.value.filter(w => getWidgetKey(w) !== keyToRemove)
+        const afterCount = Array.isArray(projectWidgets.value) ? projectWidgets.value.length : 0
+        // Snapshot après suppression (local)
+        const afterLocalSnapshot = snapshotCurrentLayout()
+
+        // Sécurité: si une suppression isolée vide tout le dashboard de manière inattendue, on annule et on recharge
+        if (beforeCount > 1 && afterCount === 0) {
+          console.warn('[Dashboard] Suppression annulée: le tableau de bord serait entièrement vide après suppression d’un seul widget.', {
+            beforeCount,
+            afterCount,
+            removedId: widget.id
+          })
+          // Recharger depuis l’API pour rétablir l’état précédent
+          await loadProjectWidgets()
+          showError('La suppression a été annulée car elle aurait vidé tout le tableau de bord.')
+          return
+        }
         
         // Sauvegarder via l'API unifiée
         await saveProjectDashboardLayout()
+
+        // Forcer un rechargement depuis le serveur et comparer les layouts
+        try {
+          const reloaded = await widgetApiService.getProjectDashboardLayout(String(props.projectId))
+          const serverLayout = reloaded?.layout?.widgetsLayout || {}
+          const localKeys = Object.keys(afterLocalSnapshot)
+          const serverKeys = Object.keys(serverLayout)
+          const mismatch = (serverKeys.length !== localKeys.length) || serverKeys.some(k => !localKeys.includes(k))
+          if (mismatch) {
+            console.warn('[Dashboard] Mismatch layout après suppression', {
+              beforeCount,
+              afterCount,
+              localKeys,
+              serverKeys
+            })
+            // Tentative de ré-enregistrement du layout local si le serveur a "perdu" des widgets
+            await saveProjectDashboardLayout()
+            // Puis recharger pour synchroniser l'UI avec l'état serveur final
+            await loadProjectWidgets()
+            showError('Incohérence détectée entre la configuration locale et la configuration serveur après suppression. Un resynchronisation a été effectuée.')
+          }
+        } catch (cmpErr) {
+          console.warn('Échec de la comparaison des layouts après suppression:', cmpErr)
+        }
         
         success(t('widgets.removed'))
       } catch (err) {
@@ -878,10 +1057,34 @@ export default {
       }
     }
     
-    const handleAddWidgetFromModal = async (selectedWidget) => {
+    const getAdaptiveSizeForType = (type) => {
+      const sizes = {
+        // Tailles logiques par type pour un layout esthétique
+        // Largeurs sur 12 colonnes
+        stats: { width: 12, height: 3 },        // Statistiques globales: bandeau complet
+        task_list: { width: 8, height: 5 },     // Liste des tâches: large
+        tasks: { width: 8, height: 5 },         // Alias
+        files: { width: 4, height: 5 },         // Fichiers: colonne
+        team: { width: 6, height: 4 },          // Équipe: demi-largeur
+        deliverables: { width: 6, height: 4 },  // Livrables: demi-largeur
+        calendar: { width: 8, height: 6 },      // Calendrier: large
+        goals: { width: 6, height: 4 },         // Objectifs: demi-largeur
+        comments: { width: 6, height: 4 },      // Commentaires/Notes: demi-largeur
+        history: { width: 6, height: 4 },       // Historique: demi-largeur
+        checklist: { width: 6, height: 4 },     // Checklist: demi-largeur
+        project_overview: { width: 6, height: 3 }, // Vue d'ensemble: demi-largeur
+        budget: { width: 6, height: 4 },        // Budget: demi-largeur
+        notes: { width: 6, height: 4 },         // Notes: demi-largeur
+        ai: { width: 6, height: 5 }             // Assistant/AI: demi-largeur
+      }
+      return sizes[type] || { width: 4, height: 2 }
+    }
+
+    const handleAddWidgetFromModal = async (selected) => {
       try {
-        // Résoudre proprement le nom de composant et le type, en évitant 'widget'
-        const initialType = selectedWidget?.type || selectedWidget?.widget_type
+        const selectedList = Array.isArray(selected) ? selected : [selected]
+        if (!selectedList.length) return
+
         const fallbackNameMap = {
           tasks: 'TasksWidget',
           task_list: 'TaskListWidget',
@@ -897,38 +1100,68 @@ export default {
           checklist: 'ChecklistWidget',
           project_overview: 'ProjectOverviewWidget',
           budget: 'BudgetWidget',
-
           notes: 'NotesWidget'
         }
-        const rawComponentName = selectedWidget?.component_name || (initialType ? fallbackNameMap[initialType] : null)
-        const derivedType = rawComponentName ? componentNameToType(rawComponentName) : undefined
-        const type = (initialType && initialType !== 'widget')
-          ? initialType
-          : ((derivedType && derivedType !== 'widget') ? derivedType : 'task_list')
-        const componentName = rawComponentName || fallbackNameMap[type] || 'TaskListWidget'
 
-        // Créer un nouveau widget localement
-        const widgetId = `widget_${Date.now()}`
-        const newWidget = {
-          id: widgetId,
-          widget_id: widgetId,
-          widget_type: type,
-          component_name: componentName,
-          position_x: 0,
-          position_y: projectWidgets.value.length,
-          width: selectedWidget?.default_width ?? 4,
-          height: selectedWidget?.default_height ?? 2,
-          is_enabled: true,
-          widget_config: {}
-        }
+        // Position de départ sous le contenu existant
+        const columns = 12
+        const currentBottom = projectWidgets.value.reduce((max, w) => {
+          const h = Number(w.height || 1)
+          const y = Number(w.position_y || 0)
+          return Math.max(max, y + h)
+        }, 0)
+        let rowY = currentBottom + 1
+        let rowX = 0
+        let rowHeight = 0
 
-        projectWidgets.value.push(newWidget)
+        const newWidgets = []
+        selectedList.forEach((selectedWidget, idx) => {
+          const initialType = selectedWidget?.type || selectedWidget?.widget_type
+          const rawComponentName = selectedWidget?.component_name || (initialType ? fallbackNameMap[initialType] : null)
+          const derivedType = rawComponentName ? componentNameToType(rawComponentName) : undefined
+          const type = (initialType && initialType !== 'widget')
+            ? initialType
+            : ((derivedType && derivedType !== 'widget') ? derivedType : 'task_list')
+          const componentName = rawComponentName || fallbackNameMap[type] || 'TaskListWidget'
+
+          const adaptive = getAdaptiveSizeForType(type)
+          const width = Math.min(selectedWidget?.default_width ?? adaptive.width, columns)
+          const height = selectedWidget?.default_height ?? adaptive.height
+
+          // Saut de ligne si dépassement horizontal
+          if (rowX + width > columns) {
+            rowY += rowHeight + 1
+            rowX = 0
+            rowHeight = 0
+          }
+
+          const widgetId = `widget_${Date.now()}_${idx}`
+          const newWidget = {
+            id: widgetId,
+            widget_id: widgetId,
+            widget_type: type,
+            component_name: componentName,
+            position_x: rowX,
+            position_y: rowY,
+            width,
+            height,
+            is_enabled: true,
+            widget_config: {}
+          }
+
+          newWidgets.push(newWidget)
+          // Avancer le curseur horizontal et mettre à jour la hauteur de ligne
+          rowX += width
+          rowHeight = Math.max(rowHeight, height)
+        })
+
+        projectWidgets.value.push(...newWidgets)
         await saveProjectDashboardLayout()
 
         showAddWidget.value = false
-        success(t('widgets.added'))
+        success(selectedList.length > 1 ? t('widgets.addedMultiple', { count: selectedList.length }) : t('widgets.added'))
       } catch (err) {
-        console.error('Failed to add widget', err)
+        console.error('Failed to add widget(s)', err)
         showError(t('errors.saveFailed'))
       }
     }
@@ -1089,6 +1322,8 @@ export default {
          // Inclure toutes les données nécessaires pour le widget
          map[key] = { 
            widget_type: w.widget_type,
+           widget_id: String(w.widget_id || w.id),
+           component_name: w.component_name,
            width: w.width, 
            height: w.height, 
            position_x: w.position_x, 
@@ -1180,10 +1415,24 @@ export default {
     
     const saveProjectDashboardLayout = async () => {
       try {
+        const snapshot = snapshotCurrentLayout()
+        // Garde de sécurité: éviter d'écraser le layout avec un snapshot vide
+        // sauf si on veut explicitement vider le dashboard (fonctionnalité non prise en charge pour le moment)
+        const snapCount = Object.keys(snapshot || {}).length
+        if (snapCount === 0) {
+          console.warn('[Dashboard] Sauvegarde annulée: snapshot vide détecté. Pour éviter la suppression accidentelle des widgets, la sauvegarde est bloquée.', {
+            snapCount
+          })
+          return false
+        }
+
         const layoutData = {
           dashboard: dashboardSettings.value,
           layout: layoutSettings.value,
-          widgetsLayout: snapshotCurrentLayout()
+          widgetsLayout: snapshot
+        }
+        if (import.meta.env?.MODE !== 'production') {
+          console.debug('[Dashboard] Envoi sauvegarde layout', layoutData)
         }
         
         const success = await widgetApiService.updateProjectDashboardLayout(
@@ -1339,6 +1588,7 @@ export default {
       getWidgetComponent,
       getWidgetStyle,
       startResize,
+      startDrag,
       toggleEditMode,
       toggleDropdown,
       configureWidget,
@@ -1678,6 +1928,13 @@ export default {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
+/* État visuel pendant le glisser-déposer */
+.widget-container.dragging {
+  opacity: 0.9;
+  outline: 2px dashed #3b82f6;
+  cursor: grabbing;
+}
+
 .widget-edit-overlay {
   position: absolute;
   top: 0;
@@ -1795,6 +2052,29 @@ export default {
   width: 12px;
   height: 12px;
   cursor: se-resize;
+}
+
+/* Poignée de déplacement */
+.drag-handle {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: white;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  pointer-events: all;
+  cursor: grab;
+  z-index: 15;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
 }
 
 @media (max-width: 768px) {

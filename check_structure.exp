@@ -1,0 +1,43 @@
+#!/usr/bin/expect -f
+
+set timeout 30
+
+# Connexion SSH avec les nouvelles informations
+spawn ssh RhVNtynnzFS_sam@57-104354.ssh.hosting-ik.com
+expect "password:"
+send "hz_Z6KOp\\ 5-20Wv\r"
+
+expect "$ "
+
+# Vérifier la structure des répertoires
+send "pwd\r"
+expect "$ "
+
+send "ls -la\r"
+expect "$ "
+
+send "ls -la sites/ 2>/dev/null || echo 'Répertoire sites non trouvé'\r"
+expect "$ "
+
+send "ls -la sites/fusepoint.ch/ 2>/dev/null || echo 'Répertoire fusepoint.ch non trouvé'\r"
+expect "$ "
+
+# Créer le répertoire sites/fusepoint.ch s'il n'existe pas
+send "mkdir -p sites/fusepoint.ch\r"
+expect "$ "
+
+send "cd sites/fusepoint.ch\r"
+expect "$ "
+
+send "pwd\r"
+expect "$ "
+
+# Cloner le projet depuis GitHub
+send "git clone https://github.com/samueloliveira492/fusepoint-platform.git .\r"
+expect "$ "
+
+send "ls -la\r"
+expect "$ "
+
+# Garder la session ouverte
+interact

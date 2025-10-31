@@ -1,0 +1,78 @@
+#!/usr/bin/expect -f
+
+# Synchronisation DB: import du dump local vers la base distante Infomaniak
+# 1) Crée le répertoire de backup distant
+# 2) Sauvegarde la base distante (mysqldump)
+# 3) Transfère le dump local
+# 4) Import du dump local
+
+set timeout 300
+
+# Paramètres SSH
+set remote_user "ZDaULDMYSEC_sam"
+set remote_host "57-104359.ssh.hosting-ik.com"
+set remote_pass {35G0ke7I@Fz%~T}
+
+# Chemins
+set remote_path "/srv/customer/sites/fusepoint.ch"
+set remote_backups_dir "$remote_path/backups/db"
+
+# Paramètres DB distants (Infomaniak)
+set db_host "tt3ae.myd.infomaniak.com"
+set db_user "tt3ae_sam"
+set db_pass {JbW4D~7.@91.aGs}
+set db_name "tt3ae_fusepoint"
+
+# Fichiers de dump
+set timestamp [clock format [clock seconds] -format "%Y%m%d-%H%M%S"]
+set remote_backup_file "$remote_backups_dir/${db_name}.backup.$timestamp.sql"
+# Sélectionner le dernier dump local disponible pour éviter les décalages d'horodatage
+set cwd [exec pwd]
+set local_dump_file [exec bash -lc "ls -t \"$cwd\"/backup_redirects/db/${db_name}.local.*.sql | head -n 1"]
+if {$local_dump_file eq ""} {
+  puts "Aucun dump local trouvé dans $cwd/backup_redirects/db/${db_name}.local.*.sql"
+  exit 1
+}
+
+puts "Préparation du répertoire de backup distant…"
+spawn ssh $remote_user@$remote_host
+expect -re "(?i)password:"
+send "$remote_pass\r"
+expect "$ "
+send "mkdir -p $remote_backups_dir\r"
+expect "$ "
+
+puts "Sauvegarde de la base distante…"
+send "mysqldump -h $db_host -u $db_user -p $db_name > $remote_backup_file\r"
+expect -re "(?i)password:"
+send "$db_pass\r"
+expect "$ "
+
+puts "Transfert du dump local vers le serveur…"
+spawn scp $local_dump_file $remote_user@$remote_host:$remote_backups_dir/
+expect -re "(?i)password:"
+send "$remote_pass\r"
+expect eof
+
+puts "Import du dump local dans la base distante…"
+spawn ssh $remote_user@$remote_host
+expect -re "(?i)password:"
+send "$remote_pass\r"
+expect "$ "
+set imported_file [exec basename $local_dump_file]
+puts "Normalisation de la collation du dump (remplacement uca1400 -> unicode_ci)…"
+send "sed -i 's/utf8mb4_uca1400_ai_ci/utf8mb4_unicode_ci/g' $remote_backups_dir/$imported_file\r"
+expect "$ "
+send "mysql -h $db_host -u $db_user -p $db_name < $remote_backups_dir/$imported_file \r"
+expect -re "(?i)password:"
+send "$db_pass\r"
+expect "$ "
+send "echo '✓ Import terminé'\r"
+expect "$ "
+puts "Vérification de la base distante (nombre de tables et premières entrées)…"
+send "mysql -h $db_host -u $db_user -p -e \"SELECT COUNT(*) AS tables FROM information_schema.tables WHERE table_schema='$db_name'; SHOW TABLES FROM $db_name LIMIT 5;\" \r"
+expect -re "(?i)password:"
+send "$db_pass\r"
+expect "$ "
+send "exit\r"
+expect eof

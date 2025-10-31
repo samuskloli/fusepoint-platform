@@ -1,0 +1,19 @@
+#!/usr/bin/expect -f
+spawn ssh tt3ae_sam@tt3ae.myd.infomaniak.com
+expect "password:"
+send "UVtY-I6\$u9!2u\r"
+expect "$ "
+send "cd /srv/customer/sites/fusepoint-platform\r"
+expect "$ "
+send "echo 'Démarrage du serveur Node.js...'\r"
+expect "$ "
+send "cd server && npm start &\r"
+expect "$ "
+send "sleep 3\r"
+expect "$ "
+send "ps aux | grep node\r"
+expect "$ "
+send "echo 'Serveur démarré. Vérification des logs...'\r"
+expect "$ "
+send "tail -f ../sites/api.log\r"
+interact

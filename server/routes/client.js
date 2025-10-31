@@ -275,9 +275,20 @@ router.get('/:id/assigned-agent', async (req, res) => {
       return res.status(403).json({ error: 'Accès non autorisé' });
     }
 
-    console.log('🔍 Vérification attribution pour client ID:', clientId);
-    
-    // Vérifier d'abord l'attribution dans la table users (méthode principale)
+  console.log('🔍 Vérification attribution pour client ID:', clientId);
+  
+  // Détecter dynamiquement si la colonne users.agent_id existe
+  let hasUserAgentIdCol = false;
+  try {
+    const userCols = await databaseService.query('SHOW COLUMNS FROM users');
+    const userColNames = (userCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+    hasUserAgentIdCol = userColNames.includes('agent_id');
+  } catch (e) {
+    hasUserAgentIdCol = false;
+  }
+
+  if (hasUserAgentIdCol) {
+    // Méthode principale: via users.agent_id si disponible
     const clientWithAgent = await databaseService.get(
       `SELECT u.id, u.agent_id, a.first_name, a.last_name, a.email 
        FROM users u 
@@ -301,6 +312,34 @@ router.get('/:id/assigned-agent', async (req, res) => {
       });
       return;
     }
+  } else {
+    // Environnement sans users.agent_id: vérifier via agent_clients
+    const acAssignment = await databaseService.get(
+      `SELECT ac.agent_id, a.first_name, a.last_name, a.email 
+       FROM agent_clients ac 
+       JOIN users a ON a.id = ac.agent_id 
+       WHERE ac.client_id = ? AND ac.status = 'active' 
+       ORDER BY COALESCE(ac.last_interaction_at, ac.assigned_at, ac.updated_at, ac.created_at) DESC 
+       LIMIT 1`,
+      [clientId]
+    );
+    
+    console.log('📊 Résultat attribution agent_clients:', acAssignment);
+    
+    if (acAssignment && acAssignment.agent_id) {
+      res.json({
+        success: true,
+        hasAssignedAgent: true,
+        agent: {
+          id: acAssignment.agent_id,
+          firstName: acAssignment.first_name,
+          lastName: acAssignment.last_name,
+          email: acAssignment.email
+        }
+      });
+      return;
+    }
+  }
     
     // Fallback: vérifier dans agent_prestataires pour compatibilité
     const assignment = await databaseService.get(

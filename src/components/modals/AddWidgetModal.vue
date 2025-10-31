@@ -39,10 +39,13 @@
           <div 
             v-for="widget in availableWidgets" 
             :key="widget.id"
-            @click="selectWidget(widget)"
-            class="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
-            :class="{ 'border-blue-500 bg-blue-50': selectedWidget?.id === widget.id }"
+            @click="toggleSelection(widget)"
+            class="p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors relative"
+            :class="{ 'border-blue-500 bg-blue-50': isSelected(widget) }"
           >
+            <div class="absolute top-3 right-3">
+              <input type="checkbox" :checked="isSelected(widget)" @change.prevent="toggleSelection(widget)" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+            </div>
             <div class="flex items-center space-x-3">
               <div class="w-12 h-12 rounded-lg flex items-center justify-center" :style="{ backgroundColor: widget.color + '20', color: widget.color }">
                 <i :class="widget.icon" class="text-xl"></i>
@@ -67,11 +70,11 @@
         </button>
         <button 
           @click="addWidget" 
-          :disabled="!selectedWidget"
+          :disabled="selectedWidgets.length === 0"
           type="button" 
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {{ t('widgets.addWidget') }}
+          {{ selectedWidgets.length > 1 ? t('widgets.addMultiple', { count: selectedWidgets.length }) : t('widgets.addWidget') }}
         </button>
       </div>
     </div>
@@ -99,7 +102,7 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'add-widget'])
 
-const selectedWidget = ref(null)
+const selectedWidgets = ref([])
 const allWidgets = ref([])
 const loading = ref(false)
 
@@ -208,19 +211,25 @@ onMounted(() => {
   }
 })
 
-const selectWidget = (widget) => {
-  selectedWidget.value = widget
+const isSelected = (widget) => selectedWidgets.value.some(w => w.id === widget.id)
+const toggleSelection = (widget) => {
+  const idx = selectedWidgets.value.findIndex(w => w.id === widget.id)
+  if (idx >= 0) {
+    selectedWidgets.value.splice(idx, 1)
+  } else {
+    selectedWidgets.value.push(widget)
+  }
 }
 
 const addWidget = () => {
-  if (selectedWidget.value) {
-    emit('add-widget', selectedWidget.value)
+  if (selectedWidgets.value.length) {
+    emit('add-widget', [...selectedWidgets.value])
     closeModal()
   }
 }
 
 const closeModal = () => {
-  selectedWidget.value = null
+  selectedWidgets.value = []
   emit('close')
 }
 </script>

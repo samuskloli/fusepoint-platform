@@ -62,7 +62,7 @@ ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
 
 echo "[6/8] Nettoyage potentiel de pages de maintenance…"
 ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
-  "for f in '${DOCROOT}/index_maint.html' '${DOCROOT}/maintenance.html' '${DOCROOT}/index_maintenance.html'; do if [[ -f \"$f\" ]]; then mv \"$f\" \"$f.bak.$(date +%s)\"; fi; done"
+  "for f in '${DOCROOT}/index_maint.html' '${DOCROOT}/maintenance.html' '${DOCROOT}/index_maintenance.html'; do if [[ -f \"\$f\" ]]; then mv \"\$f\" \"\$f.bak.\$(date +%s)\"; fi; done"
 
 echo "[7/8] Tests HTTP de la SPA…"
 CODE_APP=$(curl -s -o /dev/null -w "%{http_code}" "${DOMAIN}/app/login")

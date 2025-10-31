@@ -16,7 +16,10 @@
     "deploy:remote": "chmod +x scripts/deploy-remote.sh && ./scripts/deploy-remote.sh",
     "prune:prod:dry": "bash scripts/prune-for-production.sh",
     "prune:prod": "bash scripts/prune-for-production.sh --apply",
-    "prune:prod:archive": "bash scripts/prune-for-production.sh --apply --archive"
+    "prune:prod:archive": "bash scripts/prune-for-production.sh --apply --archive",
+    "changelog:generate": "node scripts/generate-changelog-json.cjs",
+    "predev": "npm run changelog:generate",
+    "prebuild": "npm run changelog:generate"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.1.0",
@@ -35,6 +38,7 @@
     "helmet": "^7.1.0",
     "http-proxy-middleware": "^2.0.6",
     "jsonwebtoken": "^9.0.2",
+    "markdown-it": "^14.1.0",
     "mysql2": "^3.14.3",
     "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",

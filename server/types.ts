@@ -17,6 +17,7 @@ export interface User {
   name?: string
   company_id?: number | null
   client_id?: number | null
+  password?: string
 }
 
 export interface DatabaseQueryResult {

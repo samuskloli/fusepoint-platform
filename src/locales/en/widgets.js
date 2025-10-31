@@ -1,6 +1,7 @@
 export default {
   "widgets": "Widgets",
   "addWidget": "Add widget",
+  "addMultiple": "Add {count} widgets",
   "addFirstWidget": "Add your first widget",
   "addFirstWidgetDescription": "Start by adding a widget to your project",
   "configure": "Configure",
@@ -12,6 +13,7 @@ export default {
   "widgetRemoved": "Widget removed",
   "widgetAdded": "Widget added",
   "added": "Widget added",
+  "addedMultiple": "{count} widgets added",
   "removed": "Widget removed",
   "statusUpdated": "Widget status updated",
   "errorMessage": "Widget error: {error}",

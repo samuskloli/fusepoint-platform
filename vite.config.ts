@@ -11,6 +11,20 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_URL || 'http://localhost:3002'
   const uploadsProxy = env.VITE_UPLOADS_PROXY === '1'
 
+  // Debug: afficher la configuration de proxy détectée
+  try {
+    // eslint-disable-next-line no-console
+    console.log('🔎 Vite dev proxy configuration:')
+    // eslint-disable-next-line no-console
+    console.log('   mode =', mode)
+    // eslint-disable-next-line no-console
+    console.log('   env.VITE_API_URL =', env.VITE_API_URL)
+    // eslint-disable-next-line no-console
+    console.log('   env.VITE_UPLOADS_PROXY =', env.VITE_UPLOADS_PROXY)
+    // eslint-disable-next-line no-console
+    console.log('   apiTarget (resolved) =', apiTarget)
+  } catch (_) {}
+
   // Ajoute une réécriture pour que le serveur de dev serve app/index.html
   // pour toutes les routes SPA sous /app/* (sans extension de fichier)
   const devAppRewritePlugin: Plugin = {

@@ -15,6 +15,11 @@ const app = express();
 // Supporte les ports fournis par la plateforme (PORT), fallback sur FRONTEND_PORT ou 8080
 const PORT = process.env.PORT || process.env.FRONTEND_PORT || 8080;
 const API_PORT = process.env.API_PORT || 3000;
+// Cible API: utilise API externe si fournie, sinon backend local
+const externalApi = process.env.EXTERNAL_API_URL || process.env.VITE_API_URL;
+const apiTarget = externalApi && /^https?:\/\//.test(externalApi)
+  ? externalApi
+  : `http://localhost:${API_PORT}`;
 // Racine des fichiers servables (permet de forcer /sites/fusepoint.ch via env), avec fallback si introuvable
 let ROOT = process.env.SITE_ROOT || __dirname;
 try {
@@ -63,9 +68,9 @@ app.use('/api', cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Proxy pour les requêtes API vers le backend Node.js
+// Proxy pour les requêtes API: externe si EXTERNAL_API_URL/VITE_API_URL, sinon localhost:API_PORT
 app.use('/api', createProxyMiddleware({
-  target: `http://localhost:${API_PORT}`,
+  target: apiTarget,
   changeOrigin: true,
   logLevel: 'info',
   onError: (err, req, res) => {
@@ -145,7 +150,7 @@ app.use((err, req, res, next) => {
 // Forcer l'écoute sur 0.0.0.0 pour compatibilité hébergeur
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Frontend server running on port ${PORT}`);
-  console.log(`📡 Proxying API requests to http://localhost:${API_PORT}`);
+  console.log(`📡 Proxying API requests to ${apiTarget}`);
   console.log(`🌐 Frontend available at: http://localhost:${PORT}`);
   console.log(`📁 Serving static files from: ${path.join(ROOT, 'dist')}`);
 });

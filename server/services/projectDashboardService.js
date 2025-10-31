@@ -64,6 +64,34 @@ class ProjectDashboardService {
   async updateProjectDashboard(projectId, layout, userId, expectedVersion = null) {
     let conn;
     try {
+      // Journaliser de manière sécurisée la structure du layout reçu
+      const safeSummarizeLayout = (lx) => {
+        try {
+          const obj = typeof lx === 'string' ? JSON.parse(lx) : (lx || {})
+          const wl = obj.widgetsLayout || obj.widgets || {}
+          const keys = wl && typeof wl === 'object' ? Object.keys(wl) : []
+          const sample = keys.slice(0, 5).map(k => {
+            const v = wl[k] || {}
+            return {
+              key: k,
+              type: v.widget_type,
+              id: v.widget_id || v.widgetId,
+              pos: [v.position_x, v.position_y],
+              size: [v.width, v.height]
+            }
+          })
+          return {
+            hasDashboard: !!obj.dashboard,
+            hasLayout: !!obj.layout,
+            widgetsCount: keys.length,
+            keysSample: sample
+          }
+        } catch (e) {
+          return { parseError: true }
+        }
+      }
+      console.info('[ProjectDashboardService] updateProjectDashboard payload summary:', safeSummarizeLayout(layout))
+
       conn = await databaseService.getConnection();
       await conn.beginTransaction();
 

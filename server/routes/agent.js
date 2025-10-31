@@ -48,19 +48,32 @@ router.get('/stats', RouteHandlerService.createCrudHandler(
  * Récupérer la liste de tous les clients
  */
 router.get('/clients', RouteHandlerService.asyncHandler(async (req, res) => {
-  RouteHandlerService.logOperation('retrievingClients', { agentId: req.user.id });
-  
+  const userRole = req.user.role;
+  const currentAgentId = req.user.id;
+  RouteHandlerService.logOperation('retrievingClients', { agentId: currentAgentId, role: userRole });
+
   // Construire les filtres à partir des paramètres de requête
   const filters = {
     search: req.query.search,
     status: req.query.status,
-    agentId: req.query.agentId,
+    // Par défaut, pour un utilisateur role "agent", filtrer par son propre agentId
+    // Les admins et super_admin voient tous les clients (pas de filtre agentId)
+    agentId: (userRole === 'agent')
+      ? (req.query.agentId !== undefined && req.query.agentId !== ''
+          ? Number(req.query.agentId)
+          : currentAgentId)
+      : (req.query.agentId !== undefined && req.query.agentId !== ''
+          ? Number(req.query.agentId)
+          : null),
     limit: req.query.limit ? parseInt(req.query.limit) : undefined,
     offset: req.query.offset ? parseInt(req.query.offset) : undefined
   };
-  
-  const clients = await agentService.getAgentClients(req.user.id, filters);
-  
+
+  // Log de debug pour bien voir le comportement côté distant
+  console.log('🔎 [GET /api/agent/clients] Rôle:', userRole, 'Filtres:', filters);
+
+  const clients = await agentService.getAgentClients(currentAgentId, filters);
+
   RouteHandlerService.successResponse(res, clients, 'success.clientsRetrieved');
 }, { logKey: 'logs.clientsRetrieval', errorKey: 'errors.retrievingClients' }));
 
@@ -676,18 +689,35 @@ router.get('/service-requests', async (req, res) => {
       serviceRequests = await databaseService.query(query);
     } else {
       // Les agents voient seulement les demandes de leurs clients assignés
-      const query = `
+      // Adapter dynamiquement selon la présence de la colonne users.agent_id
+      let hasUserAgentIdCol = false;
+      try {
+        const userCols = await databaseService.query('SHOW COLUMNS FROM users');
+        const userColNames = (userCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasUserAgentIdCol = userColNames.includes('agent_id');
+      } catch (e) {
+        hasUserAgentIdCol = false;
+      }
+
+      const baseQuery = `
         SELECT sr.*, ags.name as service_name, ags.category as service_category,
                u.first_name, u.last_name, u.email, u.company as client_name
         FROM service_requests sr
         JOIN agency_services ags ON sr.service_id = ags.id
         JOIN users u ON sr.user_id = u.id
-        WHERE u.agent_id = ? OR u.id IN (
-          SELECT client_id FROM agent_clients WHERE agent_id = ?
-        )
-        ORDER BY sr.created_at DESC
       `;
-      serviceRequests = await databaseService.query(query, [agentId, agentId]);
+      let whereClause;
+      let params;
+      if (hasUserAgentIdCol) {
+        whereClause = 'WHERE u.agent_id = ? OR u.id IN (SELECT client_id FROM agent_clients WHERE agent_id = ?)';
+        params = [agentId, agentId];
+      } else {
+        // En absence de users.agent_id, se baser uniquement sur agent_clients
+        whereClause = 'WHERE u.id IN (SELECT client_id FROM agent_clients WHERE agent_id = ?)';
+        params = [agentId];
+      }
+      const query = `${baseQuery} ${whereClause} ORDER BY sr.created_at DESC`;
+      serviceRequests = await databaseService.query(query, params);
     }
 
     res.json({
@@ -728,14 +758,35 @@ router.put('/service-requests/:requestId/status', async (req, res) => {
       accessQuery = 'SELECT sr.* FROM service_requests sr WHERE sr.id = ?';
       accessParams = [requestId];
     } else {
-      accessQuery = `
-        SELECT sr.* FROM service_requests sr
-        JOIN users u ON sr.user_id = u.id
-        WHERE sr.id = ? AND (u.agent_id = ? OR u.id IN (
-          SELECT client_id FROM agent_clients WHERE agent_id = ?
-        ))
-      `;
-      accessParams = [requestId, agentId, agentId];
+      // Adapter dynamiquement selon la présence de users.agent_id
+      let hasUserAgentIdCol = false;
+      try {
+        const userCols = await databaseService.query('SHOW COLUMNS FROM users');
+        const userColNames = (userCols || []).map(c => c.Field || c.COLUMN_NAME || c.column_name || c.name);
+        hasUserAgentIdCol = userColNames.includes('agent_id');
+      } catch (e) {
+        hasUserAgentIdCol = false;
+      }
+
+      if (hasUserAgentIdCol) {
+        accessQuery = `
+          SELECT sr.* FROM service_requests sr
+          JOIN users u ON sr.user_id = u.id
+          WHERE sr.id = ? AND (u.agent_id = ? OR u.id IN (
+            SELECT client_id FROM agent_clients WHERE agent_id = ?
+          ))
+        `;
+        accessParams = [requestId, agentId, agentId];
+      } else {
+        accessQuery = `
+          SELECT sr.* FROM service_requests sr
+          JOIN users u ON sr.user_id = u.id
+          WHERE sr.id = ? AND u.id IN (
+            SELECT client_id FROM agent_clients WHERE agent_id = ?
+          )
+        `;
+        accessParams = [requestId, agentId];
+      }
     }
     
     const serviceRequest = await databaseService.get(accessQuery, accessParams);

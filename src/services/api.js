@@ -5,16 +5,20 @@ import tokenManager from './tokenManager.js'
 const apiEnv = import.meta.env.VITE_API_URL
 const backendEnv = import.meta.env.VITE_BACKEND_URL
 const host = typeof window !== 'undefined' ? window.location.hostname : ''
+const isDev = !!import.meta.env.DEV
 const isLocalNetworkHost = !!host && host !== 'localhost' && host !== '127.0.0.1'
 
 // Si l'app est ouverte via une IP locale (ex: 192.168.x.x), utiliser base relative
-const baseURL = isLocalNetworkHost
+// En développement, forcer une base relative vide pour utiliser l'origine et le proxy Vite
+const baseURL = isDev
   ? ''
-  : (apiEnv && apiEnv.startsWith('http')
-      ? apiEnv.replace(/\/+$/, '')
-      : backendEnv && backendEnv.startsWith('http')
-        ? backendEnv.replace(/\/+$/, '')
-        : '') // par défaut, relatif à l'origine (Vite proxy gère '/api')
+  : (isLocalNetworkHost
+      ? ''
+      : (apiEnv && apiEnv.startsWith('http')
+          ? apiEnv.replace(/\/+$/, '')
+          : backendEnv && backendEnv.startsWith('http')
+            ? backendEnv.replace(/\/+$/, '')
+            : '')) // par défaut, relatif à l'origine (Vite proxy gère '/api')
 
 // Configuration de base pour les requêtes API
 const api = axios.create({
@@ -28,6 +32,9 @@ const api = axios.create({
 
 // Abonner cette instance au gestionnaire de tokens centralisé
 tokenManager.subscribe(api, 'api.js')
+
+// Log de debug pour vérifier la base utilisée
+console.log('🔍 Base URL utilisée (api.js):', baseURL, { host, isDev, apiEnv, backendEnv })
 
 // Note: L'intercepteur de requête est maintenant géré par le TokenManager
 

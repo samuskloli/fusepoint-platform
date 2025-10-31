@@ -1,0 +1,5 @@
+#!/usr/bin/expect -f
+spawn scp .env.production tt3ae_sam@tt3ae.myd.infomaniak.com:/srv/customer/sites/fusepoint-platform/.env
+expect "password:"
+send "UVtY-I6\$u9!2u\r"
+expect eof
