@@ -1,0 +1,33 @@
+#!/usr/bin/expect -f
+
+# Vérifie le contenu de server/server.js en production pour les handlers / et le 404
+set timeout 60
+
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set proj "/srv/customer/sites/fusepoint.ch"
+
+spawn ssh -o StrictHostKeyChecking=accept-new $remote
+expect {
+  -re ".*password:" { send "$pass\r" }
+}
+expect "$ "
+send "cd $proj\r"
+
+# Afficher les routes pertinentes et le handler 404
+expect "$ "
+send "echo '=== Routes / et /app/ dans server/server.js ==='\r"
+expect "$ "
+send "grep -n \"app.get('/\" server/server.js | sed -n '1,100p'\r"
+
+expect "$ "
+send "echo '=== Handler 404 dans server/server.js ==='\r"
+expect "$ "
+send "tail -n 120 server/server.js | sed -n '1,120p'\r"
+
+expect "$ "
+send "echo '=== Fin ==='\r"
+
+interact

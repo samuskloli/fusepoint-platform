@@ -1,0 +1,41 @@
+#!/usr/bin/expect -f
+
+# Déploie uniquement server/server.js sur le serveur et redémarre l'API via npx pm2
+set timeout 120
+
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+proc do_scp {src remote_path pass} {
+  spawn scp -q $src $remote_path
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts "[1/4] Sauvegarde de server/server.js côté serveur"
+do_ssh $remote $pass "test -f '$docroot/server/server.js' && cp -a '$docroot/server/server.js' '$docroot/server/server.js.bak.'\`date +%Y%m%d%H%M%S\` || true"
+
+puts "[2/4] Upload de la version locale de server/server.js"
+do_scp "./server/server.js" "$remote:$docroot/server/server.js" $pass
+
+puts "[3/4] Redémarrage de l'API via npx pm2"
+do_ssh $remote $pass "cd '$docroot' && npm i pm2 --no-audit --no-fund --no-progress --no-save || true; npx pm2 restart fusepoint-api || npx pm2 start '$docroot/ecosystem.prod.config.js' --only fusepoint-api --update-env; sleep 2; npx pm2 ls || true"
+
+puts "[4/4] Test rapide / et /app/login"
+do_ssh $remote $pass "echo -n 'GET / => '; curl -s -o /dev/null -w '%{http_code} %{content_type}' https://fusepoint.ch/"
+do_ssh $remote $pass "echo -n 'GET /app/login => '; curl -s -o /dev/null -w '%{http_code} %{content_type}' https://fusepoint.ch/app/login"
+
+puts "Terminé."

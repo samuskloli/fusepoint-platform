@@ -3,7 +3,7 @@ module.exports = {
     {
       name: 'fusepoint-frontend',
       script: 'infomaniak-server.js',
-      cwd: '/srv/customer/sites/fusepoint.ch/fusepoint-platform',
+      cwd: '/srv/customer/sites/fusepoint.ch',
       instances: 1,
       exec_mode: 'fork',
       env: {
@@ -11,7 +11,7 @@ module.exports = {
         PORT: 8080,
         API_PORT: 3000,
         ALLOWED_ORIGINS: 'https://fusepoint.ch,https://www.fusepoint.ch',
-        SITE_ROOT: '/srv/customer/sites/fusepoint.ch/fusepoint-platform'
+        SITE_ROOT: '/srv/customer/sites/fusepoint.ch'
       },
       error_file: './logs/frontend-error.log',
       out_file: './logs/frontend-out.log',
@@ -24,7 +24,7 @@ module.exports = {
     {
       name: 'fusepoint-api',
       script: 'server/server.js',
-      cwd: '/srv/customer/sites/fusepoint.ch/fusepoint-platform',
+      cwd: '/srv/customer/sites/fusepoint.ch',
       instances: 1,
       exec_mode: 'fork',
       env: {

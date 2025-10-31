@@ -1,0 +1,102 @@
+#!/usr/bin/expect -f
+
+# Script pour déployer la configuration .htaccess mise à jour
+set timeout 30
+
+# Connexion SSH
+spawn ssh ZDaULDMYSEC_sam@57-104359.ssh.hosting-ik.com
+expect "password:"
+send "35G0ke7I@Fz%~T\r"
+
+# Aller dans le répertoire du site
+expect "$ "
+send "cd sites/fusepoint.ch\r"
+
+# Sauvegarder l'ancien .htaccess (échapper le $ pour que le shell distant l'expanse)
+expect "$ "
+send "cp .htaccess .htaccess.backup.\$(date +%Y%m%d_%H%M%S)\r"
+
+# Afficher le contenu actuel pour comparaison
+expect "$ "
+send "echo '=== ANCIEN .htaccess ==='\r"
+expect "$ "
+send "cat .htaccess\r"
+
+expect "$ "
+send "echo '=== NOUVEAU .htaccess ==='\r"
+
+# Créer le nouveau .htaccess avec la configuration de proxy
+expect "$ "
+send "cat > .htaccess << 'EOF'\r"
+send "# Fusepoint Platform - Routing et headers pour SPA sous /app\r"
+send "RewriteEngine On\r"
+send "\r"
+send "# Configuration CORS pour l'API\r"
+send "<LocationMatch \"/api/.*\">\r"
+send "    Header always set Access-Control-Allow-Origin \"https://fusepoint.ch\"\r"
+send "    Header always set Access-Control-Allow-Methods \"GET, POST, PUT, DELETE, OPTIONS\"\r"
+send "    Header always set Access-Control-Allow-Headers \"Content-Type, Authorization, X-Requested-With\"\r"
+send "    Header always set Access-Control-Allow-Credentials \"true\"\r"
+send "</LocationMatch>\r"
+send "\r"
+send "# Proxy pour les requêtes API vers le backend Node.js\r"
+send "ProxyPreserveHost On\r"
+send "ProxyPass /api/ http://localhost:3000/api/\r"
+send "ProxyPassReverse /api/ http://localhost:3000/api/\r"
+send "\r"
+send "# Gestion des requêtes OPTIONS pour CORS\r"
+send "RewriteCond %{REQUEST_METHOD} OPTIONS\r"
+send "RewriteRule ^(.*)$ $1 [R=200,L]\r"
+send "\r"
+send "# Séparer API des réécritures SPA\r"
+send "RewriteCond %{REQUEST_URI} ^/api/ [OR]\r"
+send "RewriteCond %{REQUEST_URI} ^/uploads/\r"
+send "RewriteRule ^ - [L]\r"
+send "\r"
+send "# SPA: toutes les routes /app/* -> app/index.html\r"
+send "RewriteCond %{REQUEST_FILENAME} !-f\r"
+send "RewriteCond %{REQUEST_FILENAME} !-d\r"
+send "RewriteCond %{REQUEST_URI} ^/app/\r"
+send "RewriteRule ^app/.*$ /app/index.html [L]\r"
+send "\r"
+send "# Landing: toutes les autres routes non-fichiers -> index.html\r"
+send "RewriteCond %{REQUEST_FILENAME} !-f\r"
+send "RewriteCond %{REQUEST_FILENAME} !-d\r"
+send "RewriteRule ^.*$ /index.html [L]\r"
+send "\r"
+send "# Headers de sécurité basiques\r"
+send "Header always set X-Content-Type-Options nosniff\r"
+send "Header always set X-Frame-Options DENY\r"
+send "Header always set X-XSS-Protection \"1; mode=block\"\r"
+send "Header always set Referrer-Policy \"strict-origin-when-cross-origin\"\r"
+send "\r"
+send "# Cache pour assets statiques\r"
+send "<FilesMatch \"\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$\">\r"
+send "  ExpiresActive On\r"
+send "  ExpiresDefault \"access plus 1 month\"\r"
+send "  Header append Cache-Control \"public\"\r"
+send "</FilesMatch>\r"
+send "\r"
+send "# No-cache pour les HTML\r"
+send "<FilesMatch \"^(index\\.html|app/index\\.html)$\">\r"
+send "  ExpiresActive On\r"
+send "  ExpiresDefault \"access plus 0 seconds\"\r"
+send "  Header set Cache-Control \"no-cache, no-store, must-revalidate\"\r"
+send "  Header set Pragma \"no-cache\"\r"
+send "</FilesMatch>\r"
+send "EOF\r"
+
+# Vérifier le nouveau contenu
+expect "$ "
+send "cat .htaccess\r"
+
+# Tester une requête API
+expect "$ "
+send "echo '=== TEST API ==='\r"
+expect "$ "
+send "curl -I http://localhost/api/health 2>/dev/null || echo 'Test API échoué'\r"
+
+expect "$ "
+send "echo 'Configuration .htaccess déployée avec succès !'\r"
+
+interact

@@ -258,11 +258,10 @@ async function initializeDatabase() {
   try {
     await databaseService.initialize();
     console.log('✅ Base de données initialisée');
-    
-
   } catch (error) {
-    console.error('❌ Erreur initialisation:', error);
-    process.exit(1);
+    // Ne pas arrêter le processus ici; laisser Promise.race gérer le fallback
+    console.error('❌ Erreur initialisation DB (non bloquant):', error);
+    throw error;
   }
 }
 
@@ -537,6 +536,50 @@ app.get('/login', (req, res) => {
 // Route de servir les fichiers uploadés
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// --- Frontend static & routes (serve landing and SPA directly from Express) ---
+  // Serve static assets from /public at the root (e.g. /fusepoint-logo.svg)
+  app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// (removed) static /app duplicate — the actual static /app is declared after the /app catch-all
+
+// Serve landing page at /
+// In production, the built marketing site resides under dist/index.html
+// Fallback to repo root index.html if dist is not available locally
+app.get('/', (req, res) => {
+  const distIndex = path.join(__dirname, '..', 'dist', 'index.html');
+  const repoIndex = path.join(__dirname, '..', 'index.html');
+  const fileToServe = fs.existsSync(distIndex) ? distIndex : repoIndex;
+  res.sendFile(fileToServe);
+});
+
+  // Serve SPA shell at /app and sub-routes, but DO NOT intercept asset files
+  // In production, the built SPA index is located at dist/app/index.html
+  app.get('/app', (req, res) => {
+    const builtSpaIndex = path.join(__dirname, '..', 'dist', 'app', 'index.html');
+    const devSpaIndex = path.join(__dirname, '..', 'app', 'index.html');
+    const fileToServe = fs.existsSync(builtSpaIndex) ? builtSpaIndex : devSpaIndex;
+    res.sendFile(fileToServe);
+  });
+  app.get('/app/*', (req, res, next) => {
+    const p = req.path || '';
+    // Ne jamais renvoyer l'index pour les ressources situées sous /app/assets
+    if (p.startsWith('/app/assets/') || p.startsWith('/app/favicon') || p.startsWith('/app/manifest')) {
+      return next(); // laisser le 404 global gérer si le fichier n'existe pas
+    }
+    const builtSpaIndex = path.join(__dirname, '..', 'dist', 'app', 'index.html');
+    const devSpaIndex = path.join(__dirname, '..', 'app', 'index.html');
+    const fileToServe = fs.existsSync(builtSpaIndex) ? builtSpaIndex : devSpaIndex;
+    return res.sendFile(fileToServe);
+  });
+
+  // Serve compiled SPA assets under /app (JS/CSS/images/fonts)
+  // IMPORTANT: declared AFTER the /app catch-all so that `next()` above falls through to this static server
+  // In production builds, assets are under dist/assets and dist/app/*; in dev, serve from app/* if present
+  const staticRootProd = path.join(__dirname, '..', 'dist');
+  const staticRootDev = path.join(__dirname, '..', 'app');
+  const staticRoot = fs.existsSync(staticRootProd) ? staticRootProd : staticRootDev;
+  app.use('/app', express.static(staticRoot));
+
 // Redirection publique traquée (QR dynamique)
 app.get('/r/:slug', async (req, res) => {
   const { slug } = req.params;
@@ -772,13 +815,66 @@ app.use((err, req, res, next) => {
   res.status(status).json(payload);
 });
 
-// Route 404 globale
+// Route 404 globale avec fallback frontend pour les routes non-API
 app.use('*', (req, res) => {
+  try {
+    // Si c'est une requête GET et que ce n'est pas une route API,
+    // servir le frontend (index.html ou app/index.html) au lieu d'un 404 JSON
+    if (req.method === 'GET' && !req.originalUrl.startsWith('/api')) {
+      // Racine: servir la landing page
+      if (req.path === '/' || req.path === '') {
+        return res.sendFile(path.join(__dirname, '..', 'index.html'));
+      }
+
+      // Routes SPA sous /app (sans intercepter les assets)
+      const isAppRoute = req.path === '/app' || req.path.startsWith('/app/');
+      const hasExtension = /\.[a-zA-Z0-9]+$/.test(req.path);
+      const isAppAsset = req.path.startsWith('/app/assets/') || req.path.startsWith('/app/favicon') || req.path.startsWith('/app/manifest');
+      if (isAppRoute && !hasExtension && !isAppAsset) {
+        return res.sendFile(path.join(__dirname, '..', 'app', 'index.html'));
+      }
+    }
+  } catch (_) {
+    // Ignorer et retourner le 404 JSON par défaut
+  }
   res.status(404).json({ success: false, message: 'Route non trouvée', path: req.originalUrl });
 });
 
-// Démarrage du serveur
-initializeDatabase().then(() => {
+// Démarrage du serveur avec fallback si l'initialisation DB bloque
+const STARTUP_TIMEOUT_MS = parseInt(process.env.STARTUP_TIMEOUT_MS || '8000', 10);
+
+// Fallback global pour le frontend: servir index.html pour toute route non-API
+// et app/index.html pour /app et ses sous-routes. À placer avant le 404.
+app.use((req, res, next) => {
+  // Ne pas interférer avec les routes API ou les méthodes non-GET
+  if (req.method !== 'GET' || req.path.startsWith('/api')) {
+    return next();
+  }
+
+  try {
+    if (req.path === '/' || req.path === '') {
+      return res.sendFile(path.join(__dirname, '..', 'index.html'));
+    }
+    // Pour /app et ses sous-routes SPA, ne pas intercepter les assets
+    // - Ignorer si la route contient une extension de fichier (ex: .js, .css, .png)
+    // - Ignorer les ressources communes: /app/assets/*, /app/favicon.ico, /app/manifest.*
+    const isAppRoute = req.path === '/app' || req.path.startsWith('/app/');
+    const hasExtension = /\.[a-zA-Z0-9]+$/.test(req.path);
+    const isAppAsset = req.path.startsWith('/app/assets/') || req.path.startsWith('/app/favicon') || req.path.startsWith('/app/manifest');
+    if (isAppRoute && !hasExtension && !isAppAsset) {
+      return res.sendFile(path.join(__dirname, '..', 'app', 'index.html'));
+    }
+  } catch (e) {
+    // Si une erreur survient lors du sendFile, passer au prochain handler
+    // (les erreurs seront gérées par le middleware d'erreurs global)
+    return next(e);
+  }
+  // Pour toute autre route non-API, laisser la suite gérer (ex. /uploads, /public)
+  next();
+});
+
+function startServer() {
+  console.log(`⏳ Démarrage du serveur sur le port ${PORT}`);
   app.listen(PORT, () => {
     console.log('\n🚀 ===== FUSEPOINT PLATFORM API =====');
     console.log(`📅 Démarré le: ${new Date().toLocaleString('fr-FR')}`);
@@ -809,7 +905,21 @@ initializeDatabase().then(() => {
         .catch((err) => console.log('⚠️ SMTP: vérification échouée:', err && err.message ? err.message : 'inconnue'));
     }
   });
-});
+}
+
+console.log(`⏳ Timeout de démarrage DB: ${STARTUP_TIMEOUT_MS}ms`);
+Promise.race([
+  initializeDatabase(),
+  new Promise((resolve) => setTimeout(resolve, STARTUP_TIMEOUT_MS))
+])
+  .then(() => {
+    console.log('🚀 Initialisation DB terminée ou timeout atteint, lancement du serveur');
+    startServer();
+  })
+  .catch((error) => {
+    console.error('⚠️ Erreur d\'initialisation DB, lancement du serveur quand même:', error && error.message ? error.message : error);
+    startServer();
+  });
 
 // Route /r dupliquée supprimée (fusionnée avec le handler principal plus haut)
 (async () => {

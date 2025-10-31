@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+
+# Mise à jour du backend (server) via SSH avec mot de passe
+# - Met à jour le code depuis origin/main
+# - Redémarre PM2 pour l'API
+# - Vérifie l'état et quelques endpoints de santé
+
+set timeout 180
+
+# Crédentials et cibles (adapter si besoin)
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set repo_path "/srv/customer/sites/fusepoint.ch"
+set domain "https://fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts "Backend Update: Étape 1/4 — Mise à jour du code (git reset --hard origin/main)"
+do_ssh $remote $pass "cd $repo_path && git fetch --all && git reset --hard origin/main"
+
+puts "Backend Update: Étape 2/4 — Installation PM2 locale (si nécessaire) et redémarrage API"
+do_ssh $remote $pass "cd $repo_path && npm i pm2 --no-audit --no-fund --no-progress --no-save && npx pm2 restart fusepoint-api || npx pm2 start $repo_path/ecosystem.prod.config.js --only fusepoint-api --update-env; sleep 2; npx pm2 ls || true"
+
+puts "Backend Update: Étape 3/4 — Vérifications de santé côté serveur"
+do_ssh $remote $pass "echo -n 'API /health: '; curl -s -o /dev/null -w '%{http_code}' $domain/api/health"
+do_ssh $remote $pass "echo -n '\nAPI /clients (auth requis, peut renvoyer 401): '; curl -s -o /dev/null -w '%{http_code}' $domain/api/clients"
+
+puts "Backend Update: Étape 4/4 — Terminé."

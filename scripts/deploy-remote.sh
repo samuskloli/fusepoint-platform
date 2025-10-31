@@ -38,12 +38,27 @@ ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
 scp -q ./dist/index.html "${REMOTE}:${DOCROOT}/index.html"
 
 echo "[4/8] Upload SPA index et assets…"
-scp -q ./dist/app/index.html "${REMOTE}:${DOCROOT}/dist/app/index.html"
-rsync -a --delete ./dist/assets/ "${REMOTE}:${DOCROOT}/dist/assets/"
+# Index de la SPA (utilisé par la règle /app/* -> /app/index.html)
+scp -q ./dist/app/index.html "${REMOTE}:${DOCROOT}/app/index.html"
+# Les assets Vite référencés par la SPA sont sous /app/assets/* (cf. dist/app/index.html)
+# Nous créons /app/assets côté serveur et y déployons les assets buildés
+ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
+  "mkdir -p '${DOCROOT}/app/assets'"
+rsync -a --delete ./dist/assets/ "${REMOTE}:${DOCROOT}/app/assets/"
+
+echo "[4a/8] Upload des icônes publiques requises par la SPA…"
+# Favicon et logo utilisés dans les pages (chemins absolus)
+scp -q ./public/fusepoint-icon.svg "${REMOTE}:${DOCROOT}/app/fusepoint-icon.svg"
+scp -q ./public/fusepoint-logo.svg "${REMOTE}:${DOCROOT}/fusepoint-logo.svg"
+
+echo "[4b/8] Upload des Lotties locaux vers /uploads/lotties…"
+ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
+  "mkdir -p '${DOCROOT}/uploads/lotties'"
+rsync -a --delete ./public/lotties/ "${REMOTE}:${DOCROOT}/uploads/lotties/"
 
 echo "[5/8] Vérification de fichiers essentiels côté serveur…"
 ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
-  "ls -l '${DOCROOT}/.htaccess' '${DOCROOT}/index.html' '${DOCROOT}/dist/app/index.html' '${DOCROOT}/dist/.htaccess' '${DOCROOT}/dist/app/.htaccess' || true"
+  "ls -l \"${DOCROOT}/.htaccess\" \"${DOCROOT}/index.html\" \"${DOCROOT}/app/index.html\" \"${DOCROOT}/dist/.htaccess\" \"${DOCROOT}/dist/app/.htaccess\" \"${DOCROOT}/uploads/lotties\" \"${DOCROOT}/app/assets\" \"${DOCROOT}/app/fusepoint-icon.svg\" \"${DOCROOT}/fusepoint-logo.svg\" || true"
 
 echo "[6/8] Nettoyage potentiel de pages de maintenance…"
 ssh -o StrictHostKeyChecking=accept-new "${REMOTE}" \
@@ -61,6 +76,13 @@ if curl -fsS "${DOMAIN}/app/login" | grep -q 'id="app"'; then
 else
   echo "[!] Le contenu de /app/login ne ressemble pas à la SPA." >&2
 fi
+
+echo "[7b/8] Tests HTTP des Lotties…"
+for f in "point.json" "platform_fallback.json" "platform.json" "customer.json" "QR%20Code.json" "Network%20icon.json" "work%20in%20progress.json" "website-building-of-shopping-sale.json"; do
+  CODE=$(curl -s -o /dev/null -w "%{http_code}" "${DOMAIN}/uploads/lotties/${f}")
+  CT=$(curl -sI "${DOMAIN}/uploads/lotties/${f}" | awk -F': ' '/^Content-Type/ {print $2}' | tr -d '\r')
+  echo "• /uploads/lotties/${f} => ${CODE} (${CT})"
+done
 
 echo "[8/8] Test de santé API (si proxifiée)…"
 if curl -fsS "${DOMAIN}/api/health" >/dev/null 2>&1; then
