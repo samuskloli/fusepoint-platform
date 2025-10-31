@@ -35,4 +35,20 @@ Vérifications post-déploiement:
 
 Notes:
 - PM2 n’est pas disponible sur l’hébergement Infomaniak (commandes `pm2` non trouvées). Le redémarrage de l’API se fait via les scripts existants ou par le gestionnaire d’hébergement.
-- Les règles `.htaccess` garantissent que les fichiers statiques (CSS/JS) ne sont plus réécrits vers `index.html`, évitant les erreurs MIME.
+- Les règles `.htaccess` garantissent que les fichiers statiques (CSS/JS) ne sont plus réécrits vers `index.html`, évitant les erreurs MIME.## Déploiement 2025-10-31T22:58:24Z
+Serveur: 57-104359.ssh.hosting-ik.com
+Branche: main
+Chemin distant: /srv/customer/sites/fusepoint.ch
+
+Commits inclus:
+- 0415afd chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend) (Samuel Oliveira)
+- c9799fe fix(agent): make getAgentClients resilient to remote DB schema (conditional joins and order by fallback) (Samuel Oliveira)
+- 084eac4 docs(changelog): ajouter entrée détaillée pour le déploiement du 2025-10-31 (fix routing SPA, correctifs MIME des assets, scripts de déploiement) (Samuel Oliveira)
+- 17e6a8e fix(frontend-assets): servir /app/assets depuis dist/assets avec fallback vers app/ pour éviter les 404 JSON et erreurs MIME; mise à jour script de déploiement pour copier les assets vers dist/ et app/ (Samuel Oliveira)
+- 1d0f341 fix(routing): servir le frontend depuis le backend (/, /app/* fallback); corrige chemins PM2 prod; ajoute scripts de déploiement et changelog (Samuel Oliveira)
+- d654f3a 🚀 Préparation déploiement: correction bug redirection LinkPoints + nettoyage code (Samuel Oliveira)
+- 0972c72 chore(prod): ajouter PM2 ecosystem pour fusepoint.ch, doc de déploiement, mise à jour des .env.example et ajustements CORS/login (Samuel Oliveira)
+- 61532be Security: remove VAPID keys file; ignore and provide example (Samuel Oliveira)
+- 4ae3f0c Sync: push complet de tous les changements en cours (serveur, scripts, config, vues) (Samuel Oliveira)
+- 041d4a0 Landing mobile: marges/espacements sections QR & Projets, fix débordement texte et conteneurs anim responsives (Samuel Oliveira)
+

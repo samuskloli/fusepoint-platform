@@ -1,5 +1,10 @@
 [
   {
+    "hash": "0415afd4842269edef47e219aeabe9949f61f81d",
+    "date": "2025-10-31 23:58:20 +0100",
+    "subject": "chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend)"
+  },
+  {
     "hash": "c9799fe70d1a6aeb819cee8105716743681ff573",
     "date": "2025-10-31 22:35:54 +0100",
     "subject": "fix(agent): make getAgentClients resilient to remote DB schema (conditional joins and order by fallback)"
@@ -53,10 +58,5 @@
     "hash": "79b3a320407c633ff76a9867b6183a26a03b1cdd",
     "date": "2025-10-26 23:51:14 +0100",
     "subject": "feat(beta): add first/last name; company optional; update SuperAdmin table"
-  },
-  {
-    "hash": "22fd07945dc3c1bb391d21f84d20ec403d2705e1",
-    "date": "2025-10-26 17:39:42 +0100",
-    "subject": "docs: add remote server installation and update scripts"
   }
 ]
