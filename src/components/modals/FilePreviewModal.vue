@@ -68,7 +68,8 @@ const isImage = computed(() => !!mime.value && mime.value.startsWith('image/'))
 const isVideo = computed(() => !!mime.value && mime.value.startsWith('video/'))
 const isPDF = computed(() => mime.value === 'application/pdf')
 
-const blobUrl = ref<string>('')
+// Stocke une data: URL générée à partir d'un Blob (compatible CSP)
+const dataUrl = ref<string>('')
 const signedUrl = ref<string>('')
 
 const toAbsoluteUrl = (url?: string | null): string => {
@@ -83,17 +84,28 @@ const toAbsoluteUrl = (url?: string | null): string => {
   return `/${u}`
 }
 
+// Choix de la source d'affichage selon le type MIME et la CSP serveur:
+// - Images: autorisées en data: par la CSP actuelle → privilégier dataUrl
+// - Vidéos/PDF: data: n'est PAS autorisé (pas de media-src/data ni frame-src/data) → utiliser URL signée ou URL "self"
 const displaySrc = computed(() => {
   const direct = (props.file as any)?.preview_url || props.file?.url || (props.file as any)?.thumbnail || ''
-  return blobUrl.value || signedUrl.value || toAbsoluteUrl(direct)
+  const absolute = toAbsoluteUrl(direct)
+  if (isImage.value) {
+    return dataUrl.value || signedUrl.value || absolute
+  }
+  // Pour vidéo/PDF/autres, éviter data: pour respecter la CSP stricte côté serveur
+  return signedUrl.value || absolute
 })
 
-const createBlobUrl = (blob: Blob) => {
-  // Nettoyer l'ancien blob URL si présent
-  if (blobUrl.value) {
-    URL.revokeObjectURL(blobUrl.value)
+const setDataUrlFromBlob = async (blob: Blob) => {
+  // Convertir le Blob en data: URL (CSP friendly)
+  try {
+    const { blobToDataURL } = await import('@/utils/blob')
+    dataUrl.value = await blobToDataURL(blob)
+  } catch (e) {
+    console.warn('Conversion blob→data: échouée, prévisualisation indisponible:', e)
+    dataUrl.value = ''
   }
-  blobUrl.value = URL.createObjectURL(blob)
 }
 
 const loadPreviewBlob = async () => {
@@ -101,7 +113,7 @@ const loadPreviewBlob = async () => {
     if (!props.file?.id) return
     const blob = await api.downloadFile(Number(props.file.id))
     if (blob) {
-      createBlobUrl(blob)
+      setDataUrlFromBlob(blob)
     }
   } catch (e) {
     console.warn('Prévisualisation blob non disponible:', e)
@@ -134,33 +146,34 @@ const onError = async () => {
   if (!signedUrl.value) {
     await loadSignedUrl()
   }
-  if (!blobUrl.value) {
+  if (!dataUrl.value) {
     await loadPreviewBlob()
   }
 }
 
 watch(() => props.visible, (v) => {
   if (v) {
-    // Précharger le blob pour PDF/vidéos/images (affichage plus fiable)
-    if (props.file && (isImage.value || isVideo.value || isPDF.value)) {
+    // Précharger le blob UNIQUEMENT pour les images (CSP autorise img-src data:)
+    if (props.file && isImage.value) {
       loadPreviewBlob()
     }
-    // Préparer un fallback via URL signée si nécessaire
+    // Préparer un fallback via URL signée pour tous les types
     if (props.file) {
       loadSignedUrl()
     }
-  } else if (!v && blobUrl.value) {
-    URL.revokeObjectURL(blobUrl.value)
-    blobUrl.value = ''
+  } else if (!v && (dataUrl.value || signedUrl.value)) {
+    // Nettoyer les URLs temporaires
+    dataUrl.value = ''
     signedUrl.value = ''
   }
 })
 
 watch(() => props.file?.id, () => {
   if (props.visible) {
-    blobUrl.value = ''
+    dataUrl.value = ''
     signedUrl.value = ''
-    if (props.file && (isImage.value || isVideo.value || isPDF.value)) {
+    // Blob → data: seulement pour images
+    if (props.file && isImage.value) {
       loadPreviewBlob()
     }
     if (props.file) {
@@ -170,6 +183,6 @@ watch(() => props.file?.id, () => {
 })
 
 onUnmounted(() => {
-  if (blobUrl.value) URL.revokeObjectURL(blobUrl.value)
+  // Rien à révoquer pour une data: URL
 })
 </script>

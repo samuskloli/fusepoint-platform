@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import type { Plugin, ViteDevServer } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import VueI18nPlugin from '@intlify/unplugin-vue-i18n/vite'
 import { fileURLToPath, URL } from 'node:url'
 import { resolve, join } from 'path'
 import fs from 'fs'
@@ -87,11 +88,25 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [vue(), devAppRewritePlugin, copyHtaccessPlugin],
+    plugins: [
+      // Précompile les messages i18n au build pour éviter l'utilisation du compilateur runtime
+      // qui repose sur new Function et viole la CSP stricte sans 'unsafe-eval'.
+      VueI18nPlugin({
+        runtimeOnly: true,
+        compositionOnly: true,
+        include: [resolve(__dirname, './src/locales/**')]
+      }),
+      vue(),
+      devAppRewritePlugin,
+      copyHtaccessPlugin
+    ],
     resolve: {
       alias: {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
-        'vue': 'vue/dist/vue.esm-bundler.js'
+        // Utiliser le build runtime-only de Vue en production pour éviter le compilateur runtime
+        // qui peut s'appuyer sur new Function/eval et violer la CSP stricte sans 'unsafe-eval'.
+        // Le plugin Vite Vue compile les SFC au build, nous n'avons pas besoin du compilateur runtime.
+        'vue': 'vue/dist/vue.runtime.esm-bundler.js'
       }
     },
     define: {

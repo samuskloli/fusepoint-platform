@@ -60,7 +60,7 @@
           <!-- Prévisualisation de vidéo -->
           <div v-else-if="isVideo" class="p-4 flex items-center justify-center bg-black">
             <video
-              :src="file.url || file.preview_url"
+              :src="displaySrc"
               controls
               class="max-w-full max-h-full rounded-lg"
               @loadedmetadata="onVideoLoad"
@@ -86,7 +86,7 @@
                 </div>
               </div>
               <audio
-                :src="file.url || file.preview_url"
+                :src="displaySrc"
                 controls
                 class="w-full"
                 @loadedmetadata="onAudioLoad"
@@ -100,7 +100,7 @@
           <!-- Prévisualisation de PDF -->
           <div v-else-if="isPDF" class="h-full">
             <iframe
-              :src="file.url || file.preview_url"
+              :src="displaySrc"
               class="w-full h-full border-0"
               @load="onPDFLoad"
               @error="onPDFError"
@@ -205,6 +205,15 @@ export default {
     const textContent = ref('')
     const codeContent = ref('')
     const loading = ref(false)
+    const signedUrl = ref('')
+
+    const toAbsoluteUrl = (u) => {
+      if (!u) return ''
+      if (u.startsWith('data:') || /^https?:\/\//.test(u)) return u
+      const base = window.location.origin
+      const normalized = u.startsWith('/') ? u : `/${u}`
+      try { return new URL(normalized, base).href } catch { return normalized }
+    }
 
     const isImage = computed(() => {
       return props.file.type.startsWith('image/')
@@ -278,15 +287,42 @@ export default {
 
     const downloadFile = async () => {
       try {
+        // Utiliser une URL signée côté serveur pour le téléchargement (évite data:/blob:)
+        const r = await projectManagementService.getSignedFileUrl(props.file.id, 'download')
+        if (r?.success && r.data?.url) {
+          const link = document.createElement('a')
+          link.href = toAbsoluteUrl(r.data.url)
+          link.setAttribute('download', props.file.name)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          return
+        }
+        // Fallback si pas d'URL signée: tenter l'URL directe
+        const direct = props.file.url || props.file.preview_url
+        if (direct) {
+          const link = document.createElement('a')
+          link.href = toAbsoluteUrl(direct)
+          link.setAttribute('download', props.file.name)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          return
+        }
+        // Dernier recours: ancienne méthode blob→data (peut être bloquée par CSP)
         const response = await projectManagementService.downloadFile(props.file.id)
-        const url = window.URL.createObjectURL(new Blob([response.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', props.file.name)
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-        window.URL.revokeObjectURL(url)
+        if (response?.success) {
+          const { blobToDataURL } = await import('@/utils/blob')
+          const url = await blobToDataURL(response.data)
+          const link = document.createElement('a')
+          link.href = url
+          link.setAttribute('download', props.file.name)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+        } else {
+          throw new Error('Download failed')
+        }
       } catch (error) {
         console.error('Erreur lors du téléchargement:', error)
       }
@@ -358,6 +394,7 @@ export default {
 
     onMounted(() => {
       loadTextContent()
+      loadSignedPreviewUrl()
       document.addEventListener('keydown', handleKeydown)
     })
 
@@ -390,7 +427,8 @@ export default {
       onAudioError,
       onPDFLoad,
       onPDFError,
-      cleanup
+      cleanup,
+      displaySrc
     }
   },
   beforeUnmount() {
@@ -425,3 +463,24 @@ code {
   background: #9ca3af;
 }
 </style>
+    const loadSignedPreviewUrl = async () => {
+      // Générer une URL signée pour preview des médias (vidéo/audio/PDF)
+      if (!(isVideo.value || isAudio.value || isPDF.value)) return
+      try {
+        const r = await projectManagementService.getSignedFileUrl(props.file.id, 'preview')
+        if (r?.success && r.data?.url) {
+          signedUrl.value = toAbsoluteUrl(r.data.url)
+        }
+      } catch (e) {
+        console.warn('Signed preview URL error', e)
+      }
+    }
+
+    const displaySrc = computed(() => {
+      // Images: utiliser l'URL directe; Médias: préférer l'URL signée si disponible
+      const direct = props.file.url || props.file.preview_url
+      if (isVideo.value || isAudio.value || isPDF.value) {
+        return signedUrl.value || toAbsoluteUrl(direct)
+      }
+      return toAbsoluteUrl(direct)
+    })

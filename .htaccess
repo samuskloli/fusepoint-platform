@@ -40,6 +40,21 @@ Header always set X-Frame-Options DENY
 Header always set X-XSS-Protection "1; mode=block"
 Header always set Referrer-Policy "strict-origin-when-cross-origin"
 
+<IfModule mod_headers.c>
+  # Politique de Sécurité de Contenu (CSP) — source unique via en-tête Apache
+  # On annule toute CSP éventuellement injectée par défaut avant de définir la nôtre
+  Header always unset Content-Security-Policy
+  Header always set Content-Security-Policy "default-src 'self'; 
+    img-src 'self' https: data: blob:; 
+    media-src 'self' https: blob:; 
+    script-src 'self'; 
+    style-src 'self'; 
+    font-src 'self' https: data:; 
+    connect-src 'self' https:; 
+    frame-ancestors 'self'; 
+    base-uri 'self';"
+</IfModule>
+
 # Cache pour assets statiques
 <FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
   ExpiresActive On

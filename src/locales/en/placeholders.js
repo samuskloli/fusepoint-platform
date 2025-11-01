@@ -1,6 +1,6 @@
 export default {
-  "email": "your@email.com",
-  "emailExample": "example@email.com",
+  "email": "your[at]email.com",
+  "emailExample": "example[at]email.com",
   "password": "Enter your password",
   "confirmPassword": "Confirm your password",
   "firstName": "Your first name",

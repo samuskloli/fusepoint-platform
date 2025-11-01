@@ -722,12 +722,7 @@ class ProjectManagementService {
       const response = await this.api.get(`/api/agent/files/${fileId}/download`, {
         responseType: 'blob'
       })
-      
-      // Créer un lien de téléchargement
-      const url = window.URL.createObjectURL(new Blob([response.data]))
-      const link = document.createElement('a')
-      link.href = url
-      
+
       // Extraire le nom du fichier depuis les headers
       const contentDisposition = response.headers['content-disposition']
       let filename = 'download'
@@ -737,17 +732,36 @@ class ProjectManagementService {
           filename = filenameMatch[1]
         }
       }
-      
-      link.setAttribute('download', filename)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-      
-      return { success: true }
+      // Retourner le blob et les headers pour que le composant gère le téléchargement (conversion data: URL côté UI)
+      return { success: true, data: response.data, headers: { ...response.headers, filename } }
     } catch (error) {
       console.error('Erreur lors du téléchargement du fichier:', error)
       return { success: false, error: error.response?.data?.message || 'Erreur lors du téléchargement du fichier' }
+    }
+  }
+
+  /**
+   * Génère une URL signée côté serveur pour un fichier, afin de le prévisualiser ou le télécharger
+   * Utilise POST /api/files/signed-url qui renvoie { success, data: { url, expiresAt } }
+   * L’URL retournée est relative (ex: /api/files/signed/<token>) et accessible sans auth.
+   * intent: 'preview' | 'download' (par défaut: 'download')
+   */
+  async getSignedFileUrl(fileId, intent = 'download', size) {
+    try {
+      const body = { fileId, intent }
+      if (size != null) body.size = size
+      const response = await this.api.post('/api/files/signed-url', body)
+      if (response.data && response.data.success && response.data.data?.url) {
+        return { success: true, data: { url: response.data.data.url, expiresAt: response.data.data.expiresAt } }
+      }
+      return { success: false, error: 'Réponse inattendue pour l’URL signée' }
+    } catch (error) {
+      console.error('Erreur lors de la génération de l’URL signée:', {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data
+      })
+      return { success: false, error: error.response?.data?.message || 'Erreur lors de la génération de l’URL signée' }
     }
   }
 

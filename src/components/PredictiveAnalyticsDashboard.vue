@@ -509,12 +509,23 @@ export default {
       // Implémenter l'export du rapport
       const reportData = JSON.stringify(this.report, null, 2);
       const blob = new Blob([reportData], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `predictive-report-${this.selectedTimeframe}-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // CSP friendly: data: URL
+      const urlPromise = (async () => {
+        try {
+          const { blobToDataURL } = await import('@/utils/blob')
+          return await blobToDataURL(blob)
+        } catch (_) {
+          return ''
+        }
+      })()
+      // Remplacer l'usage sync par async
+      urlPromise.then((url) => {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `predictive-report-${this.selectedTimeframe}-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        // data: URL → pas de revoke
+      })
     },
     
     trackPageView() {

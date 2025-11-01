@@ -1049,14 +1049,21 @@ const configOptions = ref([
         })
         
         if (result.success) {
-          // Créer un lien de téléchargement
+          // Créer un lien de téléchargement (data: URL)
           const blob = new Blob([result.data], { type: 'text/csv' })
-          const url = window.URL.createObjectURL(blob)
+          const url = await (async () => {
+            try {
+              const { blobToDataURL } = await import('@/utils/blob')
+              return await blobToDataURL(blob)
+            } catch (_) {
+              return ''
+            }
+          })()
           const link = document.createElement('a')
           link.href = url
           link.download = `history-${props.projectId}-${new Date().toISOString().split('T')[0]}.csv`
           link.click()
-          window.URL.revokeObjectURL(url)
+          // data: URL → pas de revoke
           
           success(t('widgets.history.exportSuccess'))
         } else {

@@ -107,8 +107,15 @@ if (process.env.NODE_ENV === 'production') {
 
 const scriptSrc = ["'self'"];
 const styleSrc = ["'self'", "'unsafe-inline'"];
-const imgSrc = ["'self'", 'data:', 'https:'];
+// Images: autoriser data: (miniatures inline), blob: (prévisualisations locales) et https:
+const imgSrc = ["'self'", 'data:', 'blob:', 'https:'];
+// Polices: autoriser data: et https:
 const fontSrc = ["'self'", 'data:', 'https:'];
+// Médias (audio/vidéo/PDF): stricte — uniquement 'self' (pas de data:/blob:)
+const mediaSrc = ["'self'"];
+// Web workers: uniquement 'self' (éviter blob: sous CSP stricte)
+const workerSrc = ["'self'"];
+// Frames: uniquement 'self' par défaut; sources additionnelles via env (ex: YouTube/Vimeo)
 const frameSrc = ["'self'"];
 
 if (process.env.NODE_ENV === 'production') {
@@ -126,10 +133,15 @@ const cspDirectives = {
   imgSrc,
   fontSrc,
   connectSrc,
+  mediaSrc,
+  workerSrc,
   frameSrc,
+  objectSrc: ["'none'"],
+  scriptSrcAttr: ["'none'"],
   frameAncestors: ["'none'"],
   baseUri: ["'self'"],
-  formAction: ["'self'"]
+  formAction: ["'self'"],
+  upgradeInsecureRequests: []
 };
 
 app.use(helmet({
@@ -200,17 +212,39 @@ app.use(morgan('combined'));
 
 // Rate limiting avec configuration avancée
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 requêtes en dev, 100 en prod
+  // Fenêtre plus courte et plafond plus élevé pour éviter les 429 sur les pages qui chargent beaucoup de données
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: process.env.NODE_ENV === 'production' ? 1000 : 2000, // plafond plus permissif en prod
   message: {
     error: 'Trop de requêtes depuis cette IP',
-    retryAfter: '15 minutes'
+    retryAfter: '5 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
+    // Exclure OPTIONS (préflight CORS)
+    if (req.method === 'OPTIONS') return true;
     // Exclure les routes de santé du rate limiting
-    return req.path === '/health' || req.path === '/api/health';
+    if (req.path === '/health' || req.path === '/api/health') return true;
+    // Exclure certaines routes fortement parallélisées par l'UI
+    const skipPrefixes = [
+      '/api/linkpoints/global-stats',
+      '/api/linkpoints/stats-by-link',
+      '/api/linkpoints/geo-stats',
+      '/api/linkpoints',
+      '/api/accompagnement/notifications',
+      '/api/agent/clients'
+    ];
+    return skipPrefixes.some(p => req.path.startsWith(p));
+  },
+  keyGenerator: (req) => {
+    // Deriver une clé par utilisateur si authentifié pour éviter de pénaliser des IP partagées
+    // fallback sur IP si pas d'utilisateur
+    const userId = req.user && (req.user.id || req.user.user_id);
+    if (userId) return `user:${userId}`;
+    // Respecte le proxy pour obtenir l'IP réelle
+    const xfwd = (req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+    return xfwd || req.ip;
   }
 });
 

@@ -577,12 +577,19 @@ export default {
       };
       
       const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `fusepoint-ai-report-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      // Utiliser data: URL pour respecter la CSP
+      (async () => {
+        try {
+          const { blobToDataURL } = await import('@/utils/blob')
+          const url = await blobToDataURL(blob)
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `fusepoint-ai-report-${new Date().toISOString().split('T')[0]}.json`;
+          a.click();
+        } catch (_) {
+          // Fallback silencieux
+        }
+      })()
     },
     
     applySuggestion(suggestion) {

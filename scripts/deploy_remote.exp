@@ -38,7 +38,7 @@ puts "Etape 1/9: Préparer les dossiers dist/app, app/assets et uploads/lotties 
 do_ssh $remote $pass "mkdir -p $docroot/dist $docroot/dist/app $docroot/app/assets $docroot/uploads/lotties"
 
 puts "Etape 2/9: Déployer .htaccess racine et sous-dossiers dist/"
-do_scp "./.htaccess.remote" "$remote:$docroot/.htaccess" $pass
+do_scp "./.htaccess" "$remote:$docroot/.htaccess" $pass
 do_scp "./dist/.htaccess" "$remote:$docroot/dist/.htaccess" $pass
 do_scp "./dist/app/.htaccess" "$remote:$docroot/dist/app/.htaccess" $pass
 
@@ -64,11 +64,22 @@ do_scp "./public/lotties" "$remote:$docroot/uploads/" $pass
 puts "Etape 7/9: Vérifier la présence des fichiers clés côté serveur"
 do_ssh $remote $pass "ls -l $docroot/.htaccess $docroot/index.html $docroot/dist/app/index.html $docroot/dist/.htaccess $docroot/dist/app/.htaccess $docroot/app/assets | sed -n '1,50p'"
 
-puts "Etape 8/9: Redémarrer PM2 si présent (API/Frontend)"
+puts "Etape 8/9: Déployer les scripts Node (infomaniak-server.js, server/server.js, ecosystem)"
+do_scp "./infomaniak-server.js" "$remote:$docroot/infomaniak-server.js" $pass
+do_scp "./server/server.js" "$remote:$docroot/server/server.js" $pass
+do_scp "./ecosystem.prod.config.js" "$remote:$docroot/ecosystem.prod.config.js" $pass
+
+puts "Etape 9/10: Redémarrer PM2 si présent (API/Frontend)"
 do_ssh $remote $pass "pm2 ls || true"
 do_ssh $remote $pass "pm2 restart fusepoint-api || true; pm2 restart fusepoint-frontend || true; sleep 2; pm2 ls || true"
 
-puts "Etape 9/9: Tests HTTP (depuis le serveur)"
+puts "Etape 9b/10: Redémarrage Node sans PM2 (fallback)"
+# Tuer proprement les processus node existants liés au server/server.js
+do_ssh $remote $pass "pkill -f 'node.*server/server.js' || true; sleep 2; ps aux | grep -E 'server/server.js' | grep -v grep || true"
+# Démarrer le serveur Node en arrière-plan et journaliser
+do_ssh $remote $pass "nohup node $docroot/server/server.js > $docroot/api.log 2>&1 & disown; sleep 3; tail -n 50 $docroot/api.log || true"
+
+puts "Etape 10/10: Tests HTTP (depuis le serveur)"
 # Récupérer un JS d'assets pour test Content-Type
 spawn ssh -o StrictHostKeyChecking=accept-new $remote "basename \`ls -1 $docroot/app/assets/*.js | head -n 1\`"
 expect {
@@ -92,6 +103,9 @@ expect {
   -re "\r\n(.*)\r\n" { puts "• /app/login => $expect_out(1,string)" }
 }
 expect eof
+
+# Vérifier l'en-tête CSP servi par la racine
+do_ssh $remote $pass "echo -n 'CSP actuelle: '; curl -sI $domain | tr -d '\r' | grep -i '^content-security-policy'"
 
 # Test Lottie JSON Content-Type
 do_ssh $remote $pass "echo -n 'Content-Type Lottie point.json: '; curl -sI $domain/uploads/lotties/point.json | grep -i '^Content-Type'"

@@ -594,13 +594,20 @@ export default {
         });
 
         const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        // Convertir en data: URL pour contourner blob:
+        const url = await (async () => {
+          try {
+            const { blobToDataURL } = await import('@/utils/blob')
+            return await blobToDataURL(blob)
+          } catch (_) {
+            return ''
+          }
+        })()
         const a = document.createElement('a');
         a.href = url;
         a.download = backup.name || `backup-${backup.id}.zip`;
         document.body.appendChild(a);
         a.click();
-        window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
         showNotification('Téléchargement de la sauvegarde démarré');

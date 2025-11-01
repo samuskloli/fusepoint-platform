@@ -436,12 +436,20 @@ export default {
       try {
         const exportData = await projectManagementService.exportProjectSettings(props.project.id)
         const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
+        // CSP friendly: data: URL
+        const url = await (async () => {
+          try {
+            const { blobToDataURL } = await import('@/utils/blob')
+            return await blobToDataURL(blob)
+          } catch (_) {
+            return ''
+          }
+        })()
         const link = document.createElement('a')
         link.href = url
         link.download = `${props.project.name}-settings.json`
         link.click()
-        URL.revokeObjectURL(url)
+        // data: URL → pas de revoke
         success(t('projects.settings.exported'))
       } catch (err) {
         showError(t('projects.settings.exportError'))

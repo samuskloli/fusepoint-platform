@@ -475,14 +475,22 @@ export default {
         
         // Créer et télécharger le fichier
         const blob = new Blob([JSON.stringify(response, null, 2)], { type: 'application/json' })
-        const url = URL.createObjectURL(blob)
+        // Fallback CSP: utiliser une data: URL au lieu de blob:
+        const url = await (async () => {
+          try {
+            const { blobToDataURL } = await import('@/utils/blob')
+            return await blobToDataURL(blob)
+          } catch (_) {
+            return ''
+          }
+        })()
         const a = document.createElement('a')
         a.href = url
         a.download = `${blockKey}-settings-${new Date().toISOString().split('T')[0]}.json`
         document.body.appendChild(a)
         a.click()
         document.body.removeChild(a)
-        URL.revokeObjectURL(url)
+        // Pas de revoke nécessaire pour une data:
         
         showNotification(`Bloc "${settingsBlocks.value[blockKey]?.title}" exporté`)
       } catch (error) {

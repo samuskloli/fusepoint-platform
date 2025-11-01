@@ -552,15 +552,28 @@ export default {
           type: selectedReportType.value
         })
         
-        // Télécharger le fichier
-        const url = window.URL.createObjectURL(new Blob([response.data]))
+        // Télécharger le fichier via data: URL pour éviter blob:
+        const url = await (async () => {
+          try {
+            const { bytesToDataURL } = await import('@/utils/blob')
+            return await bytesToDataURL('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', response.data)
+          } catch (_) {
+            try {
+              const { blobToDataURL } = await import('@/utils/blob')
+              const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+              return await blobToDataURL(blob)
+            } catch (_) {
+              return ''
+            }
+          }
+        })()
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', `projet-${props.projectId}-rapport-${Date.now()}.xlsx`)
         document.body.appendChild(link)
         link.click()
         link.remove()
-        window.URL.revokeObjectURL(url)
+        // Pas de revoke nécessaire pour data:
       } catch (error) {
         console.error('Erreur lors de l\'export:', error)
       }

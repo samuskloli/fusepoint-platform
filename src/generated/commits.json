@@ -1,5 +1,10 @@
 [
   {
+    "hash": "8926ac66bb197c5f8aa02e6b22fff20dac0b9b2e",
+    "date": "2025-11-01 17:15:25 +0100",
+    "subject": "Deploy: production sync via SSH (CORS,CSP,security headers, deps upgrade)"
+  },
+  {
     "hash": "e2e745e87b59d82c23a6e95785e7c1f03e27141e",
     "date": "2025-11-01 16:13:32 +0100",
     "subject": "chore(debug): log auth-skip context for /api/health (method, path, originalUrl)"
@@ -53,10 +58,5 @@
     "hash": "1d0f341a5a3e8a0fa3a3d17571679af0c1e937bf",
     "date": "2025-10-31 21:46:40 +0100",
     "subject": "fix(routing): servir le frontend depuis le backend (/, /app/* fallback); corrige chemins PM2 prod; ajoute scripts de déploiement et changelog"
-  },
-  {
-    "hash": "d654f3aaf1097e65c60c45f085fdebebdd83ad40",
-    "date": "2025-10-31 14:11:30 +0100",
-    "subject": "🚀 Préparation déploiement: correction bug redirection LinkPoints + nettoyage code"
   }
 ]

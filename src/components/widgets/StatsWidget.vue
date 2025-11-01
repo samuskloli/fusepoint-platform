@@ -371,7 +371,7 @@ const { user } = useAuth()
       })
     }
     
-    const exportStats = () => {
+    const exportStats = async () => {
       const statsData = {
         project: projectData.value.name,
         date: new Date().toLocaleDateString(),
@@ -390,12 +390,16 @@ const { user } = useAuth()
       
       const dataStr = JSON.stringify(statsData, null, 2)
       const dataBlob = new Blob([dataStr], { type: 'application/json' })
-      const url = URL.createObjectURL(dataBlob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `stats-${projectData.value.name || 'project'}-${new Date().toISOString().split('T')[0]}.json`
-      link.click()
-      URL.revokeObjectURL(url)
+      try {
+        const { blobToDataURL } = await import('@/utils/blob')
+        const url = await blobToDataURL(dataBlob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `stats-${projectData.value.name || 'project'}-${new Date().toISOString().split('T')[0]}.json`
+        link.click()
+      } catch (_) {
+        // Fallback silencieux: ne pas bloquer l'UI
+      }
       
       success('Statistiques exportées avec succès')
     }

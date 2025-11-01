@@ -119,7 +119,7 @@
         <div v-if="viewMode === 'grid'">
           <FileGrid
             :files="filteredFiles"
-            :selected-ids="new Set(selectedFiles.map(f => String(f.id)))"
+            :selected-ids="selectedIds"
             @open="handleFileDoubleClick"
             @update:selectedIds="updateSelectionFromIds"
           />
@@ -494,6 +494,11 @@ const selectedFile = ref<FileItem | null>(null)
 const activeFileMenu = ref<number | null>(null)
 const pagination = ref<{ page: number; limit: number; total?: number; pages?: number }>({ page: 1, limit: 50, total: 0, pages: 0 })
 
+// Ensemble typé des IDs sélectionnés pour la grille (évite les types implicites dans le template)
+const selectedIds = computed<Set<string>>(() => {
+  return new Set((selectedFiles.value || []).map((f: FileItem) => String(f.id)))
+})
+
 // Configuration locale du widget
 const localConfig = ref({
   autoRefresh: normalizeBool(props.widget?.config?.autoRefresh, false),
@@ -707,7 +712,8 @@ const loadFiles = async (): Promise<void> => {
   } catch (err) {
     console.error('Erreur lors du chargement des fichiers:', err)
     error.value = err instanceof Error ? err.message : t('widgets.files.loadError')
-    showError(error.value)
+    // Évite de passer une valeur potentiellement null à showError
+    showError(error.value || t('widgets.files.loadError'))
     files.value = []
   } finally {
     loading.value = false
@@ -1012,7 +1018,7 @@ const downloadFile = async (file: FileItem): Promise<void> => {
   }
 
   try {
-    // Télécharger directement via l'URL publique si disponible
+    // 1) Télécharger directement via l'URL publique si disponible
     if ((file as any).url) {
       const a = document.createElement('a')
       a.href = (file as any).url
@@ -1024,16 +1030,45 @@ const downloadFile = async (file: FileItem): Promise<void> => {
       return
     }
 
-    // Fallback: via l'API (blob)
+    // 2) Essayer une URL signée côté serveur (préféré pour la CSP stricte)
+    try {
+      const resp = await http.post('/api/files/signed-url', { fileId: String((file as any).id), intent: 'download' })
+      const signed = resp.data?.url || resp.data?.data?.url
+      if (signed) {
+        const a = document.createElement('a')
+        a.href = toAbsoluteUrl(signed)
+        a.download = (file as any).original_name || file.name || 'download'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        success(t('widgets.files.downloadStarted'))
+        return
+      }
+    } catch (e) {
+      console.warn('Signed download URL error', e)
+    }
+
+    // 3) Dernier recours: via l'API (blob). Attention: conversion data: peut être bloquée par la CSP
     const blob = await api.downloadFile(Number(file.id))
-    const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
+    // Utiliser URL.createObjectURL si blob: autorisé, sinon conversion data: (peut échouer selon CSP)
+    let href = ''
+    try {
+      href = URL.createObjectURL(blob)
+    } catch (_) {
+      try {
+        const { blobToDataURL } = await import('@/utils/blob')
+        href = await blobToDataURL(blob)
+      } catch {
+        href = ''
+      }
+    }
+    if (!href) throw new Error('Impossible de préparer le téléchargement')
+    a.href = href
     a.download = (file as any).original_name || file.name || 'download'
     document.body.appendChild(a)
     a.click()
     a.remove()
-    window.URL.revokeObjectURL(url)
     success(t('widgets.files.downloadStarted'))
   } catch (err) {
     showError(err instanceof Error ? err.message : t('widgets.files.downloadError'))

@@ -68,7 +68,12 @@ const i18n = createI18n({
   globalInjection: true, // Permet d'utiliser $t dans les templates
   warnHtmlMessage: false, // Désactive les avertissements HTML
   silentTranslationWarn: false, // Affiche les avertissements de traduction manquante
-  silentFallbackWarn: false // Affiche les avertissements de fallback
+  silentFallbackWarn: false, // Affiche les avertissements de fallback
+  // Évite d'inclure le compilateur de messages au runtime (CSP-friendly quand combiné avec la précompilation au build)
+  // Les messages sont précompilés via @intlify/unplugin-vue-i18n dans vite.config.ts
+  // Voir: https://vue-i18n.intlify.dev/guide/advanced/composition.html#message-compilation
+  // Note: Cette option est ignorée si non supportée par la version utilisée, la précompilation reste la solution principale.
+  runtimeOnly: true
 })
 
 // Plugin Vue pour installer i18n avec les directives et propriétés globales

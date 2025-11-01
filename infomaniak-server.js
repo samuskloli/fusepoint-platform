@@ -46,9 +46,32 @@ const defaultAllowedOrigins = [
 ];
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...allowedOriginsEnv]));
 
-// Middleware de sécurité
+// Middleware de sécurité — activer CSP stricte en production pour les réponses statiques
+const scriptSrc = ["'self'"];
+const styleSrc = ["'self'", "'unsafe-inline'"];
+const imgSrc = ["'self'", 'data:', 'blob:', 'https:'];
+const fontSrc = ["'self'", 'data:', 'https:'];
+const connectSrc = ["'self'", 'https:'];
+const frameSrc = ["'self'"];
+// Directives CSP
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc,
+  styleSrc,
+  imgSrc,
+  fontSrc,
+  connectSrc,
+  frameSrc,
+  objectSrc: ["'none'"],
+  scriptSrcAttr: ["'none'"],
+  frameAncestors: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"],
+  upgradeInsecureRequests: []
+};
+
 app.use(helmet({
-  contentSecurityPolicy: false, // Désactivé pour Vue.js
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? { useDefaults: true, directives: cspDirectives } : false,
   crossOriginEmbedderPolicy: false
 }));
 

@@ -56,6 +56,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import { blobToDataURL, stringToDataURL } from '@/utils/blob'
 
 const route = useRoute()
 const slug = route.params.slug
@@ -129,14 +130,15 @@ const downloadVCard = async () => {
     if (!vcardEnabled.value) return
     const res = await axios.get(`/api/linkpoints/public/${slug}/vcard`, { responseType: 'blob' })
     const blob = res.data
-    const url = window.URL.createObjectURL(blob)
+    // Fallback CSP: convertir le blob en data: URL pour éviter blob:
+    const url = await blobToDataURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `${slug}.vcf`
     document.body.appendChild(a)
     a.click()
     a.remove()
-    window.URL.revokeObjectURL(url)
+    // Pas besoin de revokeObjectURL pour une data: URL
   } catch (e) {
     // Fallback: générer la vCard côté client si les données sont présentes dans le thème
     try {
@@ -166,15 +168,14 @@ const downloadVCard = async () => {
       const timestamp = now.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
       vcf += `REV:${timestamp}\n`
       vcf += 'END:VCARD\n'
-      const blob = new Blob([vcf], { type: 'text/vcard;charset=utf-8' })
-      const url = window.URL.createObjectURL(blob)
+      const url = stringToDataURL('text/vcard', vcf)
       const a = document.createElement('a')
       a.href = url
       a.download = `${slug}.vcf`
       document.body.appendChild(a)
       a.click()
       a.remove()
-      window.URL.revokeObjectURL(url)
+      // Pas de révoque nécessaire pour une data: URL
     } catch (e2) {
       console.error('vCard fallback client échoué:', e2)
     }

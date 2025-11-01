@@ -21,7 +21,7 @@
       >
         <div
           class="file-preview"
-          :ref="el => observeVisibility(el, String(file.id))"
+          :ref="makeVisibilityObserver(String(file.id))"
         >
           <template v-if="shouldShowThumbnail(file)">
             <div v-if="!loadedIds.has(String(file.id))" class="absolute inset-0 bg-gray-200 animate-pulse"></div>
@@ -82,10 +82,8 @@
 import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import http from '@/services/api'
 import type { FileItem } from '@/services/multiTenantService'
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist'
-import pdfWorkerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
-
-GlobalWorkerOptions.workerPort = new Worker(pdfWorkerSrc, { type: 'module' })
+// Suppression de pdf.js côté client pour respecter strictement la CSP (pas de unsafe-eval)
+// Les vignettes PDF seront désormais fournies exclusivement par le serveur via l'endpoint thumbnail/signé
 
 const props = defineProps<{
   files: FileItem[],
@@ -148,6 +146,12 @@ const forbiddenIds = ref<Set<string>>(new Set())
 const imgSrcMap = ref<Record<string, string>>({})
 const signedExpiry = ref<Record<string, number>>({})
 let io: IntersectionObserver | null = null
+
+// Typed helper to avoid implicit any in template's ref callback
+type RefEl = Element | { $el: Element } | null
+const makeVisibilityObserver = (id: string) => (el: RefEl): void => {
+  observeVisibility(el, id)
+}
 
 const toAbsoluteUrl = (u?: string): string => {
   if (!u) return ''
@@ -240,7 +244,8 @@ const headOk = async (url: string, id?: string): Promise<boolean> => {
 
 const resolveThumbnailUrl = async (file: FileItem, size: number = 256): Promise<void> => {
   const id = String((file as any).id)
-  if (!isImageFile(file)) return
+  // Accepte désormais les images ET les PDF (les PDF utilisent les miniatures serveur)
+  if (!isImageFile(file) && !isPdfFile(file)) return
   if (imgSrcMap.value[id]) return
   const url = buildThumbnailUrl(file, size)
   if (await headOk(url, id)) {
@@ -289,33 +294,13 @@ const maybeRefreshSignedUrl = async (id: string): Promise<void> => {
   }
 }
 
-const generatePdfThumbnail = async (file: FileItem, size: number = 256): Promise<void> => {
-  const id = String((file as any).id)
-  if (imgSrcMap.value[id]) return
-  try {
-    const srcUrl = toAbsoluteUrl((file as any).url)
-    const loadingTask = (getDocument as any)({ url: srcUrl })
-    const pdf = await loadingTask.promise
-    const page = await pdf.getPage(1)
-    const viewport0 = page.getViewport({ scale: 1 })
-    const scale = size / Math.max(viewport0.width, viewport0.height)
-    const viewport = page.getViewport({ scale })
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    canvas.width = Math.floor(viewport.width)
-    canvas.height = Math.floor(viewport.height)
-    await page.render({ canvasContext: ctx as CanvasRenderingContext2D, viewport }).promise
-    imgSrcMap.value[id] = canvas.toDataURL('image/png')
-  } catch (e) {
-    console.warn('PDF thumbnail generation failed', e)
-    // Fallback to signed thumbnail endpoint (may still fail if server cannot render)
-    await onThumbnailError(file)
-  }
-}
+// Suppression de la génération côté client des vignettes PDF (pdf.js)
 
-const observeVisibility = (el: any, id: string): void => {
+const observeVisibility = (el: RefEl, id: string): void => {
   if (!id) return
-  const elem: Element | null = el?.$el ? (el.$el as Element) : (el as Element | null)
+  const elem: Element | null = (el && (el as any).$el)
+    ? ((el as any).$el as Element)
+    : (el as Element | null)
   if (!elem) return
   if (!io) {
     io = new IntersectionObserver((entries) => {
@@ -328,10 +313,8 @@ const observeVisibility = (el: any, id: string): void => {
           // Resolve image src lazily when visible
           const file = props.files.find(f => String((f as any).id) === targetId)
           if (file) {
-            if (isImageFile(file)) {
+            if (isImageFile(file) || isPdfFile(file)) {
               resolveThumbnailUrl(file).catch(() => {})
-            } else if (isPdfFile(file)) {
-              generatePdfThumbnail(file).catch(() => {})
             }
           }
         }

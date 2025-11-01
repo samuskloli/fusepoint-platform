@@ -656,10 +656,18 @@ export default {
         const base = this.qrUrl(this.selected.id);
         const query = this.qrQueryParams(true);
         const resp = await api.get(`${base}?${query}`, { responseType: 'blob' });
-        if (this.qrPreviewSrc && this.qrPreviewSrc.startsWith('blob:')) {
-          URL.revokeObjectURL(this.qrPreviewSrc);
-        }
-        this.qrPreviewSrc = URL.createObjectURL(resp.data);
+        // Fallback CSP: convertir le blob en data: URL pour éviter l'interdiction des blob: par la CSP distante
+        const dataUrl = await new Promise((resolve, reject) => {
+          try {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(resp.data);
+          } catch (e) {
+            reject(e);
+          }
+        });
+        this.qrPreviewSrc = String(dataUrl || '');
       } catch (err) {
         console.error('Erreur prévisualisation QR:', err);
         this.qrPreviewSrc = '';
@@ -675,14 +683,25 @@ export default {
         const query = new URLSearchParams(params).toString();
         const format = (this.qr.format || 'png').toLowerCase();
         const resp = await api.get(`${base}?${query}`, { responseType: 'blob' });
-        const url = URL.createObjectURL(resp.data);
+        // Fallback CSP: utiliser une data: URL pour le téléchargement afin d'éviter blob:
+        const dataUrl = await new Promise((resolve, reject) => {
+          try {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(resp.data);
+          } catch (e) {
+            reject(e);
+          }
+        });
+        const url = String(dataUrl || '');
         const a = document.createElement('a');
         a.href = url;
         a.download = `qr-${this.selected.slug}.${format}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Pas besoin de révoquer une data: URL
       } catch (err) {
         console.error('Erreur téléchargement QR:', err);
       }
@@ -999,9 +1018,7 @@ export default {
     this.load()
   },
   beforeUnmount() {
-    if (this.qrPreviewSrc && this.qrPreviewSrc.startsWith('blob:')) {
-      URL.revokeObjectURL(this.qrPreviewSrc);
-    }
+    // Rien à révoquer pour une data: URL
   }
 }
 </script>

@@ -728,14 +728,29 @@ export default {
     const downloadFile = async (file) => {
       try {
         const response = await projectManagementService.downloadFile(file.id)
-        const url = window.URL.createObjectURL(new Blob([response.data]))
+        // Convertir le contenu en data: URL pour contourner blob: bloqué par CSP
+        const url = await (async () => {
+          try {
+            const { bytesToDataURL } = await import('@/utils/blob')
+            return await bytesToDataURL(response.headers['content-type'] || 'application/octet-stream', response.data)
+          } catch (_) {
+            // Fallback minimaliste: construire un Blob puis blobToDataURL
+            try {
+              const { blobToDataURL } = await import('@/utils/blob')
+              const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' })
+              return await blobToDataURL(blob)
+            } catch (_) {
+              return ''
+            }
+          }
+        })()
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', file.name)
         document.body.appendChild(link)
         link.click()
         link.remove()
-        window.URL.revokeObjectURL(url)
+        // data: URL: pas de revoke nécessaire
       } catch (error) {
         console.error('Erreur lors du téléchargement:', error)
       }
