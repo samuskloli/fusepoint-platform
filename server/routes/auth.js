@@ -440,7 +440,7 @@ router.get('/me', authService.authenticateMiddleware.bind(authService), async (r
 router.put('/profile', authService.authenticateMiddleware.bind(authService), async (req, res) => {
   try {
     const { user } = req;
-    const { firstName, lastName } = req.body;
+    const { firstName, lastName, phone, bio, avatarUrl, email } = req.body;
 
     if (!firstName || !lastName) {
       return res.status(400).json({ 
@@ -448,9 +448,29 @@ router.put('/profile', authService.authenticateMiddleware.bind(authService), asy
       });
     }
 
+    // Gérer la mise à jour de l'email si fourni
+    let newEmail = null;
+    if (typeof email !== 'undefined' && email !== user.email) {
+      const emailStr = String(email).trim();
+      const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr);
+      if (!isValid) {
+        return res.status(400).json({ error: 'Format d\'email invalide' });
+      }
+      // Vérifier unicité
+      const exists = await databaseService.get(
+        'SELECT id FROM users WHERE email = ? AND id <> ?',
+        [emailStr, user.id]
+      );
+      if (exists) {
+        return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+      }
+      newEmail = emailStr;
+    }
+
+    // Mettre à jour le profil avec les colonnes désormais présentes (phone, bio, avatar_url)
     await databaseService.run(
-      'UPDATE users SET first_name = ?, last_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [firstName, lastName, user.id]
+      'UPDATE users SET first_name = ?, last_name = ?, email = COALESCE(?, email), phone = COALESCE(?, phone), bio = COALESCE(?, bio), avatar_url = COALESCE(?, avatar_url), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [firstName, lastName, newEmail, phone ?? null, bio ?? null, avatarUrl ?? null, user.id]
     );
 
     // Log d'audit
@@ -459,7 +479,7 @@ router.put('/profile', authService.authenticateMiddleware.bind(authService), asy
       null,
       'PROFILE_UPDATED',
       'users',
-      { firstName, lastName },
+      { firstName, lastName, email: newEmail || user.email, phone, bio, avatarUrl },
       req.ip
     );
 
@@ -469,13 +489,22 @@ router.put('/profile', authService.authenticateMiddleware.bind(authService), asy
       user: {
         ...user,
         firstName,
-        lastName
+        lastName,
+        email: newEmail || user.email,
+        phone: phone ?? user.phone,
+        bio: bio ?? user.bio,
+        avatarUrl: avatarUrl ?? user.avatarUrl
       }
     });
 
   } catch (error) {
     console.error('❌ Erreur mise à jour profil:', error);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour du profil' });
+    const isDev = process.env.NODE_ENV !== 'production';
+    const payload = { error: 'Erreur lors de la mise à jour du profil' };
+    if (isDev) {
+      payload.details = error?.message || String(error);
+    }
+    res.status(500).json(payload);
   }
 });
 
@@ -561,6 +590,7 @@ router.get('/sessions', authService.authenticateMiddleware.bind(authService), as
       success: true,
       sessions: sessions.map(session => ({
         token: session.session_token.substring(0, 8) + '...', // Masquer le token complet
+        tokenFull: session.session_token, // Utilisation interne (révocation)
         ipAddress: session.ip_address,
         userAgent: session.user_agent,
         createdAt: session.created_at,
@@ -571,6 +601,49 @@ router.get('/sessions', authService.authenticateMiddleware.bind(authService), as
   } catch (error) {
     console.error('❌ Erreur récupération sessions:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des sessions' });
+  }
+});
+
+/**
+ * DELETE /api/auth/sessions
+ * Révoquer une session de l'utilisateur
+ */
+router.delete('/sessions', authService.authenticateMiddleware.bind(authService), async (req, res) => {
+  try {
+    const { user } = req;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token de session requis' });
+    }
+
+    const existing = await databaseService.get(
+      'SELECT id FROM user_sessions WHERE user_id = ? AND session_token = ?',
+      [user.id, token]
+    );
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Session non trouvée' });
+    }
+
+    await databaseService.run(
+      'DELETE FROM user_sessions WHERE user_id = ? AND session_token = ?',
+      [user.id, token]
+    );
+
+    await databaseService.logAudit(
+      user.id,
+      null,
+      'SESSION_REVOKED',
+      'user_sessions',
+      { tokenPrefix: token.substring(0, 8) },
+      req.ip
+    );
+
+    res.json({ success: true, message: 'Session révoquée' });
+  } catch (error) {
+    console.error('❌ Erreur révocation session:', error);
+    res.status(500).json({ error: 'Erreur lors de la révocation de la session' });
   }
 });
 
@@ -711,6 +784,106 @@ router.post('/set-password', async (req, res) => {
       success: false,
       message: 'Erreur lors de la définition du mot de passe'
     });
+  }
+});
+
+/**
+ * GET /api/auth/preferences
+ * Récupérer les préférences utilisateur
+ */
+router.get('/preferences', authService.authenticateMiddleware.bind(authService), async (req, res) => {
+  try {
+    const { user } = req;
+
+    const preferences = await databaseService.get(
+      'SELECT preferences FROM user_preferences WHERE user_id = ?',
+      [user.id]
+    );
+
+    // Préférences par défaut si aucune n'existe
+    const defaultPreferences = {
+      darkMode: false,
+      emailNotifications: true,
+      language: 'fr',
+      push: false,
+      weekly: true,
+      campaigns: true,
+      emailFrequency: 'daily'
+    };
+
+    const userPreferences = preferences 
+      ? { ...defaultPreferences, ...JSON.parse(preferences.preferences) }
+      : defaultPreferences;
+
+    res.json({
+      success: true,
+      preferences: userPreferences
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur récupération préférences:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des préférences' });
+  }
+});
+
+/**
+ * PUT /api/auth/preferences
+ * Mettre à jour les préférences utilisateur
+ */
+router.put('/preferences', authService.authenticateMiddleware.bind(authService), async (req, res) => {
+  try {
+    const { user } = req;
+    const body = req.body || {};
+
+    const preferences = {
+      darkMode: Boolean(body.darkMode),
+      emailNotifications: Boolean(body.emailNotifications),
+      language: body.language || 'fr',
+      push: Boolean(body.push),
+      weekly: Boolean(body.weekly),
+      campaigns: Boolean(body.campaigns),
+      emailFrequency: body.emailFrequency || 'daily'
+    };
+
+    // Vérifier si des préférences existent déjà
+    const existingPrefs = await databaseService.get(
+      'SELECT id FROM user_preferences WHERE user_id = ?',
+      [user.id]
+    );
+
+    if (existingPrefs) {
+      // Mettre à jour les préférences existantes
+      await databaseService.run(
+        'UPDATE user_preferences SET preferences = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?',
+        [JSON.stringify(preferences), user.id]
+      );
+    } else {
+      // Créer de nouvelles préférences
+      await databaseService.run(
+        'INSERT INTO user_preferences (user_id, preferences, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+        [user.id, JSON.stringify(preferences)]
+      );
+    }
+
+    // Log d'audit
+    await databaseService.logAudit(
+      user.id,
+      null,
+      'PREFERENCES_UPDATED',
+      'user_preferences',
+      preferences,
+      req.ip
+    );
+
+    res.json({
+      success: true,
+      message: 'Préférences mises à jour avec succès',
+      preferences
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur mise à jour préférences:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour des préférences' });
   }
 });
 

@@ -263,10 +263,9 @@ const routes = [
     beforeEnter: requireAuth
   },
   {
+    // Page UserSettings supprimée, utiliser /settings
     path: '/user-settings',
-    name: 'UserSettings',
-    component: () => import('../views/UserSettings.vue'),
-    beforeEnter: requireAuth
+    redirect: '/settings'
   },
   {
     path: '/oauth/callback',

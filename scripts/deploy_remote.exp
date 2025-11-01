@@ -37,15 +37,20 @@ proc do_scp {src remote_path pass} {
 puts "Etape 1/9: Préparer les dossiers dist/app, app/assets et uploads/lotties sur le serveur…"
 do_ssh $remote $pass "mkdir -p $docroot/dist $docroot/dist/app $docroot/app/assets $docroot/uploads/lotties"
 
-puts "Etape 2/9: Déployer .htaccess racine et sous-dossiers dist/"
-do_scp "./.htaccess" "$remote:$docroot/.htaccess" $pass
-do_scp "./dist/.htaccess" "$remote:$docroot/dist/.htaccess" $pass
-do_scp "./dist/app/.htaccess" "$remote:$docroot/dist/app/.htaccess" $pass
+puts "Etape 2/9: Déployer .htaccess racine et .htaccess de la SPA"
+# Utiliser la configuration remote dédiée pour la racine
+do_scp "./.htaccess.remote" "$remote:$docroot/.htaccess" $pass
+# Déployer également le .htaccess de la SPA dans /app pour compatibilité Apache
+do_scp "./.htaccess.spa" "$remote:$docroot/app/.htaccess" $pass
 
-puts "Etape 3/9: Déployer index racine (landing) et index SPA (/app/index.html)"
+puts "Etape 3/9: Déployer index racine (landing) et index SPA (dist/app/index.html)"
 # Sauvegarde index existant côté serveur
 do_ssh $remote $pass "test -f '$docroot/index.html' && cp -a '$docroot/index.html' '$docroot/index.html.bak.'\`date +%Y%m%d%H%M%S\`"
+# Index racine
 do_scp "./dist/index.html" "$remote:$docroot/index.html" $pass
+# Index de la SPA sous dist/app (utilisé par .htaccess.remote)
+do_scp "./dist/app/index.html" "$remote:$docroot/dist/app/index.html" $pass
+# Et compatibilité: déployer aussi dans /app
 do_scp "./dist/app/index.html" "$remote:$docroot/app/index.html" $pass
 
 puts "Etape 4/9: Déployer assets Vite vers /dist/assets (pour Node) et /app/assets (pour Apache)"
@@ -69,15 +74,7 @@ do_scp "./infomaniak-server.js" "$remote:$docroot/infomaniak-server.js" $pass
 do_scp "./server/server.js" "$remote:$docroot/server/server.js" $pass
 do_scp "./ecosystem.prod.config.js" "$remote:$docroot/ecosystem.prod.config.js" $pass
 
-puts "Etape 9/10: Redémarrer PM2 si présent (API/Frontend)"
-do_ssh $remote $pass "pm2 ls || true"
-do_ssh $remote $pass "pm2 restart fusepoint-api || true; pm2 restart fusepoint-frontend || true; sleep 2; pm2 ls || true"
-
-puts "Etape 9b/10: Redémarrage Node sans PM2 (fallback)"
-# Tuer proprement les processus node existants liés au server/server.js
-do_ssh $remote $pass "pkill -f 'node.*server/server.js' || true; sleep 2; ps aux | grep -E 'server/server.js' | grep -v grep || true"
-# Démarrer le serveur Node en arrière-plan et journaliser
-do_ssh $remote $pass "nohup node $docroot/server/server.js > $docroot/api.log 2>&1 & disown; sleep 3; tail -n 50 $docroot/api.log || true"
+puts "Etape 9/10: (SKIP) Ne pas redémarrer PM2/Node pour éviter toute modification des paramètres serveur"
 
 puts "Etape 10/10: Tests HTTP (depuis le serveur)"
 # Récupérer un JS d'assets pour test Content-Type

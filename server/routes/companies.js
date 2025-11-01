@@ -123,6 +123,89 @@ router.get('/:companyId', async (req, res) => {
 );
 
 /**
+ * PUT /api/companies/:companyId/billing
+ * Mettre à jour uniquement les informations de facturation de l'entreprise
+ */
+router.put('/:companyId/billing', async (req, res) => {
+  try {
+    const { user } = req;
+    const { companyId } = req.params;
+
+    // Vérifier les permissions admin/owner
+    const userCompany = await databaseService.get(
+      'SELECT * FROM user_companies WHERE user_id = ? AND company_id = ? AND (role = "admin" OR role = "owner")',
+      [user.id, companyId]
+    );
+
+    if (!userCompany) {
+      return res.status(403).json({ error: 'Permissions insuffisantes' });
+    }
+
+    const {
+      name,
+      vatNumber,
+      address,
+      city,
+      zipCode,
+      country,
+      includeTax,
+      autoInvoice
+    } = req.body;
+
+    // Construire la requête dynamiquement pour les champs fournis
+    const allowedMap = {
+      name: 'name',
+      vatNumber: 'vat_number',
+      address: 'address',
+      city: 'city',
+      zipCode: 'zip_code',
+      country: 'country',
+      includeTax: 'include_tax',
+      autoInvoice: 'auto_invoice'
+    };
+
+    const sets = [];
+    const values = [];
+
+    Object.entries(allowedMap).forEach(([key, column]) => {
+      if (typeof req.body[key] !== 'undefined') {
+        sets.push(`${column} = ?`);
+        // Normaliser les booléens côté base (0/1)
+        if (key === 'includeTax' || key === 'autoInvoice') {
+          values.push(req.body[key] ? 1 : 0);
+        } else {
+          values.push(req.body[key]);
+        }
+      }
+    });
+
+    if (sets.length === 0) {
+      return res.status(400).json({ error: 'Aucun champ de facturation fourni' });
+    }
+
+    const sql = `UPDATE companies SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+    values.push(companyId);
+
+    await databaseService.run(sql, values);
+
+    // Log d'audit
+    await databaseService.logAudit(
+      user.id,
+      companyId,
+      'COMPANY_BILLING_UPDATED',
+      'companies',
+      { fieldsUpdated: Object.keys(req.body) },
+      req.ip
+    );
+
+    res.json({ success: true, message: 'Facturation entreprise mise à jour avec succès' });
+  } catch (error) {
+    console.error('❌ Erreur mise à jour facturation entreprise:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la facturation' });
+  }
+});
+
+/**
  * PUT /api/companies/:companyId
  * Mettre à jour une entreprise
  */
@@ -141,7 +224,22 @@ router.put('/:companyId', async (req, res) => {
          return res.status(403).json({ error: 'Permissions insuffisantes' });
        }
 
-       const { name, industry, size, location, website, description } = req.body;
+       const { 
+         name, 
+         industry, 
+         size, 
+         location, 
+         website, 
+         description,
+         // Champs de facturation et d'adresse
+         vatNumber,
+         address,
+         city,
+         zipCode,
+         country,
+         includeTax,
+         autoInvoice
+       } = req.body;
 
       if (!name || !industry) {
         return res.status(400).json({ 
@@ -151,9 +249,28 @@ router.put('/:companyId', async (req, res) => {
 
       await databaseService.run(
         `UPDATE companies 
-         SET name = ?, industry = ?, size = ?, location = ?, website = ?, description = ?, updated_at = CURRENT_TIMESTAMP 
+         SET name = ?, industry = ?, 
+             size = COALESCE(?, size), 
+             location = COALESCE(?, location), 
+             website = COALESCE(?, website), 
+             description = COALESCE(?, description),
+             vat_number = COALESCE(?, vat_number), 
+             address = COALESCE(?, address), 
+             city = COALESCE(?, city), 
+             zip_code = COALESCE(?, zip_code), 
+             country = COALESCE(?, country), 
+             include_tax = COALESCE(?, include_tax), 
+             auto_invoice = COALESCE(?, auto_invoice),
+             updated_at = CURRENT_TIMESTAMP 
          WHERE id = ?`,
-        [name, industry, size, location, website, description, companyId]
+        [
+          name, industry,
+          size, location, website, description,
+          vatNumber, address, city, zipCode, country,
+          includeTax != null ? !!includeTax : null,
+          autoInvoice != null ? !!autoInvoice : null,
+          companyId
+        ]
       );
 
       // Log d'audit

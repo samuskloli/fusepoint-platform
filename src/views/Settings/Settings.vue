@@ -46,29 +46,32 @@
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <input type="email" v-model="profile.email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="email" v-model="profile.email" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="votre@email.com">
                 </div>
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Téléphone</label>
-                  <input type="tel" v-model="profile.phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="tel" v-model="profile.phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Ex: +33 1 23 45 67 89">
                 </div>
                 
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Entreprise</label>
-                  <input type="text" v-model="profile.company" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="text" v-model="profile.company" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Nom de votre entreprise">
                 </div>
                 
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Bio</label>
-                  <textarea v-model="profile.bio" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+                  <textarea v-model="profile.bio" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="Parlez brièvement de vous"></textarea>
                 </div>
               </div>
               
               <div class="mt-6">
-                <button class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-                  Sauvegarder les modifications
+                <button @click="saveProfile" :disabled="isSaving" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:opacity-60">
+                  <span v-if="!isSaving">Sauvegarder les modifications</span>
+                  <span v-else>Sauvegarde...</span>
                 </button>
+                <p v-if="saveMessage" :class="['mt-2 text-sm', saveError ? 'text-red-600' : 'text-green-600']">{{ saveMessage }}</p>
+                <!-- Infos: tous les champs pertinents sont désormais gérés par le backend et liés à l'entreprise lorsque nécessaire. -->
               </div>
             </div>
 
@@ -100,22 +103,24 @@
               <div class="space-y-6">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
-                  <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="password" v-model="account.currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 </div>
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
-                  <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="password" v-model="account.newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 </div>
                 
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Confirmer le nouveau mot de passe</label>
-                  <input type="password" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                  <input type="password" v-model="account.confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
                 </div>
                 
-                <button class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-                  Mettre à jour le mot de passe
+                <button @click="changePassword" :disabled="isSavingPassword" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:opacity-60">
+                  <span v-if="!isSavingPassword">Mettre à jour le mot de passe</span>
+                  <span v-else>Mise à jour...</span>
                 </button>
+                <p v-if="passwordMessage" :class="['mt-2 text-sm', passwordError ? 'text-red-600' : 'text-green-600']">{{ passwordMessage }}</p>
               </div>
             </div>
 
@@ -128,8 +133,8 @@
                   <p class="text-sm text-gray-900">Sécurisez votre compte avec l'authentification à deux facteurs</p>
                   <p class="text-sm text-gray-500">Ajoutez une couche de sécurité supplémentaire à votre compte</p>
                 </div>
-                <button class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors">
-                  Activer 2FA
+                <button disabled class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md cursor-not-allowed">
+                  Bientôt disponible
                 </button>
               </div>
             </div>
@@ -138,39 +143,23 @@
             <div class="bg-white rounded-lg shadow p-6">
               <h2 class="text-lg font-medium text-gray-900 mb-6">Sessions actives</h2>
               
-              <div class="space-y-4">
-                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div v-if="sessionsLoading" class="text-sm text-gray-500">Chargement des sessions...</div>
+              <div v-else-if="sessions.length === 0" class="text-sm text-gray-500">Aucune session active trouvée.</div>
+              <div v-else class="space-y-4">
+                <div v-for="session in sessions" :key="session.created_at || session.token" class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                   <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-green-100 rounded-lg">
-                      <svg class="h-5 w-5 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                    <div class="p-2 rounded-lg" :class="isCurrentSession(session) ? 'bg-green-100' : 'bg-blue-100'">
+                      <svg class="h-5 w-5" :class="isCurrentSession(session) ? 'text-green-600' : 'text-blue-600'" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586l-2 2V5H5v14h14v-1.586l2-2V19a1 1 0 01-1 1H4a1 1 0 01-1-1V4z" />
                       </svg>
                     </div>
                     <div>
-                      <p class="text-sm font-medium text-gray-900">MacBook Pro - Chrome</p>
-                      <p class="text-sm text-gray-500">Paris, France • Session actuelle</p>
+                      <p class="text-sm font-medium text-gray-900">{{ session.user_agent || 'Session' }}</p>
+                      <p class="text-sm text-gray-500">Exp. {{ formatDate(session.expires_at) }} • IP {{ session.ip_address || '—' }}</p>
                     </div>
                   </div>
-                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    Actuelle
-                  </span>
-                </div>
-                
-                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                  <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-blue-100 rounded-lg">
-                      <svg class="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2h3a1 1 0 110 2h-1v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6H4a1 1 0 110-2h3zM9 3v1h6V3H9z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p class="text-sm font-medium text-gray-900">iPhone - Safari</p>
-                      <p class="text-sm text-gray-500">Paris, France • Il y a 2 heures</p>
-                    </div>
-                  </div>
-                  <button class="text-red-600 hover:text-red-700 text-sm font-medium">
-                    Révoquer
-                  </button>
+                  <span v-if="isCurrentSession(session)" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Actuelle</span>
+                  <button v-else @click="revokeSession(session)" class="text-red-600 hover:text-red-700 text-sm font-medium">Révoquer</button>
                 </div>
               </div>
             </div>
@@ -253,6 +242,13 @@
                   <span class="ml-3 text-sm text-gray-900">Jamais</span>
                 </label>
               </div>
+              <div class="mt-6">
+                <button @click="saveNotifications" :disabled="isSavingNotifications" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:opacity-60">
+                  <span v-if="!isSavingNotifications">Sauvegarder les préférences</span>
+                  <span v-else>Sauvegarde...</span>
+                </button>
+                <p v-if="notificationsMessage" :class="['mt-2 text-sm', notificationsError ? 'text-red-600' : 'text-green-600']">{{ notificationsMessage }}</p>
+              </div>
             </div>
           </div>
 
@@ -269,12 +265,8 @@
                     <p class="text-sm text-gray-500">Créée le 15 janvier 2024</p>
                   </div>
                   <div class="flex items-center space-x-2">
-                    <button class="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      Copier
-                    </button>
-                    <button class="text-red-600 hover:text-red-700 text-sm font-medium">
-                      Révoquer
-                    </button>
+                    <button disabled class="text-gray-400 text-sm font-medium cursor-not-allowed">Copier (à venir)</button>
+                    <button disabled class="text-gray-400 text-sm font-medium cursor-not-allowed">Révoquer (à venir)</button>
                   </div>
                 </div>
                 
@@ -285,20 +277,32 @@
                     <p class="text-sm text-gray-500">Créée le 10 janvier 2024</p>
                   </div>
                   <div class="flex items-center space-x-2">
-                    <button class="text-primary-600 hover:text-primary-700 text-sm font-medium">
-                      Copier
-                    </button>
-                    <button class="text-red-600 hover:text-red-700 text-sm font-medium">
-                      Révoquer
-                    </button>
+                    <button disabled class="text-gray-400 text-sm font-medium cursor-not-allowed">Copier (à venir)</button>
+                    <button disabled class="text-gray-400 text-sm font-medium cursor-not-allowed">Révoquer (à venir)</button>
                   </div>
                 </div>
               </div>
               
               <div class="mt-6">
-                <button class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-                  Générer une nouvelle clé
-                </button>
+                <button disabled class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md cursor-not-allowed">Génération de clé (à venir)</button>
+              </div>
+            </div>
+
+            <!-- Email Marketing Integration -->
+            <div class="bg-white rounded-lg shadow p-6">
+              <h2 class="text-lg font-medium text-gray-900 mb-6">Intégration Email Marketing</h2>
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Clé API</label>
+                  <input type="text" v-model="apiConfig.emailMarketing.apiKey" placeholder="Entrez votre clé API" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                </div>
+                <div>
+                  <button @click="saveApiConfig('email_marketing')" :disabled="apiSaving" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors disabled:opacity-60">
+                    <span v-if="!apiSaving">Sauvegarder la configuration</span>
+                    <span v-else>Sauvegarde...</span>
+                  </button>
+                  <p v-if="apiMessage" :class="['mt-2 text-sm', apiError ? 'text-red-600' : 'text-green-600']">{{ apiMessage }}</p>
+                </div>
               </div>
             </div>
 
@@ -330,9 +334,7 @@
               </div>
               
               <div class="mt-6">
-                <button class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
-                  Ajouter un webhook
-                </button>
+                <button disabled class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md cursor-not-allowed">Ajouter un webhook (à venir)</button>
               </div>
             </div>
           </div>
@@ -381,9 +383,10 @@
               </div>
               
               <div class="mt-6">
-                <button class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
+                <button @click="saveBilling" class="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
                   Sauvegarder les informations
                 </button>
+                <p v-if="billingMessage" class="mt-2 text-sm text-gray-600">{{ billingMessage }}</p>
               </div>
             </div>
 
@@ -422,6 +425,7 @@
 
 <script>
 import Layout from '../../components/Layout.vue'
+import api from '../../services/api.js'
 
 export default {
   name: 'Settings',
@@ -439,29 +443,410 @@ export default {
         { id: 'billing', name: 'Facturation' }
       ],
       profile: {
-        firstName: 'Jean',
-        lastName: 'Dupont',
-        email: 'jean.dupont@example.com',
-        phone: '+33 1 23 45 67 89',
-        company: 'Mon Entreprise',
-        bio: 'Responsable marketing digital passionné par l\'innovation et les nouvelles technologies.'
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        company: '',
+        bio: ''
       },
+      originalEmail: '',
+      companyId: null,
+      isLoading: false,
+      isSaving: false,
+      saveMessage: '',
+      saveError: false,
       notifications: {
         email: true,
-        push: true,
+        push: false,
         weekly: true,
         campaigns: true
       },
       emailFrequency: 'daily',
+      // Détails entreprise et facturation (liés au backend)
       billing: {
-        companyName: 'Mon Entreprise SARL',
-        vatNumber: 'FR12345678901',
-        address: '123 Rue de la Paix',
-        city: 'Paris',
-        zipCode: '75001',
+        companyName: '',
+        vatNumber: '',
+        address: '',
+        city: '',
+        zipCode: '',
         country: 'FR',
-        includeTax: true,
-        autoInvoice: true
+        includeTax: false,
+        autoInvoice: false
+      },
+      companyIndustry: 'general',
+      // Compte
+      account: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      },
+      isSavingPassword: false,
+      passwordMessage: '',
+      passwordError: false,
+      // Sessions
+      sessions: [],
+      sessionsLoading: false,
+      // Notifications
+      isSavingNotifications: false,
+      notificationsMessage: '',
+      notificationsError: false,
+      // Facturation
+      billingMessage: ''
+      ,
+      // API Configurations
+      apiConfig: {
+        emailMarketing: { apiKey: '' }
+      },
+      apiMessage: '',
+      apiError: false,
+      apiSaving: false
+    }
+  },
+  created() {
+    this.loadProfile()
+    this.loadSessions()
+    this.loadPreferences()
+    this.loadApiConfig('email_marketing')
+  },
+  methods: {
+    async loadProfile() {
+      try {
+        this.isLoading = true
+        const { data } = await api.get('/api/auth/me')
+        if (data && data.user) {
+          const u = data.user
+          this.profile.firstName = u.firstName || ''
+          this.profile.lastName = u.lastName || ''
+          this.profile.email = u.email || ''
+          this.originalEmail = this.profile.email
+          const companies = data.companies || []
+          this.profile.company = companies.length ? (companies[0].name || '') : ''
+          this.companyId = companies.length ? companies[0].id : null
+          // Charger téléphone et bio si présents
+          this.profile.phone = u.phone || ''
+          this.profile.bio = u.bio || ''
+          // Charger les détails d'entreprise/billing si disponible
+          if (this.companyId) {
+            await this.loadCompany()
+          }
+        }
+      } catch (error) {
+        console.error('Erreur chargement profil:', error)
+      } finally {
+        this.isLoading = false
+      }
+    },
+    async saveProfile() {
+      try {
+        this.isSaving = true
+        this.saveMessage = ''
+        this.saveError = false
+
+        // Validation minimale côté client pour éviter les erreurs 400 côté serveur
+        const fn = String(this.profile.firstName || '').trim()
+        const ln = String(this.profile.lastName || '').trim()
+        if (!fn || !ln) {
+          this.saveMessage = 'Prénom et nom requis.'
+          this.saveError = true
+          this.isSaving = false
+          return
+        }
+
+        const payload = {
+          firstName: fn,
+          lastName: ln,
+          phone: this.profile.phone || null,
+          bio: this.profile.bio || null
+        }
+        // Inclure l'email uniquement si modifié et valide
+        if (this.profile.email !== this.originalEmail) {
+          const emailStr = String(this.profile.email || '').trim()
+          const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr)
+          if (!emailStr || !isValid) {
+            this.saveMessage = 'Email invalide. Merci d\'entrer une adresse valide ou de rétablir l\'adresse précédente.'
+            this.saveError = true
+            this.isSaving = false
+            return
+          }
+          payload.email = emailStr
+        }
+        const { data } = await api.put('/api/auth/profile', payload)
+
+        // Si companyId présent et nom d'entreprise changé, essayer de sauvegarder côté entreprise
+        if (this.companyId && this.profile.company) {
+          try {
+            await api.put(`/api/companies/${this.companyId}`, {
+              name: this.profile.company,
+              industry: this.companyIndustry || 'general'
+            })
+          } catch (e) {
+            // Permissions insuffisantes ou autres erreurs: ignorer, message reste succès profil
+          }
+        }
+
+        // Mettre à jour le localStorage si présent
+        try {
+          const storedUser = localStorage.getItem('user')
+          if (storedUser) {
+            const userObj = JSON.parse(storedUser)
+            userObj.firstName = this.profile.firstName
+            userObj.lastName = this.profile.lastName
+            if (payload.email) {
+              userObj.email = payload.email
+              this.originalEmail = payload.email
+            }
+            localStorage.setItem('user', JSON.stringify(userObj))
+          }
+        } catch (e) {}
+
+        this.saveMessage = 'Profil mis à jour avec succès.'
+        this.saveError = false
+      } catch (error) {
+        console.error('Erreur sauvegarde profil:', error)
+        let msg = error?.response?.data?.error || 'Erreur lors de la sauvegarde du profil'
+        const details = error?.response?.data?.details || error?.userMessage || null
+        if (details) {
+          try {
+            const d = typeof details === 'string' ? details : JSON.stringify(details)
+            msg = `${msg} (${d})`
+          } catch (_) {}
+        }
+        this.saveMessage = msg
+        this.saveError = true
+      } finally {
+        this.isSaving = false
+      }
+    },
+    // Compte: changement de mot de passe
+    async changePassword() {
+      try {
+        this.passwordMessage = ''
+        this.passwordError = false
+        if (!this.account.currentPassword || !this.account.newPassword || !this.account.confirmPassword) {
+          this.passwordMessage = 'Veuillez remplir tous les champs.'
+          this.passwordError = true
+          return
+        }
+        if (this.account.newPassword.length < 8) {
+          this.passwordMessage = 'Le nouveau mot de passe doit contenir au moins 8 caractères.'
+          this.passwordError = true
+          return
+        }
+        if (this.account.newPassword !== this.account.confirmPassword) {
+          this.passwordMessage = 'La confirmation ne correspond pas au nouveau mot de passe.'
+          this.passwordError = true
+          return
+        }
+        this.isSavingPassword = true
+        const payload = {
+          currentPassword: this.account.currentPassword,
+          newPassword: this.account.newPassword
+        }
+        const { data } = await api.post('/api/auth/change-password', payload)
+        this.passwordMessage = data?.message || 'Mot de passe changé avec succès.'
+        this.passwordError = false
+        // Reset champs sensibles
+        this.account.currentPassword = ''
+        this.account.newPassword = ''
+        this.account.confirmPassword = ''
+      } catch (error) {
+        console.error('Erreur changement mot de passe:', error)
+        const msg = error?.response?.data?.error || 'Erreur lors du changement de mot de passe'
+        this.passwordMessage = msg
+        this.passwordError = true
+      } finally {
+        this.isSavingPassword = false
+      }
+    },
+    // Sessions
+    async loadSessions() {
+      try {
+        this.sessionsLoading = true
+        const { data } = await api.get('/api/auth/sessions')
+        const list = data?.sessions || []
+        // Adapter aux clés attendues par le template
+        this.sessions = list.map(s => ({
+          token: s.token,
+          token_full: s.tokenFull,
+          user_agent: s.userAgent,
+          ip_address: s.ipAddress,
+          created_at: s.createdAt,
+          expires_at: s.expiresAt
+        }))
+      } catch (error) {
+        console.error('Erreur chargement sessions:', error)
+        this.sessions = []
+      } finally {
+        this.sessionsLoading = false
+      }
+    },
+    async revokeSession(session) {
+      try {
+        if (!session?.token_full) return
+        await api.delete('/api/auth/sessions', { data: { token: session.token_full } })
+        // Recharger la liste
+        await this.loadSessions()
+      } catch (error) {
+        console.error('Erreur révocation session:', error)
+      }
+    },
+    isCurrentSession(session) {
+      try {
+        const currentToken = localStorage.getItem('sessionToken') || ''
+        if (!currentToken || !session?.token) return false
+        const prefix = (session.token || '').replace('...', '')
+        return prefix && currentToken.startsWith(prefix)
+      } catch (e) {
+        return false
+      }
+    },
+    formatDate(iso) {
+      if (!iso) return '—'
+      try {
+        const d = new Date(iso)
+        return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })
+      } catch (e) {
+        return iso
+      }
+    },
+    // Notifications
+    async loadPreferences() {
+      try {
+        // Charger via backend
+        const { data } = await api.get('/api/auth/preferences')
+        const prefs = data?.preferences || {}
+        this.notifications.email = !!prefs.emailNotifications
+        this.notifications.push = !!prefs.push
+        this.notifications.weekly = !!prefs.weekly
+        this.notifications.campaigns = !!prefs.campaigns
+        this.emailFrequency = prefs.emailFrequency || this.emailFrequency
+      } catch (error) {
+        console.error('Erreur chargement préférences:', error)
+      }
+    },
+    async saveNotifications() {
+      try {
+        this.isSavingNotifications = true
+        this.notificationsMessage = ''
+        this.notificationsError = false
+        const payload = {
+          darkMode: false,
+          emailNotifications: this.notifications.email,
+          language: 'fr',
+          push: this.notifications.push,
+          weekly: this.notifications.weekly,
+          campaigns: this.notifications.campaigns,
+          emailFrequency: this.emailFrequency
+        }
+        await api.put('/api/auth/preferences', payload)
+        this.notificationsMessage = 'Préférences mises à jour.'
+        this.notificationsError = false
+      } catch (error) {
+        console.error('Erreur sauvegarde préférences:', error)
+        const msg = error?.response?.data?.error || 'Erreur lors de la sauvegarde des préférences'
+        this.notificationsMessage = msg
+        this.notificationsError = true
+      } finally {
+        this.isSavingNotifications = false
+      }
+    },
+    // Charger les détails de l'entreprise et lier la facturation
+    async loadCompany() {
+      try {
+        if (!this.companyId) return
+        const { data } = await api.get(`/api/companies/${this.companyId}`)
+        const c = data?.company || {}
+        // Renseigner les informations d'entreprise
+        this.profile.company = c.name || this.profile.company
+        this.companyIndustry = c.industry || this.companyIndustry
+        // Lier les champs de facturation aux colonnes backend
+        this.billing.companyName = c.name || ''
+        this.billing.vatNumber = c.vat_number || ''
+        this.billing.address = c.address || ''
+        this.billing.city = c.city || ''
+        this.billing.zipCode = c.zip_code || ''
+        this.billing.country = c.country || this.billing.country
+        this.billing.includeTax = typeof c.include_tax === 'boolean' ? c.include_tax : this.billing.includeTax
+        this.billing.autoInvoice = typeof c.auto_invoice === 'boolean' ? c.auto_invoice : this.billing.autoInvoice
+      } catch (error) {
+        console.error('Erreur chargement entreprise:', error)
+        // Fallback local au cas où
+        try {
+          const ls = JSON.parse(localStorage.getItem('billingInfo') || '{}')
+          this.billing = { ...this.billing, ...ls }
+        } catch (e) {}
+      }
+    },
+    async saveBilling() {
+      try {
+        this.billingMessage = ''
+        // Sauvegarder côté serveur: endpoint dédié facturation
+        if (this.companyId) {
+          await api.put(`/api/companies/${this.companyId}/billing`, {
+            name: this.billing.companyName || this.profile.company || '',
+            vatNumber: this.billing.vatNumber || null,
+            address: this.billing.address || null,
+            city: this.billing.city || null,
+            zipCode: this.billing.zipCode || null,
+            country: this.billing.country || null,
+            includeTax: !!this.billing.includeTax,
+            autoInvoice: !!this.billing.autoInvoice
+          })
+          this.billingMessage = 'Informations de facturation mises à jour pour l’entreprise.'
+        } else {
+          // Persistance locale si aucune entreprise associée
+          localStorage.setItem('billingInfo', JSON.stringify(this.billing))
+          this.billingMessage = 'Informations de facturation sauvegardées localement.'
+        }
+      } catch (e) {
+        // Fallback local en cas d’erreur (permissions, etc.)
+        try {
+          localStorage.setItem('billingInfo', JSON.stringify(this.billing))
+        } catch (_) {}
+        this.billingMessage = 'Sauvegarde locale effectuée (permissions serveur insuffisantes ou erreur réseau).'
+      }
+    },
+    // API config
+    async loadApiConfig(serviceType) {
+      try {
+        if (!this.companyId) return
+        const { data } = await api.get(`/api/companies/${this.companyId}/api-config/${serviceType}`)
+        const conf = data?.config?.config || data?.config || null
+        if (serviceType === 'email_marketing' && conf) {
+          this.apiConfig.emailMarketing.apiKey = conf.apiKey || ''
+        }
+      } catch (error) {
+        // 404: pas de config, ignorer
+      }
+    },
+    async saveApiConfig(serviceType) {
+      try {
+        if (!this.companyId) {
+          this.apiMessage = 'Aucune entreprise associée.'
+          this.apiError = true
+          return
+        }
+        this.apiSaving = true
+        this.apiMessage = ''
+        this.apiError = false
+        let config = {}
+        if (serviceType === 'email_marketing') {
+          config = { apiKey: this.apiConfig.emailMarketing.apiKey }
+        }
+        await api.post(`/api/companies/${this.companyId}/api-config`, {
+          serviceType,
+          config
+        })
+        this.apiMessage = 'Configuration API sauvegardée.'
+        this.apiError = false
+      } catch (error) {
+        console.error('Erreur sauvegarde API config:', error)
+        const msg = error?.response?.data?.error || 'Erreur lors de la sauvegarde de la configuration'
+        this.apiMessage = msg
+        this.apiError = true
+      } finally {
+        this.apiSaving = false
       }
     }
   }

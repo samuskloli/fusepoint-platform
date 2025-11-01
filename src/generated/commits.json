@@ -1,5 +1,10 @@
 [
   {
+    "hash": "ff545710ec7114d2ca9633452ea171de55b3ab1e",
+    "date": "2025-11-01 19:30:25 +0100",
+    "subject": "CSP: precompile i18n, remove pdfjs-dist, escape email placeholders"
+  },
+  {
     "hash": "8926ac66bb197c5f8aa02e6b22fff20dac0b9b2e",
     "date": "2025-11-01 17:15:25 +0100",
     "subject": "Deploy: production sync via SSH (CORS,CSP,security headers, deps upgrade)"
@@ -53,10 +58,5 @@
     "hash": "17e6a8e2999e334c7073ae92319e628389767ae8",
     "date": "2025-10-31 21:51:57 +0100",
     "subject": "fix(frontend-assets): servir /app/assets depuis dist/assets avec fallback vers app/ pour éviter les 404 JSON et erreurs MIME; mise à jour script de déploiement pour copier les assets vers dist/ et app/"
-  },
-  {
-    "hash": "1d0f341a5a3e8a0fa3a3d17571679af0c1e937bf",
-    "date": "2025-10-31 21:46:40 +0100",
-    "subject": "fix(routing): servir le frontend depuis le backend (/, /app/* fallback); corrige chemins PM2 prod; ajoute scripts de déploiement et changelog"
   }
 ]

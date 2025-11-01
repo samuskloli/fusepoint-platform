@@ -8,6 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     first_name VARCHAR(100),
     last_name VARCHAR(100),
+    phone VARCHAR(50),
+    bio TEXT,
+    avatar_url VARCHAR(500),
+    language VARCHAR(10) DEFAULT 'fr',
     role VARCHAR(50) DEFAULT 'user',
     is_active BOOLEAN DEFAULT 1,
     confirmation_token VARCHAR(255),
@@ -26,6 +30,13 @@ CREATE TABLE IF NOT EXISTS companies (
     industry VARCHAR(100),
     size VARCHAR(50),
     location VARCHAR(255),
+    vat_number VARCHAR(50),
+    address VARCHAR(255),
+    city VARCHAR(100),
+    zip_code VARCHAR(20),
+    country VARCHAR(2),
+    include_tax BOOLEAN DEFAULT 1,
+    auto_invoice BOOLEAN DEFAULT 1,
     website VARCHAR(255),
     description TEXT,
     logo_url VARCHAR(500),
@@ -98,6 +109,17 @@ CREATE TABLE IF NOT EXISTS platform_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Table des préférences utilisateur
+CREATE TABLE IF NOT EXISTS user_preferences (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    preferences TEXT NOT NULL, -- JSON des préférences (darkMode, emailNotifications, language, etc.)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    UNIQUE(user_id)
+);
+
 -- Index pour optimiser les performances
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_user_companies_user_id ON user_companies(user_id);
@@ -110,6 +132,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_company_id ON audit_logs(company_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_platform_settings_key ON platform_settings(key);
 CREATE INDEX IF NOT EXISTS idx_platform_settings_category ON platform_settings(category);
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id);
 
 -- Données de test (optionnel)
 INSERT IGNORE INTO users (id, email, password_hash, first_name, last_name, role) VALUES 

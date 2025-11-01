@@ -158,7 +158,7 @@
           <router-link to="/team" class="block px-5 py-4 text-xl font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
             <i class="fas fa-user-friends mr-3 text-2xl"></i> Équipe
           </router-link>
-          <router-link to="/user-settings" class="block px-5 py-4 text-xl font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
+          <router-link to="/settings" class="block px-5 py-4 text-xl font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
             <i class="fas fa-user-cog mr-3 text-2xl"></i> Mon Compte
           </router-link>
           <router-link to="/billing" class="block px-5 py-4 text-xl font-semibold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800">
