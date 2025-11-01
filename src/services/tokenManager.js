@@ -144,20 +144,24 @@ class TokenManager {
    * Mettre à jour une instance Axios avec le nouveau token
    */
   updateAxiosInstance(axiosInstance, token) {
-    // Mettre à jour l'intercepteur de requête
-    axiosInstance.interceptors.request.clear();
-    axiosInstance.interceptors.request.use(
-      (config) => {
-        const currentToken = token || this.getAccessToken();
-        if (currentToken) {
-          config.headers.Authorization = `Bearer ${currentToken}`;
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+    // N'efface PAS les intercepteurs existants (cela peut supprimer des intercepteurs
+    // personnalisés comme la normalisation d'URL dans api.js). Utiliser les headers par défaut.
+    const currentToken = token || this.getAccessToken();
+    if (!axiosInstance.defaults) {
+      axiosInstance.defaults = {};
+    }
+    if (!axiosInstance.defaults.headers) {
+      axiosInstance.defaults.headers = {};
+    }
+    if (!axiosInstance.defaults.headers.common) {
+      axiosInstance.defaults.headers.common = {};
+    }
+    if (currentToken) {
+      axiosInstance.defaults.headers.common.Authorization = `Bearer ${currentToken}`;
+    } else {
+      // Supprimer l'en-tête si aucun token
+      delete axiosInstance.defaults.headers.common.Authorization;
+    }
   }
 
   /**

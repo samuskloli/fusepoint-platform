@@ -73,7 +73,7 @@
 
 <script>
 import { ref } from 'vue'
-import AIChatService from '@/services/aiChatService'
+import aiChatService from '@/services/aiChatService'
 
 export default {
   name: 'TestChat',
@@ -85,7 +85,7 @@ export default {
     const error = ref(null)
     const debugLogs = ref([])
     
-    const aiChatService = new AIChatService()
+    // Utiliser l'instance singleton exportée par le service
     
     const addLog = (message, type = 'info') => {
       debugLogs.value.push({

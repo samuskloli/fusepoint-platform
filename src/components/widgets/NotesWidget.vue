@@ -145,7 +145,7 @@
 <script>
 import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { marked } from 'marked'
-import DOMPurify from 'dompurify'
+import { sanitizeTasksInteractive, sanitizeTasksPreview } from '@/utils/sanitize'
 import { useTranslation } from '@/composables/useTranslation'
 import notesService from '@/services/notesService'
 import noteCategoriesService from '@/services/noteCategoriesService'
@@ -432,10 +432,10 @@ export default {
           md = marked.parse(fallbackText, { renderer })
         }
         // Autoriser explicitement les inputs et attributs nécessaires aux cases à cocher interactives
-        return DOMPurify.sanitize(md, { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','data-task-index','class'] })
+        return sanitizeTasksInteractive(md)
       } catch (e) {
         const safe = contentToMarkdownString(note?.content)
-        return DOMPurify.sanitize(marked.parse(typeof safe === 'string' ? safe : ''), { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','data-task-index','class'] })
+        return sanitizeTasksInteractive(marked.parse(typeof safe === 'string' ? safe : ''))
       }
     }
 
@@ -482,10 +482,10 @@ export default {
           })()
           md = marked.parse(fallbackText, { renderer })
         }
-        return DOMPurify.sanitize(md, { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','data-task-index','class'] })
+        return sanitizeTasksInteractive(md)
       } catch (e) {
         const safe = contentToMarkdownString(note?.content)
-        return DOMPurify.sanitize(marked.parse(typeof safe === 'string' ? safe : ''), { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','data-task-index','class'] })
+        return sanitizeTasksInteractive(marked.parse(typeof safe === 'string' ? safe : ''))
       }
     }
 
@@ -779,10 +779,10 @@ export default {
           })()
           md = marked.parse(fallbackText, { renderer })
         }
-        return DOMPurify.sanitize(md, { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','class','disabled'] })
+        return sanitizeTasksPreview(md)
       } catch (e) {
         const safe = contentToMarkdownString(content)
-        return DOMPurify.sanitize(marked.parse(typeof safe === 'string' ? safe : ''), { ADD_TAGS: ['input'], ADD_ATTR: ['type','checked','class','disabled'] })
+        return sanitizeTasksPreview(marked.parse(typeof safe === 'string' ? safe : ''))
       }
     }
 

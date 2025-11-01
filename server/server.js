@@ -87,13 +87,62 @@ const app = express();
 app.set('etag', 'strong');
 // Assurer que req.protocol reflète X-Forwarded-Proto en prod derrière proxy
 app.set('trust proxy', true);
+// Masquer l'en-tête X-Powered-By pour éviter de divulguer Express en production
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 
-// Middleware de sécurité - CSP désactivée pour éviter les blocages
+// Middleware de sécurité
+// Active une CSP stricte en production, la désactive en développement pour éviter de bloquer le hot-reload
+// CSP directives: possibilité d’affiner chaque directive via des variables d’environnement
+// - CSP_CONNECT_SRC, CSP_SCRIPT_SRC, CSP_STYLE_SRC, CSP_IMG_SRC, CSP_FONT_SRC, CSP_FRAME_SRC
+const parseEnvList = (key) => (String(process.env[key] || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean));
+
+const connectSrc = ["'self'", 'https:'];
+if (process.env.NODE_ENV === 'production') {
+  parseEnvList('CSP_CONNECT_SRC').forEach(v => connectSrc.push(v));
+}
+
+const scriptSrc = ["'self'"];
+const styleSrc = ["'self'", "'unsafe-inline'"];
+const imgSrc = ["'self'", 'data:', 'https:'];
+const fontSrc = ["'self'", 'data:', 'https:'];
+const frameSrc = ["'self'"];
+
+if (process.env.NODE_ENV === 'production') {
+  parseEnvList('CSP_SCRIPT_SRC').forEach(v => scriptSrc.push(v));
+  parseEnvList('CSP_STYLE_SRC').forEach(v => styleSrc.push(v));
+  parseEnvList('CSP_IMG_SRC').forEach(v => imgSrc.push(v));
+  parseEnvList('CSP_FONT_SRC').forEach(v => fontSrc.push(v));
+  parseEnvList('CSP_FRAME_SRC').forEach(v => frameSrc.push(v));
+}
+
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  scriptSrc,
+  styleSrc, // autorise les styles inline utilisés par certains frameworks
+  imgSrc,
+  fontSrc,
+  connectSrc,
+  frameSrc,
+  frameAncestors: ["'none'"],
+  baseUri: ["'self'"],
+  formAction: ["'self'"]
+};
+
 app.use(helmet({
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? { useDefaults: true, directives: cspDirectives } : false,
   crossOriginResourcePolicy: { policy: 'cross-origin' }
 }));
+
+// Activer HSTS et Referrer Policy via Helmet en production
+if (process.env.NODE_ENV === 'production') {
+  // 180 jours ~ 15552000 secondes
+  app.use(helmet.hsts({ maxAge: 15552000, includeSubDomains: true, preload: false }));
+  app.use(helmet.referrerPolicy({ policy: 'strict-origin-when-cross-origin' }));
+}
 
 // Configuration CORS optimisée pour production et développement
 // Liste d'origines autorisées depuis l'env, avec valeurs par défaut pour dev et prod
@@ -107,7 +156,11 @@ const envOrigins = (process.env.ALLOWED_ORIGINS || '')
   .map(s => s.trim())
   .filter(Boolean);
 
-const allowedOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
+// En production, n'autoriser QUE les origines fournies par l'environnement
+// En développement, autoriser les origines par défaut + celles fournies par l'env
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? envOrigins
+  : Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 // DEBUG: afficher les origines autorisées et l'environnement
 console.log('🔎 ALLOWED_ORIGINS (env):', process.env.ALLOWED_ORIGINS);
@@ -139,7 +192,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(compression());
-app.use(express.json());
+// Limiter la taille des payloads pour réduire le risque d'abus par volumétrie
+const BODY_LIMIT = process.env.REQUEST_BODY_LIMIT || '1mb';
+app.use(express.json({ limit: BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: BODY_LIMIT }));
 app.use(morgan('combined'));
 
 // Rate limiting avec configuration avancée
@@ -168,9 +224,9 @@ const authLimiter = rateLimit({
   }
 });
 
-// Rate limiting temporairement désactivé pour debug
-// app.use('/api/', limiter);
-// app.use('/api/auth/login', authLimiter);
+// Rate limiting global et spécifique auth
+app.use('/api/', limiter);
+app.use('/api/auth/login', authLimiter);
 
 // Configuration Google Analytics
 const analytics = google.analyticsdata('v1beta');
@@ -183,6 +239,10 @@ const auth = new google.auth.GoogleAuth({
 // Configuration SMTP pour les emails
 let emailTransporter = null;
 if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+  // En production, ne pas désactiver la vérification TLS. Par défaut, Nodemailer
+  // rejette les certificats non valides. On expose un contrôle via SMTP_REJECT_UNAUTHORIZED
+  // pour les environnements de test uniquement.
+  const allowInsecureTls = String(process.env.SMTP_REJECT_UNAUTHORIZED || '').toLowerCase() === 'false';
   emailTransporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: process.env.SMTP_PORT || 587,
@@ -191,9 +251,8 @@ if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS
     },
-    tls: {
-      rejectUnauthorized: false
-    }
+    // N'ajoute l'option tls uniquement si on autorise explicitement l'insécurité
+    ...(allowInsecureTls ? { tls: { rejectUnauthorized: false } } : {})
   });
   console.log('✅ Configuration SMTP initialisée');
 } else {
@@ -264,7 +323,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Referrer-Policy désormais géré par Helmet (cf. ci-dessus)
   next();
 });
 

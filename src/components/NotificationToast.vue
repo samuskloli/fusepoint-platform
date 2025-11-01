@@ -1,5 +1,5 @@
 <template>
-  <div class="toast-container">
+  <div class="toast-container" aria-live="polite" aria-atomic="true">
     <transition-group name="toast" tag="div">
       <div
         v-for="notification in notifications"
@@ -8,6 +8,7 @@
           'toast',
           getNotificationClasses(notification.type)
         ]"
+        :role="notification.type === 'error' ? 'alert' : 'status'"
       >
         <div class="p-4">
           <div class="flex items-start">

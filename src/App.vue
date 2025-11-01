@@ -1,5 +1,7 @@
 <template>
   <div id="app">
+    <!-- Skip link for keyboard users -->
+    <a href="#main-content" class="skip-link">Aller au contenu principal</a>
     <router-view />
     <NotificationToast />
     <VersionFooter />

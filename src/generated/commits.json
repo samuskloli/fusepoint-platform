@@ -1,5 +1,20 @@
 [
   {
+    "hash": "e2e745e87b59d82c23a6e95785e7c1f03e27141e",
+    "date": "2025-11-01 16:13:32 +0100",
+    "subject": "chore(debug): log auth-skip context for /api/health (method, path, originalUrl)"
+  },
+  {
+    "hash": "ca74fa8258f54153922969b76da74b08a04a3092",
+    "date": "2025-11-01 16:11:05 +0100",
+    "subject": "fix(auth): ensure /api/health bypasses global /api auth by checking req.originalUrl as well"
+  },
+  {
+    "hash": "253cca6c08b841e6919448384f17b6a1e239b686",
+    "date": "2025-11-01 16:08:12 +0100",
+    "subject": "chore(api): add public /api/health endpoint and auth exemption; log access for super-admin beta-email-template; minor health skip in rate limiter"
+  },
+  {
     "hash": "d18d0be8cec971691c8c652f33f3bb02d38b6e5e",
     "date": "2025-11-01 15:09:21 +0100",
     "subject": "feat(beta-email): migration douce du corps de l’email stocké + rechargement du modèle côté frontend à l’ouverture de la modale"
@@ -43,20 +58,5 @@
     "hash": "d654f3aaf1097e65c60c45f085fdebebdd83ad40",
     "date": "2025-10-31 14:11:30 +0100",
     "subject": "🚀 Préparation déploiement: correction bug redirection LinkPoints + nettoyage code"
-  },
-  {
-    "hash": "0972c72c06cac55b1814f1b19643b78fe35d674e",
-    "date": "2025-10-27 22:31:40 +0100",
-    "subject": "chore(prod): ajouter PM2 ecosystem pour fusepoint.ch, doc de déploiement, mise à jour des .env.example et ajustements CORS/login"
-  },
-  {
-    "hash": "61532beb18e17748e3d7ee0b19206819b1f60e67",
-    "date": "2025-10-27 16:48:19 +0100",
-    "subject": "Security: remove VAPID keys file; ignore and provide example"
-  },
-  {
-    "hash": "4ae3f0c22438c6af3259b7411f521bf691a6e494",
-    "date": "2025-10-27 16:38:46 +0100",
-    "subject": "Sync: push complet de tous les changements en cours (serveur, scripts, config, vues)"
   }
 ]

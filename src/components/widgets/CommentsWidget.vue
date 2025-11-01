@@ -278,6 +278,7 @@ import WidgetConfigModal from '@/components/widgets/shared/components/WidgetConf
 import CommentCreateModal from './components/CommentCreateModal.vue'
 import commentsService from '@/services/commentsService'
 import type { Comment, CommentType } from './types'
+import { sanitizeComments } from '@/utils/sanitize'
 
 // Props
 interface Props {
@@ -509,21 +510,20 @@ const { user } = useAuth()
     }
     
     const formatCommentText = (text) => {
-      // Remplacer les mentions @username par des liens
+      let input = String(text ?? '')
+      // Remplacer les mentions @username par des spans stylés
       if (widgetConfig.value.allowMentions) {
-        text = text.replace(/@([\w\-\.]+)/g, '<span class="mention">@$1</span>')
+        input = input.replace(/@([\w\-\.]+)/g, '<span class="mention">@$1</span>')
       }
-      
-      // Remplacer les URLs par des liens
-      text = text.replace(
+      // Transformer les URLs en liens sûrs
+      input = input.replace(
         /(https?:\/\/[^\s]+)/g,
-        '<a href="$1" target="_blank" class="comment-link">$1</a>'
+        '<a href="$1" target="_blank" rel="noopener noreferrer" class="comment-link">$1</a>'
       )
-      
-      // Remplacer les sauts de ligne par des <br>
-      text = text.replace(/\n/g, '<br>')
-      
-      return text
+      // Sauts de ligne
+      input = input.replace(/\n/g, '<br>')
+      // Sanitiser strictement le HTML produit
+      return sanitizeComments(input)
     }
     
     const getAttachmentIcon = (type) => {

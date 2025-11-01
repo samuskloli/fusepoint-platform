@@ -251,6 +251,40 @@ input, textarea, select {
   }
 }
 
+/* Accessibilité: réduire les animations pour les utilisateurs qui préfèrent moins de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Neutraliser les classes d'animation courantes */
+  .animate-bounce, .animate-pulse, .animate-spin {
+    animation: none !important;
+  }
+
+  /* Transitions des composants (toasts, modales, pages, etc.) */
+  .page-enter-active,
+  .page-leave-active,
+  .modal-enter-active,
+  .modal-leave-active,
+  .toast-enter-active,
+  .toast-leave-active,
+  .dropdown-enter-active,
+  .dropdown-leave-active,
+  .tooltip-enter-active,
+  .tooltip-leave-active,
+  .accordion-enter-active,
+  .accordion-leave-active,
+  .tab-enter-active,
+  .tab-leave-active,
+  .list-enter-active,
+  .list-leave-active {
+    transition: none !important;
+  }
+}
+
 .list-enter-from,
 .list-leave-to {
   @apply opacity-0 translate-y-2;

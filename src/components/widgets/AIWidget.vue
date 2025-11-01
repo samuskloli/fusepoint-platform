@@ -326,6 +326,7 @@ import WidgetConfigModal from '../modals/WidgetConfigModal.vue'
 import aiService from '@/services/aiService'
 import { useTranslation } from '@/composables/useTranslation'
 import { useNotifications } from '@/composables/useNotifications'
+  import { sanitizeBasic } from '@/utils/sanitize'
 
 // Interfaces TypeScript
 interface Message {
@@ -855,12 +856,14 @@ const { t } = useTranslation()
     }
     
     const formatMessage = (content: string): string => {
-      // Formatage basique du markdown
-      return content
+      if (!content) return ''
+      // Formatage basique du markdown, puis sanitization stricte
+      const html = content
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`(.*?)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>')
+      return sanitizeBasic(html)
     }
     
     const formatTime = (timestamp: string): string => {

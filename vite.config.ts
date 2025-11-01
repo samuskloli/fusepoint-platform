@@ -102,7 +102,8 @@ export default defineConfig(({ mode }) => {
     base: mode === 'production' ? '/app/' : '/',
     build: {
       target: 'esnext',
-      sourcemap: true,
+      // Générer les sourcemaps uniquement hors production pour éviter de divulguer du code en prod
+      sourcemap: mode !== 'production',
       rollupOptions: {
         input: {
           main: resolve(__dirname, 'index.html'),

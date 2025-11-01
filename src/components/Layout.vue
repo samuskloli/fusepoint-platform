@@ -26,7 +26,7 @@
       <Header @toggle-sidebar="sidebarOpen = !sidebarOpen" />
 
       <!-- Main content area -->
-      <main class="main-content">
+      <main id="main-content" class="main-content" role="main" tabindex="-1">
         <div class="content-container">
           <slot />
         </div>

@@ -98,3 +98,34 @@ chmod +x scripts/reinstall-remote.sh
 - Ne jamais commiter les `.env`.
 - Utiliser des secrets uniques par environnement.
 - Vérifier que l’API ne répond pas aux origines non listées.
+
+### Politique de Sécurité de Contenu (CSP) et en-têtes Helmet
+
+En production, le backend applique une CSP via Helmet. Vous pouvez autoriser des hôtes CDN par directive grâce aux variables d’environnement suivantes (listes séparées par des virgules):
+
+- `CSP_CONNECT_SRC` — destinations réseau (fetch/XHR/WebSocket)
+- `CSP_SCRIPT_SRC` — scripts (CDN)
+- `CSP_STYLE_SRC` — styles (CSS/Google Fonts)
+- `CSP_IMG_SRC` — images
+- `CSP_FONT_SRC` — polices
+- `CSP_FRAME_SRC` — frames/embeds (YouTube/Vimeo)
+
+Exemple (server/.env):
+
+```
+NODE_ENV=production
+ALLOWED_ORIGINS=https://fusepoint.ch,https://www.fusepoint.ch
+
+CSP_CONNECT_SRC=https://api.openai.com,https://*.googleapis.com
+CSP_SCRIPT_SRC=https://cdn.jsdelivr.net,https://unpkg.com,https://cdnjs.cloudflare.com
+CSP_STYLE_SRC=https://fonts.googleapis.com,https://cdn.jsdelivr.net
+CSP_IMG_SRC=https://images.unsplash.com,https://cdn.jsdelivr.net
+CSP_FONT_SRC=https://fonts.gstatic.com,https://cdn.jsdelivr.net
+CSP_FRAME_SRC=https://player.vimeo.com,https://www.youtube.com
+```
+
+Helmet active également:
+- HSTS (HTTP Strict Transport Security) avec une durée d’environ 180 jours
+- Referrer Policy configurée sur `strict-origin-when-cross-origin`
+
+Note: En développement, la CSP est désactivée pour ne pas bloquer Vite/HMR.

@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
-import ConfirmAccount from '../views/ConfirmAccount.vue'
-import SetPassword from '../views/SetPassword.vue'
-import ClientDashboard from '../views/ClientDashboard.vue'
-import LandingFusepoint from '../views/LandingFusepoint.vue'
-import LinkPointPublic from '../views/LinkPointPublic.vue'
+// Lazy-loaded in routes
+// import Login from '../views/Login.vue'
+// import Register from '../views/Register.vue'
+// import ConfirmAccount from '../views/ConfirmAccount.vue'
+// import SetPassword from '../views/SetPassword.vue'
+// import ClientDashboard from '../views/ClientDashboard.vue'
+// import LandingFusepoint from '../views/LandingFusepoint.vue'
+// import LinkPointPublic from '../views/LinkPointPublic.vue'
 
 // Store d'authentification
 import { useAuthStore } from '../stores/auth.js'
@@ -21,72 +22,72 @@ import { requireAdmin, requireAdminOrAgent } from '../middleware/adminAuth.js'
 import { getSavedLocale, setLocale } from '../plugins/i18n.js'
 
 // Analytics
-import Analytics from '../views/Analytics/Analytics.vue'
+// import Analytics from '../views/Analytics/Analytics.vue'
 // Pages Facebook et Instagram supprimées - utiliser MetaInsights à la place
-import MetaInsights from '../views/Analytics/MetaInsights.vue'
+// import MetaInsights from '../views/Analytics/MetaInsights.vue'
 
 // Marketing
-import Marketing from '../views/Marketing/Marketing.vue'
-import Campaigns from '../views/Marketing/Campaigns.vue'
-import Emails from '../views/Marketing/Emails.vue'
-import Templates from '../views/Marketing/Templates.vue'
+// import Marketing from '../views/Marketing/Marketing.vue'
+// import Campaigns from '../views/Marketing/Campaigns.vue'
+// import Emails from '../views/Marketing/Emails.vue'
+// import Templates from '../views/Marketing/Templates.vue'
 
 // Integrations
-import Integrations from '../views/Integrations/Integrations.vue'
+// import Integrations from '../views/Integrations/Integrations.vue'
 
 // Team
-import Team from '../views/Team/Team.vue'
+// import Team from '../views/Team/Team.vue'
 
 // Billing
-import Billing from '../views/Billing/Billing.vue'
+// import Billing from '../views/Billing/Billing.vue'
 
 // Reports
-import Reports from '../views/Reports/Reports.vue'
+// import Reports from '../views/Reports/Reports.vue'
 
 // Settings
-import Settings from '../views/Settings/Settings.vue'
-import UserSettings from '../views/UserSettings.vue'
+// import Settings from '../views/Settings/Settings.vue'
+// import UserSettings from '../views/UserSettings.vue'
 
 // OAuth
-import OAuthCallback from '../views/OAuthCallback.vue'
-import FacebookCallback from '../views/FacebookCallback.vue'
-import InstagramCallback from '../views/InstagramCallback.vue'
+// import OAuthCallback from '../views/OAuthCallback.vue'
+// import FacebookCallback from '../views/FacebookCallback.vue'
+// import InstagramCallback from '../views/InstagramCallback.vue'
 
 // Accompagnement
-import ServiceCatalog from '../components/accompagnement/ServiceCatalog.vue'
-import AccompagnementDashboard from '../components/accompagnement/AccompagnementDashboard.vue'
+// import ServiceCatalog from '../components/accompagnement/ServiceCatalog.vue'
+// import AccompagnementDashboard from '../components/accompagnement/AccompagnementDashboard.vue'
 
 // Agent Dashboard
-import AgentDashboard from '../views/AgentDashboard.vue'
+// import AgentDashboard from '../views/AgentDashboard.vue'
 
-import AgentReports from '../views/AgentReports.vue'
-import AgentClients from '../views/AgentClients.vue'
-import ClientStatusDemo from '../views/ClientStatusDemo.vue'
-import AgentServiceRequests from '../views/AgentServiceRequests.vue'
-import AgentPrestataires from '../views/AgentPrestataires.vue'
+// import AgentReports from '../views/AgentReports.vue'
+// import AgentClients from '../views/AgentClients.vue'
+// import ClientStatusDemo from '../views/ClientStatusDemo.vue'
+// import AgentServiceRequests from '../views/AgentServiceRequests.vue'
+// import AgentPrestataires from '../views/AgentPrestataires.vue'
 
 // Super Admin Dashboard
-import SuperAdminDashboard from '../views/SuperAdminDashboard.vue'
-import SuperAdminBetaRequests from '../views/SuperAdminBetaRequests.vue'
+// import SuperAdminDashboard from '../views/SuperAdminDashboard.vue'
+// import SuperAdminBetaRequests from '../views/SuperAdminBetaRequests.vue'
 
 // Admin Dashboard
-import Admin from '../views/Admin.vue'
-import AdminUsers from '../views/AdminUsers.vue'
+// import Admin from '../views/Admin.vue'
+// import AdminUsers from '../views/AdminUsers.vue'
 
 // Prestataire
-import RegisterPrestataire from '../views/RegisterPrestataire.vue'
-import PrestataireDashboard from '../views/PrestataireDashboard.vue'
+// import RegisterPrestataire from '../views/RegisterPrestataire.vue'
+// import PrestataireDashboard from '../views/PrestataireDashboard.vue'
 
 // Project Management
-import ProjectManagement from '../views/ProjectManagement.vue'
+// import ProjectManagement from '../views/ProjectManagement.vue'
 
 // Changelog
-import Changelog from '../views/Changelog.vue'
+// import Changelog from '../views/Changelog.vue'
 
 // Test Chat
-import TestChat from '../views/TestChat.vue'
-import AuthDebug from '../views/AuthDebug.vue'
-import AuthDebugTemp from '../views/AuthDebugTemp.vue'
+// import TestChat from '../views/TestChat.vue'
+// import AuthDebug from '../views/AuthDebug.vue'
+// import AuthDebugTemp from '../views/AuthDebugTemp.vue'
 
 const routes = [
   {
@@ -115,40 +116,40 @@ const routes = [
   {
     path: '/landing',
     name: 'LandingFusepoint',
-    component: LandingFusepoint
+    component: () => import('../views/LandingFusepoint.vue')
   },
   {
     path: '/l/:slug',
     name: 'LinkPointPublic',
-    component: LinkPointPublic
+    component: () => import('../views/LinkPointPublic.vue')
   },
   {
     path: '/login',
     name: 'Login',
-    component: Login,
+    component: () => import('../views/Login.vue'),
     beforeEnter: requireGuest
   },
   {
     path: '/register',
     name: 'Register',
-    component: Register,
+    component: () => import('../views/Register.vue'),
     beforeEnter: requireGuest
   },
   {
     path: '/confirm-account',
     name: 'ConfirmAccount',
-    component: ConfirmAccount
+    component: () => import('../views/ConfirmAccount.vue')
   },
   {
     path: '/set-password',
     name: 'SetPassword',
-    component: SetPassword,
+    component: () => import('../views/SetPassword.vue'),
     beforeEnter: requireGuest
   },
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: ClientDashboard,
+    component: () => import('../views/ClientDashboard.vue'),
     beforeEnter: requireAuth
   },
   {
@@ -196,7 +197,7 @@ const routes = [
   {
     path: '/analytics',
     name: 'Analytics',
-    component: Analytics,
+    component: () => import('../views/Analytics/Analytics.vue'),
     beforeEnter: requireAuth
   },
 
@@ -204,127 +205,127 @@ const routes = [
   {
     path: '/analytics/meta',
     name: 'MetaInsights',
-    component: MetaInsights,
+    component: () => import('../views/Analytics/MetaInsights.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/marketing',
     name: 'Marketing',
-    component: Marketing,
+    component: () => import('../views/Marketing/Marketing.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/marketing/campaigns',
     name: 'MarketingCampaigns',
-    component: Campaigns,
+    component: () => import('../views/Marketing/Campaigns.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/marketing/emails',
     name: 'Emails',
-    component: Emails,
+    component: () => import('../views/Marketing/Emails.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/marketing/templates',
     name: 'Templates',
-    component: Templates,
+    component: () => import('../views/Marketing/Templates.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/integrations',
     name: 'Integrations',
-    component: Integrations,
+    component: () => import('../views/Integrations/Integrations.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/team',
     name: 'Team',
-    component: Team,
+    component: () => import('../views/Team/Team.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/billing',
     name: 'Billing',
-    component: Billing,
+    component: () => import('../views/Billing/Billing.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/reports',
     name: 'Reports',
-    component: Reports,
+    component: () => import('../views/Reports/Reports.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/settings',
     name: 'Settings',
-    component: Settings,
+    component: () => import('../views/Settings/Settings.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/user-settings',
     name: 'UserSettings',
-    component: UserSettings,
+    component: () => import('../views/UserSettings.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/oauth/callback',
     name: 'OAuthCallback',
-    component: OAuthCallback
+    component: () => import('../views/OAuthCallback.vue')
   },
   {
     path: '/oauth/facebook/callback',
     name: 'FacebookCallback',
-    component: FacebookCallback
+    component: () => import('../views/FacebookCallback.vue')
   },
   {
     path: '/oauth/instagram/callback',
     name: 'InstagramCallback',
-    component: InstagramCallback
+    component: () => import('../views/InstagramCallback.vue')
   },
 
 
   {
     path: '/services',
     name: 'ServiceCatalog',
-    component: ServiceCatalog,
+    component: () => import('../components/accompagnement/ServiceCatalog.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/accompagnement',
     name: 'AccompagnementDashboard',
-    component: AccompagnementDashboard,
+    component: () => import('../components/accompagnement/AccompagnementDashboard.vue'),
     beforeEnter: requireAuth
   },
   {
     path: '/agent',
     name: 'AgentDashboard',
-    component: AgentDashboard,
+    component: () => import('../views/AgentDashboard.vue'),
     beforeEnter: requireAgent
   },
 
   {
     path: '/agent/reports',
     name: 'AgentReports',
-    component: AgentReports,
+    component: () => import('../views/AgentReports.vue'),
     beforeEnter: requireAgent
   },
   {
     path: '/agent/clients',
     name: 'AgentClients',
-    component: AgentClients,
+    component: () => import('../views/AgentClients.vue'),
     beforeEnter: requireAgent
   },
   {
     path: '/agent/status-demo',
     name: 'ClientStatusDemo',
-    component: ClientStatusDemo,
+    component: () => import('../views/ClientStatusDemo.vue'),
     beforeEnter: requireAgent
   },
   {
     path: '/agent/service-requests',
     name: 'AgentServiceRequests',
-    component: AgentServiceRequests,
+    component: () => import('../views/AgentServiceRequests.vue'),
     beforeEnter: requireAgent
   },
   {
@@ -354,7 +355,7 @@ const routes = [
     {
       path: '/agent/clients/:clientId/projects',
       name: 'ClientProjectManagement',
-      component: ProjectManagement,
+      component: () => import('../views/ProjectManagement.vue'),
       beforeEnter: requireAgent
     },
     {
@@ -372,13 +373,13 @@ const routes = [
   {
     path: '/agent/prestataires',
     name: 'AgentPrestataires',
-    component: AgentPrestataires,
+    component: () => import('../views/AgentPrestataires.vue'),
     beforeEnter: requireAgent
   },
   {
     path: '/email',
     name: 'EmailMarketing',
-    component: Emails,
+    component: () => import('../views/Marketing/Emails.vue'),
     beforeEnter: requireAuth
   },
   {
@@ -415,13 +416,13 @@ const routes = [
   {
     path: '/admin',
     name: 'AdminDashboard',
-    component: Admin,
+    component: () => import('../views/Admin.vue'),
     beforeEnter: requireAdmin
   },
   {
     path: '/admin/users',
     name: 'AdminUsers',
-    component: AdminUsers,
+    component: () => import('../views/AdminUsers.vue'),
     beforeEnter: requireAdmin
   },
   {
@@ -433,7 +434,7 @@ const routes = [
   {
     path: '/admin/agent-view',
     name: 'AdminAgentView',
-    component: AgentDashboard,
+    component: () => import('../views/AgentDashboard.vue'),
     beforeEnter: requireAdminOrAgent
   },
   // Route Management Services (admin ou agent)
@@ -447,56 +448,62 @@ const routes = [
   {
     path: '/super-admin',
     name: 'SuperAdminDashboard',
-    component: SuperAdminDashboard,
+    component: () => import('../views/SuperAdminDashboard.vue'),
     beforeEnter: requireSuperAdmin
   },
   {
     path: '/super-admin/beta-requests',
     name: 'SuperAdminBetaRequests',
-    component: SuperAdminBetaRequests,
+    component: () => import('../views/SuperAdminBetaRequests.vue'),
     beforeEnter: requireSuperAdmin
   },
   {
     path: '/super-admin/agent-view',
     name: 'SuperAdminAgentView',
-    component: AgentDashboard,
+    component: () => import('../views/AgentDashboard.vue'),
     beforeEnter: requireSuperAdmin
   },
   // Routes Prestataire
   {
     path: '/register-prestataire/:token',
     name: 'RegisterPrestataire',
-    component: RegisterPrestataire,
+    component: () => import('../views/RegisterPrestataire.vue'),
     beforeEnter: requireGuest
   },
   {
     path: '/prestataire/dashboard',
     name: 'PrestataireDashboard',
-    component: PrestataireDashboard,
+    component: () => import('../views/PrestataireDashboard.vue'),
     beforeEnter: requirePrestataire
   },
   // Route publique pour le changelog
   {
     path: '/changelog',
     name: 'Changelog',
-    component: Changelog
+    component: () => import('../views/Changelog.vue')
   },
   // Route de test pour le chat IA
   {
     path: '/test-chat',
     name: 'TestChat',
-    component: TestChat
+    component: () => import('../views/TestChat.vue')
+  },
+  // Route de test sécurité/sanitisation (publique)
+  {
+    path: '/security-test',
+    name: 'SecurityTest',
+    component: () => import('../views/SecurityTest.vue')
   },
   // Route de debug pour l'authentification
   {
     path: '/auth-debug',
     name: 'AuthDebug',
-    component: AuthDebug
+    component: () => import('../views/AuthDebug.vue')
   },
   {
     path: '/auth-debug-temp',
     name: 'AuthDebugTemp',
-    component: AuthDebugTemp
+    component: () => import('../views/AuthDebugTemp.vue')
   },
   {
     path: '/install',
@@ -522,5 +529,25 @@ router.beforeEach((to, from, next) => {
 
 // Middleware global d'authentification
 router.beforeEach(initializeAuth)
+
+// Mise à jour du titre de page et de la meta description après chaque navigation
+router.afterEach((to) => {
+  const baseTitle = 'Fusepoint'
+  const metaTitle = to.meta && to.meta.title
+  const routeName = typeof to.name === 'string' ? to.name : ''
+  const pageTitle = metaTitle || routeName || baseTitle
+  document.title = pageTitle ? `${pageTitle} · ${baseTitle}` : baseTitle
+
+  const description = to.meta && to.meta.description
+  if (description) {
+    let tag = document.querySelector('meta[name="description"]')
+    if (!tag) {
+      tag = document.createElement('meta')
+      tag.setAttribute('name', 'description')
+      document.head.appendChild(tag)
+    }
+    tag.setAttribute('content', description)
+  }
+})
 
 export default router

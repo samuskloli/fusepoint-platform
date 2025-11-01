@@ -298,6 +298,7 @@
 <script>
 import marketingIntelligenceService from '../services/marketingIntelligenceService.js';
 import aiChatService from '../services/aiChatService.js';
+import { sanitizeBasic } from '@/utils/sanitize';
 
 export default {
   name: 'MarketingChatBot',
@@ -585,12 +586,15 @@ export default {
     },
 
     formatMessageContent(content) {
-      // Formatage basique du contenu avec support markdown simple
-      return content
+      // Formatage basique du contenu avec support markdown simple, puis désinfection stricte
+      const html = String(content || '')
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
         .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>')
         .replace(/\n/g, '<br>');
+
+      // Sanitize: n’autoriser que les balises nécessaires au rendu prévu
+      return sanitizeBasic(html);
     },
 
     // Gestion des notifications
