@@ -84,55 +84,107 @@ class WidgetDataService {
       const response = await api.get(`/projects/${projectId}/features`)
       return {
         success: true,
-        data: response.data || []
+        data: response.data
       }
     } catch (error) {
       console.error('Erreur lors de la récupération des fonctionnalités:', error)
-      // Retourner des données de démonstration
+      // Retourner des données de démonstration avec progression dynamique
+      const currentDate = new Date()
+      const features = [
+        {
+          id: 1,
+          name: 'Système de notifications',
+          description: 'Implémenter un système de notifications en temps réel pour les utilisateurs.',
+          priority: 'high',
+          status: 'in-progress',
+          assignee: 'Jean Dupont',
+          due_date: '2024-02-15',
+          created_at: '2024-01-01',
+          estimated_hours: 40,
+          actual_hours: 28
+        },
+        {
+          id: 2,
+          name: 'Interface mobile',
+          description: 'Développer une version mobile responsive de l\'application.',
+          priority: 'medium',
+          status: 'planned',
+          assignee: 'Marie Martin',
+          due_date: '2024-03-01',
+          created_at: '2024-01-15',
+          estimated_hours: 60,
+          actual_hours: 0
+        },
+        {
+          id: 3,
+          name: 'Export PDF',
+          description: 'Ajouter la fonctionnalité d\'export des rapports en PDF.',
+          priority: 'low',
+          status: 'testing',
+          assignee: 'Pierre Durand',
+          due_date: '2024-01-30',
+          created_at: '2024-01-10',
+          estimated_hours: 20,
+          actual_hours: 18
+        },
+        {
+          id: 4,
+          name: 'Authentification SSO',
+          description: 'Intégrer l\'authentification Single Sign-On avec Azure AD.',
+          priority: 'high',
+          status: 'completed',
+          assignee: 'Sophie Leroy',
+          due_date: '2024-01-15',
+          created_at: '2024-01-05',
+          estimated_hours: 30,
+          actual_hours: 30
+        }
+      ]
+
+      // Calculer la progression dynamiquement
+      const featuresWithProgress = features.map(feature => {
+        let progress = 0
+        
+        if (feature.status === 'completed') {
+          progress = 100
+        } else if (feature.status === 'planned') {
+          progress = 0
+        } else if (feature.estimated_hours > 0) {
+          // Calcul basé sur les heures estimées vs réelles
+          progress = Math.min(100, Math.round((feature.actual_hours / feature.estimated_hours) * 100))
+        } else {
+          // Calcul basé sur le temps écoulé depuis la création
+          const createdDate = new Date(feature.created_at)
+          const dueDate = new Date(feature.due_date)
+          const totalDuration = dueDate.getTime() - createdDate.getTime()
+          const elapsedDuration = currentDate.getTime() - createdDate.getTime()
+          
+          if (totalDuration > 0) {
+            const timeProgress = Math.min(100, Math.max(0, (elapsedDuration / totalDuration) * 100))
+            
+            // Ajuster selon le statut
+            switch (feature.status) {
+              case 'in-progress':
+                progress = Math.min(85, Math.max(10, timeProgress))
+                break
+              case 'testing':
+                progress = Math.min(95, Math.max(70, timeProgress))
+                break
+              default:
+                progress = Math.min(50, timeProgress)
+            }
+          }
+        }
+        
+        return {
+          ...feature,
+          progress: Math.round(progress)
+        }
+      })
+
       return {
         success: false,
-        data: [
-          {
-            id: 1,
-            name: 'Système de notifications',
-            description: 'Implémenter un système de notifications en temps réel pour les utilisateurs.',
-            priority: 'high',
-            status: 'in-progress',
-            assignee: 'Jean Dupont',
-            due_date: '2024-02-15',
-            progress: 75
-          },
-          {
-            id: 2,
-            name: 'Interface mobile',
-            description: 'Développer une version mobile responsive de l\'application.',
-            priority: 'medium',
-            status: 'planned',
-            assignee: 'Marie Martin',
-            due_date: '2024-03-01',
-            progress: 0
-          },
-          {
-            id: 3,
-            name: 'Export PDF',
-            description: 'Ajouter la fonctionnalité d\'export des rapports en PDF.',
-            priority: 'low',
-            status: 'testing',
-            assignee: 'Pierre Durand',
-            due_date: '2024-01-30',
-            progress: 90
-          },
-          {
-            id: 4,
-            name: 'Authentification SSO',
-            description: 'Intégrer l\'authentification Single Sign-On avec Azure AD.',
-            priority: 'high',
-            status: 'completed',
-            assignee: 'Sophie Leroy',
-            due_date: '2024-01-15',
-            progress: 100
-          }
-        ]
+        data: featuresWithProgress
       }
     }
   }

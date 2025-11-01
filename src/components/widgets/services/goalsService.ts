@@ -7,14 +7,14 @@ export const goalsService = {
     // Simulation d'un appel API avec délai
     await new Promise(resolve => setTimeout(resolve, 500))
     
-    return [
+    const currentDate = new Date()
+    const goals = [
       {
         id: '1',
         title: 'Augmenter le trafic web de 25%',
         description: 'Améliorer le référencement naturel et lancer une campagne de contenu pour augmenter le trafic organique du site web.',
         status: 'active' as GoalStatus,
         priority: 'high' as GoalPriority,
-        progress: 65,
         deadline: '2024-03-15',
         assignee: {
           id: '1',
@@ -31,7 +31,6 @@ export const goalsService = {
         description: 'Créer et déployer une campagne email marketing pour promouvoir nos nouveaux produits.',
         status: 'active' as GoalStatus,
         priority: 'medium' as GoalPriority,
-        progress: 30,
         deadline: '2024-02-28',
         assignee: {
           id: '2',
@@ -48,7 +47,6 @@ export const goalsService = {
         description: 'Analyser le parcours utilisateur et optimiser les pages de destination pour améliorer le taux de conversion.',
         status: 'completed' as GoalStatus,
         priority: 'high' as GoalPriority,
-        progress: 100,
         deadline: '2024-01-31',
         assignee: {
           id: '3',
@@ -65,7 +63,6 @@ export const goalsService = {
         description: 'Concevoir et implémenter un programme de fidélité pour retenir les clients existants.',
         status: 'paused' as GoalStatus,
         priority: 'low' as GoalPriority,
-        progress: 15,
         deadline: '2024-04-30',
         assignee: {
           id: '4',
@@ -81,7 +78,6 @@ export const goalsService = {
         description: 'Développer une stratégie de contenu pour augmenter l\'engagement sur les réseaux sociaux.',
         status: 'active' as GoalStatus,
         priority: 'medium' as GoalPriority,
-        progress: 45,
         deadline: '2024-03-31',
         assignee: {
           id: '5',
@@ -93,6 +89,46 @@ export const goalsService = {
         updated_at: '2024-02-12T15:45:00Z'
       }
     ]
+
+    // Calculer la progression dynamiquement pour chaque objectif
+    return goals.map(goal => {
+      let progress = 0
+      
+      if (goal.status === 'completed') {
+        progress = 100
+      } else if (goal.status === 'paused') {
+        // Pour les objectifs en pause, garder une progression faible
+        progress = Math.floor(Math.random() * 20) + 5 // 5-25%
+      } else {
+        // Calcul basé sur le temps écoulé depuis la création
+        const createdDate = new Date(goal.created_at)
+        const deadlineDate = new Date(goal.deadline)
+        const totalDuration = deadlineDate.getTime() - createdDate.getTime()
+        const elapsedDuration = currentDate.getTime() - createdDate.getTime()
+        
+        if (totalDuration > 0) {
+          const timeProgress = Math.min(100, Math.max(0, (elapsedDuration / totalDuration) * 100))
+          
+          // Ajuster selon la priorité et le statut
+          if (goal.priority === 'high') {
+            progress = Math.min(90, Math.max(20, timeProgress * 1.2))
+          } else if (goal.priority === 'medium') {
+            progress = Math.min(80, Math.max(15, timeProgress))
+          } else {
+            progress = Math.min(60, Math.max(10, timeProgress * 0.8))
+          }
+          
+          // Ajouter une variation aléatoire pour plus de réalisme
+          const variation = (Math.random() - 0.5) * 20 // ±10%
+          progress = Math.max(0, Math.min(100, progress + variation))
+        }
+      }
+      
+      return {
+        ...goal,
+        progress: Math.round(progress)
+      }
+    })
   },
 
   // Créer un nouvel objectif
