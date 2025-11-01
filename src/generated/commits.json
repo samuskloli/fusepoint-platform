@@ -1,5 +1,10 @@
 [
   {
+    "hash": "96a7af3ecb8d7be7cfe580e00f3b5e706a449e53",
+    "date": "2025-11-02 00:50:21 +0100",
+    "subject": "fix: Correction des données statiques dans les services"
+  },
+  {
     "hash": "0ae6c3e6298b9d8d83274ac509324e575c6cb72f",
     "date": "2025-11-02 00:33:58 +0100",
     "subject": "feat: Synchronisation complète - Améliorations système de tâches, monitoring et déploiement"
@@ -53,10 +58,5 @@
     "hash": "0415afd4842269edef47e219aeabe9949f61f81d",
     "date": "2025-10-31 23:58:20 +0100",
     "subject": "chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend)"
-  },
-  {
-    "hash": "c9799fe70d1a6aeb819cee8105716743681ff573",
-    "date": "2025-10-31 22:35:54 +0100",
-    "subject": "fix(agent): make getAgentClients resilient to remote DB schema (conditional joins and order by fallback)"
   }
 ]
