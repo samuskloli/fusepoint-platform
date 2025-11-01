@@ -263,6 +263,119 @@ class EmailService {
   }
 
   /**
+   * Récupérer le template d'email pour l'inscription bêta depuis les paramètres
+   */
+  async getBetaSignupTemplate() {
+    this.initializePlatformSettings();
+    const defaults = {
+      subject: 'Bienvenue dans la bêta Fusepoint — construisons la suite ensemble',
+      body: [
+        'Félicitations et un grand merci pour votre inscription à notre programme de bêta‑test !',
+        'Votre participation marque le début d’une belle aventure commune. Vous serez parmi les premiers à découvrir, tester et façonner ce que nous construisons — et votre retour comptera vraiment.',
+        'Nous vous contacterons dès le lancement officiel de la phase de test.',
+        'En attendant, préparez‑vous à vivre une expérience motivante, pleine d’idées, d’échanges et d’innovation.',
+        'À très bientôt,'
+      ].join('\n\n')
+    };
+
+    let subject = defaults.subject;
+    let body = defaults.body;
+
+    try {
+      if (this.platformSettingsService) {
+        const s = await this.platformSettingsService.getSetting('beta_signup_email_subject');
+        const b = await this.platformSettingsService.getSetting('beta_signup_email_body');
+        subject = (s && s.value) ? s.value : subject;
+        body = (b && b.value) ? b.value : body;
+        // Migration douce: si l'ancien texte connu est détecté, on remplace par le nouveau défaut
+        try {
+          const oldBody = String(b?.value || '');
+          const looksLikeOld = [
+            'un truc bien motivant',
+            'Nous nous réjouissons de partager cette aventure',
+            'Vous serez contacté dès que la phase de bêta-test commencera'
+          ].some(snippet => oldBody.includes(snippet));
+          if (b && looksLikeOld && oldBody !== defaults.body) {
+            await this.platformSettingsService.updateOrCreateSetting(
+              'beta_signup_email_body',
+              defaults.body,
+              'text',
+              'beta',
+              "Contenu de l'email envoyé aux inscrits à la bêta"
+            );
+            body = defaults.body;
+          }
+        } catch (mErr) {
+          // Ne pas faire échouer la récupération du template en cas d'erreur de migration
+          console.warn('⚠️ Échec migration douce du template bêta:', mErr?.message || mErr);
+        }
+        // Créer les paramètres s'ils n'existent pas
+        if (!s) {
+          await this.platformSettingsService.updateOrCreateSetting(
+            'beta_signup_email_subject',
+            defaults.subject,
+            'string',
+            'beta',
+            "Sujet de l'email envoyé aux inscrits à la bêta"
+          );
+        }
+        if (!b) {
+          await this.platformSettingsService.updateOrCreateSetting(
+            'beta_signup_email_body',
+            defaults.body,
+            'text',
+            'beta',
+            "Contenu de l'email envoyé aux inscrits à la bêta"
+          );
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Impossible de récupérer ou initialiser le template bêta:', e?.message || e);
+    }
+
+    return { subject, body };
+  }
+
+  /**
+   * Envoyer l'email de remerciement à un inscrit à la bêta
+   */
+  async sendBetaSignupThankYou(userEmail, signupData = {}) {
+    try {
+      const { subject, body } = await this.getBetaSignupTemplate();
+
+      const name = `${signupData.first_name || ''} ${signupData.last_name || ''}`.trim();
+      const greeting = name ? `Bonjour ${name},` : 'Bonjour,';
+
+      // Transformer le body en paragraphes HTML (support \n comme séparateur)
+      const paragraphs = String(body)
+        .split(/\n\n+/)
+        .map(p => `<p style="margin: 0 0 16px;">${p}</p>`) 
+        .join('\n');
+
+      const htmlContent = `
+        <p style="margin: 0 0 16px;">${greeting}</p>
+        ${paragraphs}
+      `;
+
+      const frontendUrl = await this.getFrontendUrl();
+      const html = this.getBaseTemplate(
+        subject,
+        htmlContent,
+        { text: 'Découvrir Fusepoint', url: frontendUrl }
+      );
+
+      return await this.sendEmail({
+        to: userEmail,
+        subject,
+        html
+      });
+    } catch (error) {
+      console.error('❌ Erreur envoi email inscription bêta:', error?.message || error);
+      throw error;
+    }
+  }
+
+  /**
    * Envoyer un email de confirmation de création de compte
    */
   async sendAccountConfirmation(userEmail, userName, confirmationToken) {
