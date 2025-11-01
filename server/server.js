@@ -326,6 +326,10 @@ app.use('/api', (req, res, next) => {
   // mais certains environnements/proxies peuvent laisser req.originalUrl commencer par '/api/health'.
   // On couvre les deux cas pour éviter tout faux-positif d'auth.
   const original = String(req.originalUrl || '');
+  // Debug: tracer les requêtes health en production
+  if (original.includes('/api/health') || req.path === '/health') {
+    console.log('[auth-skip-debug] method=%s path=%s originalUrl=%s', req.method, req.path, original);
+  }
   if (
     req.method === 'GET' && (
       req.path === '/health' || original.includes('/api/health')
