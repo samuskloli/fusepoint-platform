@@ -322,7 +322,15 @@ app.use('/api', (req, res, next) => {
     return next();
   }
   // Exclure l'endpoint de santé public
-  if (req.method === 'GET' && req.path === '/health') {
+  // Note: selon Express, lorsqu'un middleware est monté sur '/api', req.path peut être '/health',
+  // mais certains environnements/proxies peuvent laisser req.originalUrl commencer par '/api/health'.
+  // On couvre les deux cas pour éviter tout faux-positif d'auth.
+  const original = String(req.originalUrl || '');
+  if (
+    req.method === 'GET' && (
+      req.path === '/health' || original.includes('/api/health')
+    )
+  ) {
     return next();
   }
   // Exclure la génération de QR publique pour LinkPoints
