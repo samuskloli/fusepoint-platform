@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+
+# Script pour vérifier le contenu du fichier .env sur le serveur
+
+set timeout 30
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+
+spawn ssh -o StrictHostKeyChecking=accept-new $remote "cd '$docroot/server' && echo '=== Contenu des variables SMTP dans .env ===' && grep -E '^(SMTP_|EMAIL_|TEST_)' .env"
+expect {
+  -re ".*password:" { send "$pass\r" }
+}
+expect eof

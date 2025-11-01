@@ -1,5 +1,20 @@
 [
   {
+    "hash": "d18d0be8cec971691c8c652f33f3bb02d38b6e5e",
+    "date": "2025-11-01 15:09:21 +0100",
+    "subject": "feat(beta-email): migration douce du corps de l’email stocké + rechargement du modèle côté frontend à l’ouverture de la modale"
+  },
+  {
+    "hash": "646df4a56f9d10b166be6b5adb499d45efc85f9d",
+    "date": "2025-11-01 00:03:05 +0100",
+    "subject": "chore(deploy): aligner CHANGELOG et métadonnées de déploiement"
+  },
+  {
+    "hash": "6d95299ff82361cae7fc68e728e4dda834621f0b",
+    "date": "2025-11-01 00:02:16 +0100",
+    "subject": "chore(deploy): pousser toutes les mises à jour locales (modale widgets, sélection multiple, DnD, corrections UI/serveur)"
+  },
+  {
     "hash": "0415afd4842269edef47e219aeabe9949f61f81d",
     "date": "2025-10-31 23:58:20 +0100",
     "subject": "chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend)"
@@ -43,20 +58,5 @@
     "hash": "4ae3f0c22438c6af3259b7411f521bf691a6e494",
     "date": "2025-10-27 16:38:46 +0100",
     "subject": "Sync: push complet de tous les changements en cours (serveur, scripts, config, vues)"
-  },
-  {
-    "hash": "041d4a070710878a290e78787d1b1fd9f317af11",
-    "date": "2025-10-27 16:38:03 +0100",
-    "subject": "Landing mobile: marges/espacements sections QR & Projets, fix débordement texte et conteneurs anim responsives"
-  },
-  {
-    "hash": "7b6dd93160aed4625a098e93850b12007621d52a",
-    "date": "2025-10-26 23:54:54 +0100",
-    "subject": "chore(repo): sync remaining changes; stop tracking .env.development; ignore symlinked public uploads/backup_redirects"
-  },
-  {
-    "hash": "79b3a320407c633ff76a9867b6183a26a03b1cdd",
-    "date": "2025-10-26 23:51:14 +0100",
-    "subject": "feat(beta): add first/last name; company optional; update SuperAdmin table"
   }
 ]

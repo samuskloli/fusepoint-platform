@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+# Script pour redémarrer l'API et tester la configuration SMTP
+
+set timeout 60
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts {Démarrage de l'API avec PM2...}
+do_ssh $remote $pass "cd '$docroot' && npx pm2 start '$docroot/ecosystem.prod.config.js' --only fusepoint-api --update-env && sleep 3 && npx pm2 ls"
+
+puts {Test de la configuration SMTP...}
+do_ssh $remote $pass "cd '$docroot' && node './server/test-email.js'"
+
+puts {Terminé.}

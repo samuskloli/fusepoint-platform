@@ -8,7 +8,9 @@ import fs from 'fs'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const apiTarget = env.VITE_API_URL || 'http://localhost:3002'
+  // Par défaut, le backend utilise le port 3004 en développement (env.PORT)
+  // Utiliser ce port par défaut pour le proxy de développement si VITE_API_URL n'est pas défini
+  const apiTarget = env.VITE_API_URL || 'http://localhost:3004'
   const uploadsProxy = env.VITE_UPLOADS_PROXY === '1'
 
   // Debug: afficher la configuration de proxy détectée

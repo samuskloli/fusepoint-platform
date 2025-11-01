@@ -1,13 +1,24 @@
 // Charger l'environnement depuis la racine par défaut
 require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
+// IMPORTANT: Charger les .env AVANT tout import potentiel de services qui lisent process.env
+try {
+  // .env spécifique au dossier server
+  require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+} catch (_) {}
+try {
+  // .env.mariadb doit écraser toute valeur existante (certains hébergeurs injectent MARIADB_HOST=localhost)
+  require('dotenv').config({ path: path.resolve(__dirname, '.env.mariadb'), override: true });
+  console.log('ℹ️ server.js: MARIADB_HOST =', process.env.MARIADB_HOST);
+} catch (_) {}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const compression = require('compression');
 const morgan = require('morgan');
-const path = require('path');
-const fs = require('fs');
 const { google } = require('googleapis');
 const { GoogleAuth } = require('google-auth-library');
 const { BetaAnalyticsDataClient } = require('@google-analytics/data');
@@ -15,15 +26,6 @@ const nodemailer = require('nodemailer');
 const multer = require('multer');
 const sharp = require('sharp');
 const debugRoutes = require('./routes/debugDb');
-
-// Charger également l'environnement spécifique au serveur si présent
-try {
-  require('dotenv').config({ path: path.resolve(__dirname, '.env') });
-} catch (_) {}
-// Charger la configuration MariaDB dédiée si disponible
-try {
-  require('dotenv').config({ path: path.resolve(__dirname, '.env.mariadb') });
-} catch (_) {}
 
 // Services
 const aiChatService = require('./services/aiChatService');
@@ -59,6 +61,19 @@ const projectDashboardRoutes = require('./routes/projectDashboard');
 const projectFilesRoutes = require('./routes/projectFiles');
 const projectTasksRoutes = require('./routes/projectTasks');
 const projectWidgetsRoutes = require('./routes/projectWidgets');
+// Certaines routes peuvent ne pas être déployées sur tous les environnements
+let projectNotesRoutes = null;
+let projectNoteCategoriesRoutes = null;
+try {
+  projectNotesRoutes = require('./routes/projectNotes');
+} catch (e) {
+  console.warn('⚠️ Route projectNotes non présente, ignorée:', e.code || e.message);
+}
+try {
+  projectNoteCategoriesRoutes = require('./routes/projectNoteCategories');
+} catch (e) {
+  console.warn('⚠️ Route projectNoteCategories non présente, ignorée:', e.code || e.message);
+}
 const linkpointsRoutes = require('./routes/linkpoints');
 const pushRoutes = require('./routes/push');
 // Ajouter routes publiques génériques
@@ -274,6 +289,16 @@ app.use('/api/public', publicRoutes);
 // Route d'installation (protégée par env INSTALL_ENABLED)
 app.use('/api/install', installRoutes);
 
+// Endpoint de santé sous /api pour les sondes externes et scripts de déploiement
+// Note: placé AVANT le middleware d'auth globale /api pour rester public
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    service: 'Fusepoint Platform API'
+  });
+});
+
 // Middleware d'authentification global pour toutes les autres routes API (sauf /api/auth et GET /api/files/signed)
 app.use('/api', (req, res, next) => {
   // Laisser passer les préflights CORS
@@ -282,11 +307,22 @@ app.use('/api', (req, res, next) => {
   }
   // Exclure les routes d'authentification (gère req.path et req.originalUrl)
   const urlPath = (req.path || req.originalUrl || '');
+  // En développement, si INSTALL_ENABLED=true, autoriser les routes de debug sans auth
+  if (process.env.NODE_ENV !== 'production') {
+    const installEnabled = ['true', '1'].includes(String(process.env.INSTALL_ENABLED || '').toLowerCase());
+    if (installEnabled && (urlPath.startsWith('/debug'))) {
+      return next();
+    }
+  }
   if (urlPath.startsWith('/auth') || urlPath.startsWith('/api/auth')) {
     return next();
   }
   // Exclure UNIQUEMENT la consommation GET des URL signées
   if (req.method === 'GET' && req.path.startsWith('/files/signed')) {
+    return next();
+  }
+  // Exclure l'endpoint de santé public
+  if (req.method === 'GET' && req.path === '/health') {
     return next();
   }
   // Exclure la génération de QR publique pour LinkPoints
@@ -314,6 +350,12 @@ app.use('/projects', optimizedProjectConfigRoutes);
 app.use('/api/projects', projectDashboardRoutes);
 app.use('/api/projects', projectFilesRoutes);
 app.use('/api/projects', projectTasksRoutes);
+if (projectNotesRoutes) {
+  app.use('/api/projects', projectNotesRoutes);
+}
+if (projectNoteCategoriesRoutes) {
+  app.use('/api/projects', projectNoteCategoriesRoutes);
+}
 app.use('/api/projects', projectWidgetsRoutes);
 app.use('/api/client-widget-configs', clientWidgetConfigsRoutes);
 app.use('/api/widgets', widgetsRoutes);
@@ -915,6 +957,7 @@ function startServer() {
 }
 
 console.log(`⏳ Timeout de démarrage DB: ${STARTUP_TIMEOUT_MS}ms`);
+// Démarrage du serveur avec les nouvelles routes Notes
 Promise.race([
   initializeDatabase(),
   new Promise((resolve) => setTimeout(resolve, STARTUP_TIMEOUT_MS))

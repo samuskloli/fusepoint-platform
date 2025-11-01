@@ -20,6 +20,7 @@ export default {
   "configurationSaved": "Configuration saved",
   "configSaved": "Configuration saved",
   "disabled": "Disabled",
+  "none": "None",
   "completed": "Completed",
   "inProgress": "In Progress",
   "pending": "Pending",
@@ -489,7 +490,24 @@ export default {
   // Notes (for Add Widget list)
   "notes": {
     "title": "Notes",
-    "description": "Write and manage notes"
+    "description": "Write and manage notes",
+    "add": "Add note",
+    "noNotes": "No notes yet",
+    "editNote": "Edit note",
+    "addNote": "Add note",
+    "showArchived": "Show archived",
+    "archive": "Archive",
+    "restore": "Restore",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Note title (optional)",
+    "content": "Content",
+    "contentPlaceholder": "Write your note...",
+    "tags": "Tags",
+    "tagsPlaceholder": "Tags (comma separated)",
+    "confirmDelete": "Are you sure you want to delete this note?",
+    "preview": "Preview",
+    "markdownHint": "Tip: Markdown and checklists are supported. Use - [ ] and - [x].",
+    "archiveOnCreate": "Archive this note"
   },
 
   // Additional top-level helper

@@ -94,6 +94,8 @@ export default {
   "header.goodMorning": "Bonjour {userName}, prêt pour une journée productive ?",
   "header.goodAfternoon": "Bon après-midi {userName}, comment se passent vos campagnes ?",
   "header.goodEvening": "Bonsoir {userName}, analysons vos performances du jour",
+  "viewMore": "Voir plus",
+  "viewLess": "Voir moins",
   // Ajout de clés génériques pour couvrir les traductions manquantes
   "label": "Libellé",
   "p": "Paragraphe",

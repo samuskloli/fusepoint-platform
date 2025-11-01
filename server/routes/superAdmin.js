@@ -12,6 +12,8 @@ const superAdminAuth = require('../middleware/superAdminAuth');
 const authMiddleware = require('../middleware/auth');
 const BetaSignupService = require('../services/betaSignupService');
 const betaService = new BetaSignupService();
+const EmailService = require('../services/emailService');
+const emailService = new EmailService();
 
 // Utiliser le service importé
 const platformService = platformSettingsService;
@@ -1035,5 +1037,93 @@ router.get('/beta-requests', authMiddleware, superAdminAuth.requireSuperAdmin(),
     res.status(500).json({ success: false, message: 'Erreur serveur', error: error.message });
   }
 });
+
+/**
+ * @route GET /api/super-admin/beta-email-template
+ * @desc Obtenir le sujet et le contenu de l'email envoyé aux inscrits à la bêta
+ * @access Super Admin
+ */
+router.get('/beta-email-template',
+  authMiddleware,
+  superAdminAuth.requireSuperAdmin(),
+  async (req, res) => {
+    try {
+      console.log('📨 [SuperAdmin] GET /beta-email-template', {
+        userId: req.user?.id,
+        email: req.user?.email,
+        time: new Date().toISOString()
+      })
+      const tpl = await emailService.getBetaSignupTemplate();
+      res.json({ success: true, data: tpl });
+    } catch (error) {
+      console.error('❌ Erreur récupération template bêta:', error);
+      res.status(500).json({ success: false, message: 'Erreur lors de la récupération du template' });
+    }
+  }
+);
+
+/**
+ * @route PUT /api/super-admin/beta-email-template
+ * @desc Mettre à jour le sujet et le contenu de l'email bêta
+ * @access Super Admin
+ */
+router.put('/beta-email-template',
+  authMiddleware,
+  superAdminAuth.requireSuperAdmin(),
+  superAdminAuth.requirePermission('platform.settings.write'),
+  superAdminAuth.logAction('beta_email_template_update', 'Mise à jour du template email bêta'),
+  async (req, res) => {
+    try {
+      const { subject, body } = req.body || {};
+      if (!subject || !body) {
+        return res.status(400).json({ success: false, message: 'Sujet et contenu sont requis' });
+      }
+
+      await platformService.updateOrCreateSetting(
+        'beta_signup_email_subject',
+        String(subject),
+        'string',
+        'beta',
+        "Sujet de l'email envoyé aux inscrits à la bêta"
+      );
+      await platformService.updateOrCreateSetting(
+        'beta_signup_email_body',
+        String(body),
+        'text',
+        'beta',
+        "Contenu de l'email envoyé aux inscrits à la bêta"
+      );
+
+      res.json({ success: true, message: 'Template mis à jour avec succès' });
+    } catch (error) {
+      console.error('❌ Erreur mise à jour template bêta:', error);
+      res.status(500).json({ success: false, message: error.message || 'Erreur lors de la mise à jour du template' });
+    }
+  }
+);
+
+/**
+ * @route POST /api/super-admin/beta-email-test
+ * @desc Envoyer un email de test du modèle bêta à une adresse fournie
+ * @access Super Admin
+ */
+router.post('/beta-email-test',
+  authMiddleware,
+  superAdminAuth.requireSuperAdmin(),
+  superAdminAuth.logAction('beta_email_test_send', 'Envoi d\'un email de test bêta'),
+  async (req, res) => {
+    try {
+      const { to, first_name, last_name } = req.body || {};
+      if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(to))) {
+        return res.status(400).json({ success: false, message: 'Adresse email de test invalide' });
+      }
+      const result = await emailService.sendBetaSignupThankYou(to, { first_name, last_name });
+      return res.json({ success: true, message: 'Email de test envoyé', data: result });
+    } catch (error) {
+      console.error('❌ Erreur envoi email de test bêta:', error?.message || error);
+      return res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi de l\'email de test', error: error?.message || String(error) });
+    }
+  }
+);
 
 module.exports = router;

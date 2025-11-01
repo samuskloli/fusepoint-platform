@@ -1,0 +1,26 @@
+#!/usr/bin/expect -f
+
+# Script pour corriger directement les variables SMTP sur le serveur
+
+set timeout 30
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts {Correction directe des variables SMTP dans server/.env...}
+do_ssh $remote $pass "cd '$docroot/server' && sed -i.bak 's/^SMTP_USER=.*/SMTP_USER=info@fusepoint.ch/' .env && sed -i 's/^SMTP_PASS=.*/SMTP_PASS=\"w3\\\$a8W!Tf7m_#MF\"/' .env && echo '✓ Variables SMTP corrigées' && grep -E '^(SMTP_USER|SMTP_PASS)=' .env"
+
+puts {Redémarrage de l'API...}
+do_ssh $remote $pass "cd '$docroot' && npx pm2 restart fusepoint-api && sleep 2"
+
+puts {Terminé.}

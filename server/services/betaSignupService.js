@@ -65,8 +65,10 @@ class BetaSignupService {
       String(usecase || '').trim()
     ]);
 
+    // Normaliser l'ID pour éviter l'erreur JSON BigInt
+    const normalizedId = (typeof result.insertId === 'bigint') ? result.insertId.toString() : result.insertId;
     const signup = {
-      id: result.insertId,
+      id: normalizedId,
       company: String(company || '').trim(),
       first_name: String(first_name || '').trim(),
       last_name: String(last_name || '').trim(),
@@ -79,6 +81,18 @@ class BetaSignupService {
       await this.notifySuperAdmins(signup);
     } catch (err) {
       console.warn('⚠️ Erreur lors de la notification des super admins:', err?.message || err);
+    }
+
+    // Envoyer un email de félicitations et remerciement au contact
+    try {
+      await this.emailService.sendBetaSignupThankYou(signup.contact, {
+        first_name: signup.first_name,
+        last_name: signup.last_name,
+        company: signup.company,
+        usecase: signup.usecase
+      });
+    } catch (emailErr) {
+      console.warn('⚠️ Échec envoi email de remerciement bêta:', emailErr?.message || emailErr);
     }
 
     // Sécuriser le log pour éviter toute erreur après insertion
@@ -106,7 +120,12 @@ class BetaSignupService {
       LIMIT ? OFFSET ?
     `;
     const rows = await databaseService.query(query, [Number(limit), Number(offset)]);
-    return Array.isArray(rows) ? rows : [];
+    // Éviter BigInt dans la réponse JSON
+    const safeRows = Array.isArray(rows) ? rows.map(r => ({
+      ...r,
+      id: (typeof r.id === 'bigint') ? r.id.toString() : r.id
+    })) : [];
+    return safeRows;
   }
 
   async notifySuperAdmins(signup) {

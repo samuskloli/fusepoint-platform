@@ -237,6 +237,7 @@
                   v-model="item.completed"
                   type="checkbox"
                   class="checkbox"
+                  @change="onItemToggle(checklist, item)"
                 >
                 <label :for="`item-${item.id}`" class="checkbox-label">
                   <div class="item-content">
@@ -673,6 +674,48 @@ const { user } = useAuth()
     const formatDate = (date) => {
       if (!date) return ''
       return new Date(date).toLocaleDateString()
+    }
+
+    // Recalcule la progression et le statut d'une checklist locale
+    const recomputeChecklistProgress = (checklist: Checklist) => {
+      const total = checklist.items?.length || 0
+      const done = checklist.items?.filter(i => !!i.completed).length || 0
+      const progress = total === 0 ? 0 : Math.round((done / total) * 100)
+      checklist.progress = progress
+      // Mettre à jour un statut indicatif côté UI
+      if (progress === 100) checklist.status = 'completed'
+      else if (done > 0) checklist.status = 'in_progress'
+      else checklist.status = 'pending'
+    }
+
+    // Persiste la bascule d'un élément (case cochée/décochée)
+    const onItemToggle = async (checklist: Checklist, item: ChecklistItem) => {
+      try {
+        // Respecter la config: sauvegarde auto activée par défaut
+        if (widgetConfig.value.autoSave) {
+          const payload: Partial<ChecklistItem> = {
+            completed: !!item.completed,
+            completed_at: item.completed ? new Date().toISOString() : null
+          }
+          const res = await projectManagementService.updateChecklistItem(item.id, payload)
+          if (res.success && res.data) {
+            // Réinjecter l'élément mis à jour dans la checklist locale
+            const idx = checklist.items.findIndex(i => i.id === item.id)
+            if (idx !== -1) checklist.items[idx] = { ...checklist.items[idx], ...res.data }
+          } else if (!res.success) {
+            // Si l'API retourne une erreur, revenir à l'état précédent
+            item.completed = !item.completed
+            showError(res.error || t('errors.saveFailed'))
+            return
+          }
+        }
+        // Mettre à jour la progression et le statut côté UI
+        recomputeChecklistProgress(checklist)
+      } catch (err) {
+        // En cas d'erreur réseau, rétablir l'état précédent
+        item.completed = !item.completed
+        showError(t('errors.saveFailed'))
+      }
     }
     
     // Lifecycle

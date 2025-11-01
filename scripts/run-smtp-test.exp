@@ -1,0 +1,16 @@
+#!/usr/bin/expect -f
+
+# Exécute uniquement le script de test SMTP côté serveur et affiche le résultat
+
+set timeout 120
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+
+spawn ssh -o StrictHostKeyChecking=accept-new $remote "cd '$docroot' && node './server/test-email.js'"
+expect {
+  -re ".*password:" { send "$pass\r" }
+}
+interact

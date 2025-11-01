@@ -81,3 +81,12 @@ Commits inclus:
 - 16aaa66 ✨ Design & Documentation: Mise à jour professionnelle (Samuel Oliveira)
 - bc75add Update .env.development (samuskloli)
 
+## Déploiement 2025-10-31T23:03:19Z
+Serveur: 57-104359.ssh.hosting-ik.com
+Branche: main
+Chemin distant: /srv/customer/sites/fusepoint.ch
+
+Commits inclus:
+- 646df4a chore(deploy): aligner CHANGELOG et métadonnées de déploiement (Samuel Oliveira)
+- 6d95299 chore(deploy): pousser toutes les mises à jour locales (modale widgets, sélection multiple, DnD, corrections UI/serveur) (Samuel Oliveira)
+

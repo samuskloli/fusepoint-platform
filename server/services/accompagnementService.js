@@ -6,7 +6,12 @@ class AccompagnementService {
     constructor() {
         this.mariadb = new MariaDBConfig();
         this.initialized = false;
-        this.initDatabase();
+        // Ne pas faire planter l'application si la DB accompagnement est indisponible
+        // Lancer l'initialisation de manière asynchrone et gérer les erreurs localement
+        this.initDatabase().catch((err) => {
+            console.warn('⚠️ AccompagnementService: initialisation en échec (non bloquant):', err && err.message ? err.message : err);
+            this.initialized = false;
+        });
     }
 
     async initDatabase() {
@@ -19,8 +24,10 @@ class AccompagnementService {
             await this.ensureConversationsRequestIdColumn();
             this.initialized = true;
         } catch (error) {
-            console.error('Erreur connexion base de données accompagnement:', error);
-            throw error;
+            // Ne pas propager l'erreur pour éviter de faire planter le serveur au démarrage
+            console.error('Erreur connexion base de données accompagnement (non bloquant):', error);
+            this.initialized = false;
+            return false;
         }
     }
 

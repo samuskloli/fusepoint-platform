@@ -4,6 +4,18 @@
  */
 
 const mariadb = require('mariadb');
+const path = require('path');
+// Charge explicitement les variables d'environnement MariaDB depuis server/.env.mariadb
+try {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env.mariadb'), override: true });
+  if (process.env.MARIADB_HOST) {
+    console.log('ℹ️ mariadb.config: MARIADB_HOST=', process.env.MARIADB_HOST);
+  } else {
+    console.warn('⚠️ mariadb.config: MARIADB_HOST non défini, utilisation des valeurs par défaut (localhost).');
+  }
+} catch (e) {
+  console.warn('⚠️ mariadb.config: Échec du chargement de dotenv (.env.mariadb):', e.message);
+}
 
 class MariaDBConfig {
   constructor() {
@@ -47,6 +59,13 @@ class MariaDBConfig {
    */
   async createPool() {
     try {
+      console.log('🛠️ Création du pool MariaDB avec:', {
+        host: this.config.host,
+        port: this.config.port,
+        user: this.config.user,
+        database: this.config.database,
+        connectionLimit: this.config.connectionLimit
+      });
       this.pool = mariadb.createPool(this.config);
       this.poolStats.createdAt = Date.now();
       console.log('✅ Pool de connexions MariaDB créé');

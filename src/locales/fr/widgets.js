@@ -21,6 +21,7 @@ export default {
   "configurationSaved": "Configuration sauvegardée",
   "configSaved": "Configuration sauvegardée",
   "disabled": "Désactivé",
+  "none": "Aucun",
   "completed": "Terminé",
   "inProgress": "En cours",
   "pending": "En attente",
@@ -754,7 +755,24 @@ export default {
   // Feedback Widget
   "notes": {
     "title": "Notes",
-    "description": "Prendre et organiser des notes du projet"
+    "description": "Prendre et organiser des notes du projet",
+    "add": "Ajouter une note",
+    "noNotes": "Aucune note pour l'instant",
+    "editNote": "Modifier la note",
+    "addNote": "Ajouter une note",
+    "showArchived": "Afficher archivées",
+    "archive": "Archiver",
+    "restore": "Restaurer",
+    "titleLabel": "Titre",
+    "titlePlaceholder": "Titre de la note (optionnel)",
+    "content": "Contenu",
+    "contentPlaceholder": "Écrivez votre note...",
+    "tags": "Tags",
+    "tagsPlaceholder": "Tags (séparés par des virgules)",
+    "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette note ?",
+    "preview": "Aperçu",
+    "markdownHint": "Astuce: Markdown et checklists sont supportés. Utilisez - [ ] et - [x].",
+    "archiveOnCreate": "Archiver cette note"
   },
   "feedback": {
     "title": "Commentaires",

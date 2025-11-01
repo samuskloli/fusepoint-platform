@@ -107,6 +107,12 @@ class DatabaseService {
         console.warn('⚠️ Fichier client_projects_schema.sql non trouvé');
       }
 
+      // S'assurer que les tables critiques existent au minimum (utilisateurs, entreprises, associations, sessions)
+      await this.ensureCompaniesBaseTable(conn);
+      await this.ensureUsersBaseTable(conn);
+      await this.ensureUserCompaniesBaseTable(conn);
+      await this.ensureUserSessionsBaseTable(conn);
+
       // S'assurer que la table files existe au minimum
       await this.ensureFilesBaseTable(conn);
 
@@ -349,6 +355,135 @@ class DatabaseService {
       }
     } catch (error) {
       console.warn("⚠️ Impossible de vérifier/créer la table files:", error.message);
+    }
+  }
+
+  /**
+   * Crée une table users minimale si elle n'existe pas
+   */
+  async ensureUsersBaseTable(conn) {
+    try {
+      const [tables] = await conn.query("SHOW TABLES LIKE 'users'");
+      const exists = Array.isArray(tables) && tables.length > 0;
+      if (!exists) {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password_hash VARCHAR(255) NOT NULL,
+            first_name VARCHAR(100),
+            last_name VARCHAR(100),
+            role VARCHAR(50) DEFAULT 'user',
+            is_active TINYINT(1) DEFAULT 1,
+            onboarding_completed TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            last_login TIMESTAMP NULL DEFAULT NULL
+          )
+        `);
+        try {
+          await conn.query("CREATE INDEX idx_users_email ON users (email)");
+        } catch (e) {
+          // Ignorer si l'index existe déjà
+        }
+        console.log('👤 Table users minimale créée');
+      }
+    } catch (error) {
+      console.warn("⚠️ Impossible de vérifier/créer la table users:", error.message);
+    }
+  }
+
+  /**
+   * Crée une table companies minimale si elle n'existe pas
+   */
+  async ensureCompaniesBaseTable(conn) {
+    try {
+      const [tables] = await conn.query("SHOW TABLES LIKE 'companies'");
+      const exists = Array.isArray(tables) && tables.length > 0;
+      if (!exists) {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS companies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            industry VARCHAR(100),
+            size VARCHAR(50),
+            location VARCHAR(255),
+            website VARCHAR(255),
+            description TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        try {
+          await conn.query("CREATE INDEX idx_companies_name ON companies (name)");
+        } catch (e) {
+          // Ignorer si l'index existe déjà
+        }
+        console.log('🏢 Table companies minimale créée');
+      }
+    } catch (error) {
+      console.warn("⚠️ Impossible de vérifier/créer la table companies:", error.message);
+    }
+  }
+
+  /**
+   * Crée une table user_companies minimale si elle n'existe pas
+   */
+  async ensureUserCompaniesBaseTable(conn) {
+    try {
+      const [tables] = await conn.query("SHOW TABLES LIKE 'user_companies'");
+      const exists = Array.isArray(tables) && tables.length > 0;
+      if (!exists) {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS user_companies (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            company_id INT NOT NULL,
+            role VARCHAR(50) DEFAULT 'user',
+            permissions TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        try {
+          await conn.query("CREATE INDEX idx_user_companies_user ON user_companies (user_id)");
+          await conn.query("CREATE INDEX idx_user_companies_company ON user_companies (company_id)");
+        } catch (e) {
+          // Ignorer si l'index existe déjà
+        }
+        console.log('🔗 Table user_companies minimale créée');
+      }
+    } catch (error) {
+      console.warn("⚠️ Impossible de vérifier/créer la table user_companies:", error.message);
+    }
+  }
+
+  /**
+   * Crée une table user_sessions minimale si elle n'existe pas
+   */
+  async ensureUserSessionsBaseTable(conn) {
+    try {
+      const [tables] = await conn.query("SHOW TABLES LIKE 'user_sessions'");
+      const exists = Array.isArray(tables) && tables.length > 0;
+      if (!exists) {
+        await conn.query(`
+          CREATE TABLE IF NOT EXISTS user_sessions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL,
+            session_token VARCHAR(255) NOT NULL UNIQUE,
+            expires_at DATETIME NOT NULL,
+            ip_address VARCHAR(100),
+            user_agent VARCHAR(255),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+        try {
+          await conn.query("CREATE INDEX idx_user_sessions_user ON user_sessions (user_id)");
+          await conn.query("CREATE INDEX idx_user_sessions_token ON user_sessions (session_token)");
+        } catch (e) {
+          // Ignorer si l'index existe déjà
+        }
+        console.log('🔑 Table user_sessions minimale créée');
+      }
+    } catch (error) {
+      console.warn("⚠️ Impossible de vérifier/créer la table user_sessions:", error.message);
     }
   }
 

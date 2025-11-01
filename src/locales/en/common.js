@@ -93,6 +93,8 @@ export default {
   "header.goodMorning": "Good morning {userName}, ready for a productive day?",
   "header.goodAfternoon": "Good afternoon {userName}, how are your campaigns going?",
   "header.goodEvening": "Good evening {userName}, let's analyze your day's performance",
+  "viewMore": "View more",
+  "viewLess": "View less",
   // Generic keys to cover missing translations
   "label": "Label",
   "p": "Paragraph",

@@ -1,6 +1,21 @@
 # Fusepoint Platform - Routing et headers pour SPA sous /app
 RewriteEngine On
 
+# CORS et préflight pour l'API (utilisable en .htaccess via SetEnvIf + Header)
+# Marquer les requêtes /api/* pour appliquer les en-têtes CORS
+SetEnvIf Request_URI "^/api/" IS_API=1
+
+# Répondre OK aux preflight OPTIONS sur /api/* pour éviter les 404 côté navigateur
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^ - [R=200,L]
+
+# En-têtes CORS pour l'API
+Header always set Access-Control-Allow-Origin "https://fusepoint.ch" env=IS_API
+Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS" env=IS_API
+Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With" env=IS_API
+Header always set Access-Control-Allow-Credentials "true" env=IS_API
+
 # Séparer API des réécritures SPA
 RewriteCond %{REQUEST_URI} ^/api/ [OR]
 RewriteCond %{REQUEST_URI} ^/uploads/
