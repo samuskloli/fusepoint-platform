@@ -52,8 +52,6 @@ export default {
   "compatibility": {
     "both": "Agent + Client"
   },
-  "tagsFilter": "Tags",
-  "tagsPlaceholder": "Tags (comma separated)",
   "perPage": "Per page",
   "page": "Page",
 
@@ -218,6 +216,30 @@ export default {
     "deleteItemSuccess": "Item deleted successfully",
     "saveSuccess": "Checklist saved successfully",
     "saveItemSuccess": "Item saved successfully"
+  },
+
+  // Task List Widget
+  "taskList": {
+    "title": "Task list",
+    "description": "Manage project tasks",
+    "addTask": "Add task",
+    "addFirstTask": "Add the first task",
+    "noTasks": "No tasks",
+    "editTask": "Edit task",
+    "deleteTask": "Delete task",
+    "total": "Total",
+    "pending": "Pending",
+    "completed": "Completed",
+    "filters": {
+      "all": "All",
+      "pending": "Pending",
+      "completed": "Completed",
+      "overdue": "Overdue"
+    },
+    "taskUpdated": "Task updated",
+    "confirmDelete": "Are you sure you want to delete this task?",
+    "taskDeleted": "Task deleted",
+    "taskCreated": "Task created"
   },
 
   // Stats Widget
@@ -502,8 +524,6 @@ export default {
     "titlePlaceholder": "Note title (optional)",
     "content": "Content",
     "contentPlaceholder": "Write your note...",
-    "tags": "Tags",
-    "tagsPlaceholder": "Tags (comma separated)",
     "confirmDelete": "Are you sure you want to delete this note?",
     "preview": "Preview",
     "markdownHint": "Tip: Markdown and checklists are supported. Use - [ ] and - [x].",

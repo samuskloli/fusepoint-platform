@@ -804,11 +804,22 @@ router.get('/:clientId/projects/:projectId/widgets/tasks',
       const { clientId, projectId } = req.validatedScope;
       const { status, priority, assigned_to, page = 1, limit = 50 } = req.query;
       
-      let whereClause = "WHERE client_id = ? AND project_id = ? AND status != 'cancelled'";
+      // Détecter les colonnes disponibles de la table tasks
+      const columns = await databaseService.query('SHOW COLUMNS FROM tasks');
+      const colNames = columns.map(c => c.Field);
+      const has = (name) => colNames.includes(name);
+
+      let whereClause = "WHERE client_id = ? AND project_id = ?";
       let params = [clientId, projectId];
+      // Par défaut, nous excluons les tâches annulées UNIQUEMENT si aucun filtre de statut n'est fourni.
+      // Si un filtre de statut est explicitement demandé, nous n'excluons pas 'cancelled' afin de
+      // permettre la récupération correcte des tâches annulées.
+      if (has('status') && !status) {
+        whereClause += " AND status != 'cancelled'";
+      }
       
       // Filtres optionnels
-      if (status) {
+      if (status && has('status')) {
         whereClause += ' AND status = ?';
         params.push(status);
       }
@@ -817,47 +828,52 @@ router.get('/:clientId/projects/:projectId/widgets/tasks',
         params.push(priority);
       }
       if (assigned_to) {
-        whereClause += ' AND assigned_to = ?';
-        params.push(assigned_to);
+        if (has('assigned_to')) {
+          whereClause += ' AND assigned_to = ?';
+          params.push(assigned_to);
+        } else if (has('agent_id')) {
+          whereClause += ' AND agent_id = ?';
+          params.push(assigned_to);
+        }
       }
       
       const pageNum = parseInt(page);
       const limitNum = parseInt(limit);
       const offset = (pageNum - 1) * limitNum;
 
-      // Détecter les colonnes disponibles de la table tasks
-      const columns = await databaseService.query('SHOW COLUMNS FROM tasks');
-      const colNames = columns.map(c => c.Field);
-      const has = (name) => colNames.includes(name);
-
       // Construire dynamiquement la liste de colonnes à sélectionner
       const selectCols = [
         'id',
         'title',
         has('description') ? 'description' : "'' AS description",
-        'status',
+        has('status') ? 'status' : "'pending' AS status",
         has('priority') ? 'priority' : "'normal' AS priority",
         has('assigned_to') ? 'assigned_to' : (has('agent_id') ? 'agent_id AS assigned_to' : 'NULL AS assigned_to'),
         has('due_date') ? 'due_date' : 'NULL AS due_date',
+        // Inclure les colonnes de progression si elles existent pour permettre l'affichage du % côté frontend
+        has('estimated_hours') ? 'estimated_hours' : 'NULL AS estimated_hours',
+        has('actual_hours') ? 'actual_hours' : 'NULL AS actual_hours',
         has('completed_at') ? 'completed_at' : 'NULL AS completed_at',
         'created_at',
         has('updated_at') ? 'updated_at' : 'created_at AS updated_at'
       ].join(', ');
       
       // Récupérer les tâches avec scoping strict
-      const tasks = await databaseService.query(`
-        SELECT ${selectCols}
-        FROM tasks 
-        ${whereClause}
-        ORDER BY 
-          CASE priority 
+      const orderBy = has('priority')
+        ? `CASE priority 
             WHEN 'urgent' THEN 1
             WHEN 'high' THEN 2
             WHEN 'medium' THEN 3
             WHEN 'low' THEN 4
             ELSE 5
-          END,
-          created_at DESC
+          END, created_at DESC`
+        : 'created_at DESC';
+
+      const tasks = await databaseService.query(`
+        SELECT ${selectCols}
+        FROM tasks 
+        ${whereClause}
+        ORDER BY ${orderBy}
         LIMIT ? OFFSET ?
       `, [...params, limitNum, offset]);
       
@@ -865,18 +881,25 @@ router.get('/:clientId/projects/:projectId/widgets/tasks',
       const normalizedTasks = tasks.map(t => ({
         ...t,
         id: typeof t.id === 'bigint' ? Number(t.id) : t.id,
-        assigned_to: typeof t.assigned_to === 'bigint' ? Number(t.assigned_to) : t.assigned_to
+        assigned_to: typeof t.assigned_to === 'bigint' ? Number(t.assigned_to) : t.assigned_to,
+        // Normaliser les heures en nombres pour le calcul de progression côté client
+        estimated_hours: typeof t.estimated_hours !== 'undefined' && t.estimated_hours !== null ? Number(t.estimated_hours) : null,
+        actual_hours: typeof t.actual_hours !== 'undefined' && t.actual_hours !== null ? Number(t.actual_hours) : null
       }));
       
       // Statistiques des tâches
-      const stats = await databaseService.query(`
-        SELECT 
-          status,
-          COUNT(*) as count
-        FROM tasks 
-        WHERE client_id = ? AND project_id = ? AND status != 'cancelled'
-        GROUP BY status
-      `, [clientId, projectId]);
+      let stats = [];
+      if (has('status')) {
+        // Inclure toutes les statuts dans les statistiques, y compris 'cancelled'.
+        stats = await databaseService.query(`
+          SELECT 
+            status,
+            COUNT(*) as count
+          FROM tasks 
+          WHERE client_id = ? AND project_id = ?
+          GROUP BY status
+        `, [clientId, projectId]);
+      }
       
       const normalizedStats = stats.reduce((acc, stat) => {
         const cnt = typeof stat.count === 'bigint' ? Number(stat.count) : stat.count;
@@ -899,7 +922,8 @@ router.get('/:clientId/projects/:projectId/widgets/tasks',
       console.error('Erreur récupération tâches:', error);
       res.status(500).json({ 
         success: false, 
-        error: 'Erreur lors de la récupération des tâches' 
+        error: 'Erreur lors de la récupération des tâches',
+        details: error?.sqlMessage || error?.message || String(error)
       });
     }
   }
@@ -914,7 +938,10 @@ router.post('/:clientId/projects/:projectId/widgets/tasks',
   async (req, res) => {
     try {
       const { clientId, projectId } = req.validatedScope;
-      const { title, description, priority = 'medium', assigned_to, due_date } = req.body;
+      let { title, description, priority = 'medium', assigned_to, due_date, category } = req.body;
+      const requestedStatus = req.body?.status;
+      // Progression
+      let { estimated_hours, actual_hours } = req.body;
       
       if (!title) {
         return res.status(400).json({ 
@@ -923,16 +950,161 @@ router.post('/:clientId/projects/:projectId/widgets/tasks',
         });
       }
       
-      // Créer la tâche avec scoping strict
-      const result = await databaseService.query(`
-        INSERT INTO tasks (
-          title, description, priority, client_id, project_id,
-          assigned_to, due_date, created_by
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [
-        title, description, priority, clientId, projectId,
-        assigned_to, due_date, req.user.id
-      ]);
+      // Détecter dynamiquement les colonnes disponibles de la table tasks
+      const columns = await databaseService.query('SHOW COLUMNS FROM tasks');
+      const colNames = columns.map(c => c.Field);
+      const has = (name) => colNames.includes(name);
+
+      // Déterminer dynamiquement les valeurs autorisées pour status (ENUM) s'il y en a
+      const statusCol = columns.find(c => c.Field === 'status');
+      let allowedStatuses = null;
+      if (statusCol && typeof statusCol.Type === 'string') {
+        const m = statusCol.Type.match(/^enum\((.*)\)$/i);
+        if (m && m[1]) {
+          allowedStatuses = m[1]
+            .split(',')
+            .map(s => s.trim().replace(/^'|"|`|\(|\)|\s+|\)$/g, ''))
+            .map(s => s.replace(/^'|"|`/, '').replace(/'|"|`$/, ''));
+        }
+      }
+
+      // Normaliser/valider certains champs pour éviter les erreurs SQL
+      const allowedPriorities = ['low', 'medium', 'high', 'urgent'];
+      if (typeof priority === 'string' && !allowedPriorities.includes(priority)) {
+        priority = 'medium';
+      }
+      if (typeof assigned_to !== 'undefined') {
+        assigned_to = assigned_to === null || assigned_to === '' ? null : Number(assigned_to);
+        if (Number.isNaN(assigned_to)) assigned_to = null;
+      }
+      if (typeof due_date !== 'undefined') {
+        const m = String(due_date || '').match(/^\d{4}-\d{2}-\d{2}$/);
+        if (!m) {
+          // tenter de convertir, sinon mettre null
+          const d = new Date(due_date);
+          if (isNaN(d.getTime())) {
+            due_date = null;
+          } else {
+            const pad = (n) => String(n).padStart(2, '0');
+            due_date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          }
+        }
+      }
+      if (typeof estimated_hours !== 'undefined') {
+        const n = Number(estimated_hours);
+        estimated_hours = Number.isFinite(n) && n >= 0 ? n : null;
+      }
+      if (typeof actual_hours !== 'undefined') {
+        const n = Number(actual_hours);
+        actual_hours = Number.isFinite(n) && n >= 0 ? n : 0;
+      }
+
+      // Construire dynamiquement l'INSERT en fonction des colonnes existantes
+      const insertCols = ['title', 'client_id', 'project_id'];
+      const insertValues = [title, clientId, projectId];
+
+      // description
+      if (has('description')) {
+        insertCols.push('description');
+        insertValues.push(typeof description !== 'undefined' ? description : null);
+      }
+      // priority
+      if (has('priority')) {
+        insertCols.push('priority');
+        insertValues.push(priority);
+      }
+      // assigned_to ou agent_id
+      if (typeof assigned_to !== 'undefined') {
+        if (has('assigned_to')) {
+          insertCols.push('assigned_to');
+          insertValues.push(assigned_to || null);
+        } else if (has('agent_id')) {
+          insertCols.push('agent_id');
+          insertValues.push(assigned_to || null);
+        }
+      }
+      // due_date
+      if (has('due_date')) {
+        insertCols.push('due_date');
+        insertValues.push(typeof due_date !== 'undefined' ? due_date || null : null);
+      }
+      // estimated_hours
+      if (has('estimated_hours')) {
+        insertCols.push('estimated_hours');
+        insertValues.push(typeof estimated_hours !== 'undefined' ? estimated_hours : null);
+      }
+      // actual_hours
+      if (has('actual_hours')) {
+        insertCols.push('actual_hours');
+        insertValues.push(typeof actual_hours !== 'undefined' ? actual_hours : 0);
+      }
+      // category
+      if (has('category')) {
+        insertCols.push('category');
+        insertValues.push(typeof category !== 'undefined' ? category || null : null);
+      }
+      // status: utiliser la valeur fournie après normalisation ou une valeur par défaut compatible
+      if (has('status')) {
+        // Fonction de normalisation vers une valeur autorisée
+        const mapToAllowedStatus = (input, allowed) => {
+          if (!input) return null;
+          const v = String(input).toLowerCase();
+          // Correspondance directe
+          if (allowed && allowed.includes(v)) return v;
+          // Dictionnaire de synonymes
+          const synonyms = {
+            pending: ['pending', 'todo'],
+            todo: ['todo', 'pending'],
+            in_progress: ['in_progress', 'progress', 'doing'],
+            review: ['review', 'in_review', 'awaiting_review'],
+            done: ['done', 'completed', 'complete'],
+            cancelled: ['cancelled', 'canceled', 'abandoned']
+          };
+          // Essayer de mapper le v vers une clé supportée présente dans allowed
+          for (const [target, inputs] of Object.entries(synonyms)) {
+            if (inputs.includes(v)) {
+              if (!allowed || allowed.includes(target)) return target;
+              // Si la cible n'est pas autorisée, essayer la deuxième valeur du tableau inputs
+              for (const candidate of inputs) {
+                if (allowed.includes(candidate)) return candidate;
+              }
+            }
+          }
+          // Dernier recours: retourner null pour laisser la base prendre la valeur par défaut
+          return null;
+        };
+
+        let normalizedStatus = null;
+        if (requestedStatus) {
+          normalizedStatus = mapToAllowedStatus(requestedStatus, allowedStatuses || null);
+        }
+
+        // Choisir une valeur par défaut robuste si aucune n'est fournie ou normalisable
+        if (!normalizedStatus) {
+          // Préférer 'todo' ou 'pending' si autorisés
+          if (allowedStatuses && allowedStatuses.length) {
+            if (allowedStatuses.includes('todo')) normalizedStatus = 'todo';
+            else if (allowedStatuses.includes('pending')) normalizedStatus = 'pending';
+            else if (allowedStatuses.includes('in_progress')) normalizedStatus = 'in_progress';
+            else normalizedStatus = allowedStatuses[0];
+          } else {
+            // Si pas d'ENUM (VARCHAR), garder 'pending' par défaut pour compatibilité
+            normalizedStatus = 'pending';
+          }
+        }
+
+        insertCols.push('status');
+        insertValues.push(normalizedStatus);
+      }
+      // created_by si la colonne existe
+      if (has('created_by')) {
+        insertCols.push('created_by');
+        insertValues.push(req.user.id);
+      }
+
+      const placeholders = insertCols.map(() => '?').join(', ');
+      const sql = `INSERT INTO tasks (${insertCols.join(', ')}) VALUES (${placeholders})`;
+      const result = await databaseService.query(sql, insertValues);
       
       // Récupérer la tâche créée
       const [task] = await databaseService.query(
@@ -949,7 +1121,8 @@ router.post('/:clientId/projects/:projectId/widgets/tasks',
       console.error('Erreur création tâche:', error);
       res.status(500).json({ 
         success: false, 
-        error: 'Erreur lors de la création de la tâche' 
+        error: 'Erreur lors de la création de la tâche',
+        details: error?.sqlMessage || error?.message || String(error)
       });
     }
   }
@@ -965,11 +1138,12 @@ router.patch('/:clientId/projects/:projectId/widgets/tasks/:taskId',
     try {
       const { clientId, projectId } = req.validatedScope;
       const { taskId } = req.params;
-      const updates = req.body;
+      const updates = { ...req.body };
       
       // Vérifier que la tâche appartient au scope
+      // Récupérer la tâche avec les champs utiles pour la progression si disponibles
       const [task] = await databaseService.query(
-        'SELECT id FROM tasks WHERE id = ? AND client_id = ? AND project_id = ?',
+        'SELECT id, status, estimated_hours, actual_hours FROM tasks WHERE id = ? AND client_id = ? AND project_id = ?',
         [taskId, clientId, projectId]
       );
       
@@ -980,15 +1154,105 @@ router.patch('/:clientId/projects/:projectId/widgets/tasks/:taskId',
         });
       }
       
-      // Construire la requête de mise à jour
-      const allowedFields = ['title', 'description', 'status', 'priority', 'assigned_to', 'due_date'];
+      // Détecter dynamiquement les colonnes disponibles de la table tasks
+      const columns = await databaseService.query('SHOW COLUMNS FROM tasks');
+      const colNames = columns.map(c => c.Field);
+      const has = (name) => colNames.includes(name);
+
+      // Normaliser/valider certains champs pour éviter les erreurs SQL
+      if (typeof updates.priority === 'string') {
+        const allowedPriorities = ['low', 'medium', 'high', 'urgent'];
+        if (!allowedPriorities.includes(updates.priority)) {
+          // retirer la priorité invalide pour éviter une 500
+          delete updates.priority;
+        }
+      }
+      // Normaliser progression
+      if (typeof updates.estimated_hours !== 'undefined') {
+        const n = Number(updates.estimated_hours);
+        updates.estimated_hours = Number.isFinite(n) && n >= 0 ? n : null;
+      }
+      if (typeof updates.actual_hours !== 'undefined') {
+        const n = Number(updates.actual_hours);
+        updates.actual_hours = Number.isFinite(n) && n >= 0 ? n : 0;
+      }
+      // Normaliser le statut selon les valeurs ENUM réellement présentes
+      if (typeof updates.status === 'string') {
+        const statusCol = columns.find(c => c.Field === 'status');
+        let allowedStatuses = null;
+        if (statusCol && typeof statusCol.Type === 'string') {
+          const m = statusCol.Type.match(/^enum\((.*)\)$/i);
+          if (m && m[1]) {
+            allowedStatuses = m[1]
+              .split(',')
+              .map(s => s.trim().replace(/^'|"|`|\(|\)|\s+|\)$/g, ''))
+              .map(s => s.replace(/^'|"|`/, '').replace(/'|"|`$/, ''));
+          }
+        }
+        const mapToAllowedStatus = (input, allowed) => {
+          if (!input) return null;
+          const v = String(input).toLowerCase();
+          if (allowed && allowed.includes(v)) return v;
+          const synonyms = {
+            pending: ['pending', 'todo'],
+            todo: ['todo', 'pending'],
+            in_progress: ['in_progress', 'progress', 'doing'],
+            // Certaines bases utilisent 'pending_validation' au lieu de 'review'
+            pending_validation: ['pending_validation', 'review', 'in_review', 'awaiting_review'],
+            review: ['review', 'in_review', 'awaiting_review'],
+            done: ['done', 'completed', 'complete'],
+            // Certaines bases utilisent 'rejected' au lieu de 'cancelled'
+            rejected: ['rejected', 'cancelled', 'canceled', 'abandoned', 'closed'],
+            cancelled: ['cancelled', 'canceled', 'abandoned']
+          };
+          for (const [target, inputs] of Object.entries(synonyms)) {
+            if (inputs.includes(v)) {
+              if (!allowed || allowed.includes(target)) return target;
+              for (const candidate of inputs) {
+                if (allowed.includes(candidate)) return candidate;
+              }
+            }
+          }
+          return null;
+        };
+        const normalized = mapToAllowedStatus(updates.status, allowedStatuses || null);
+        if (normalized) updates.status = normalized;
+        else delete updates.status; // retirer valeur invalide pour éviter troncature de données
+      }
+      if (typeof updates.assigned_to !== 'undefined') {
+        updates.assigned_to = updates.assigned_to === null || updates.assigned_to === '' ? null : Number(updates.assigned_to);
+        if (Number.isNaN(updates.assigned_to)) updates.assigned_to = null;
+      }
+      if (typeof updates.due_date !== 'undefined') {
+        const m = String(updates.due_date || '').match(/^\d{4}-\d{2}-\d{2}$/);
+        if (!m) {
+          const d = new Date(updates.due_date);
+          if (isNaN(d.getTime())) {
+            updates.due_date = null;
+          } else {
+            const pad = (n) => String(n).padStart(2, '0');
+            updates.due_date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          }
+        }
+      }
+
+      // Construire la requête de mise à jour en fonction des colonnes existantes
       const updateFields = [];
       const updateValues = [];
+      const candidateUpdates = ['title', 'description', 'status', 'priority', 'due_date', 'category', 'estimated_hours', 'actual_hours'];
       
       for (const [key, value] of Object.entries(updates)) {
-        if (allowedFields.includes(key)) {
+        if (candidateUpdates.includes(key) && has(key)) {
           updateFields.push(`${key} = ?`);
           updateValues.push(value);
+        } else if (key === 'assigned_to') {
+          if (has('assigned_to')) {
+            updateFields.push('assigned_to = ?');
+            updateValues.push(value);
+          } else if (has('agent_id')) {
+            updateFields.push('agent_id = ?');
+            updateValues.push(value);
+          }
         }
       }
       
@@ -999,14 +1263,38 @@ router.patch('/:clientId/projects/:projectId/widgets/tasks/:taskId',
         });
       }
       
+      // Règles automatiques liées à la progression: si 100%, passer en done
+      // Calculer les valeurs finales pour comparer
+      let finalEstimated = task?.estimated_hours;
+      let finalActual = task?.actual_hours;
+      if (typeof updates.estimated_hours !== 'undefined') finalEstimated = updates.estimated_hours;
+      if (typeof updates.actual_hours !== 'undefined') finalActual = updates.actual_hours;
+      if (has('status') && typeof finalEstimated !== 'undefined' && typeof finalActual !== 'undefined' && finalEstimated) {
+        const pct = Math.round((Number(finalActual) / Number(finalEstimated)) * 100);
+        if (pct >= 100) {
+          // Forcer le statut à 'done' si 100%
+          updateFields.push('status = ?');
+          updateValues.push('done');
+        } else if (pct > 0 && (!updates.status || updates.status === 'todo')) {
+          // Mettre en in_progress si >0 et pas explicitement défini autrement
+          updateFields.push('status = ?');
+          updateValues.push('in_progress');
+        }
+      }
+
       // Ajouter completed_at si status = done
-      if (updates.status === 'done') {
-        updateFields.push('completed_at = NOW()');
-      } else if (updates.status && updates.status !== 'done') {
-        updateFields.push('completed_at = NULL');
+      if (has('completed_at')) {
+        // Si le statut est ou devient 'done', fixer completed_at
+        if (updates.status === 'done' || updateValues.includes('done')) {
+          updateFields.push('completed_at = NOW()');
+        } else if (updates.status && updates.status !== 'done') {
+          updateFields.push('completed_at = NULL');
+        }
       }
       
-      updateFields.push('updated_at = NOW()');
+      if (has('updated_at')) {
+        updateFields.push('updated_at = NOW()');
+      }
       updateValues.push(taskId, clientId, projectId);
       
       await databaseService.query(`
@@ -1030,7 +1318,8 @@ router.patch('/:clientId/projects/:projectId/widgets/tasks/:taskId',
       console.error('Erreur mise à jour tâche:', error);
       res.status(500).json({ 
         success: false, 
-        error: 'Erreur lors de la mise à jour de la tâche' 
+        error: 'Erreur lors de la mise à jour de la tâche',
+        details: error?.sqlMessage || error?.message || String(error)
       });
     }
   }
@@ -1276,7 +1565,8 @@ router.delete('/:clientId/projects/:projectId/widgets/tasks/:taskId',
       console.error('Erreur suppression tâche:', error);
       res.status(500).json({
         success: false,
-        error: 'Erreur lors de la suppression de la tâche'
+        error: 'Erreur lors de la suppression de la tâche',
+        details: error?.sqlMessage || error?.message || String(error)
       });
     }
   }

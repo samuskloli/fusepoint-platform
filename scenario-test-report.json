@@ -1,0 +1,179 @@
+{
+  "timestamp": "2025-11-01T22:16:23.106Z",
+  "summary": {
+    "networkTests": 4,
+    "networkSuccessRate": 100,
+    "volumeTests": 4,
+    "volumeSuccessRate": 75,
+    "resilienceTests": 4,
+    "resilienceSuccessRate": 0
+  },
+  "results": {
+    "networkTests": [
+      {
+        "scenario": "Réseau normal",
+        "success": true,
+        "duration": 229,
+        "responseTime": 229,
+        "data": {
+          "id": "test-task-1762035320325",
+          "estimatedHours": 8,
+          "actualHours": 4,
+          "status": "in_progress"
+        }
+      },
+      {
+        "scenario": "Réseau lent",
+        "success": true,
+        "duration": 2198,
+        "responseTime": 198,
+        "data": {
+          "id": "test-task-1762035320554",
+          "estimatedHours": 8,
+          "actualHours": 4,
+          "status": "in_progress"
+        }
+      },
+      {
+        "scenario": "Réseau instable",
+        "success": true,
+        "duration": 603,
+        "responseTime": 103,
+        "data": {
+          "id": "test-task-1762035322752",
+          "estimatedHours": 8,
+          "actualHours": 4,
+          "status": "in_progress"
+        }
+      },
+      {
+        "scenario": "Réseau très lent",
+        "success": true,
+        "duration": 5237,
+        "responseTime": 237,
+        "data": {
+          "id": "test-task-1762035323355",
+          "estimatedHours": 8,
+          "actualHours": 4,
+          "status": "in_progress"
+        }
+      }
+    ],
+    "volumeTests": [
+      {
+        "test": "Volume normal",
+        "taskCount": 10,
+        "processedCount": 10,
+        "duration": 156,
+        "throughput": 64.1025641025641,
+        "errors": [],
+        "success": true,
+        "averageTimePerTask": 15.6
+      },
+      {
+        "test": "Volume élevé",
+        "taskCount": 100,
+        "processedCount": 100,
+        "duration": 1132,
+        "throughput": 88.33922261484099,
+        "errors": [],
+        "success": true,
+        "averageTimePerTask": 11.32
+      },
+      {
+        "test": "Volume très élevé",
+        "taskCount": 500,
+        "processedCount": 500,
+        "duration": 5447,
+        "throughput": 91.79364787956673,
+        "errors": [],
+        "success": true,
+        "averageTimePerTask": 10.894
+      },
+      {
+        "test": "Volume extrême",
+        "taskCount": 1000,
+        "processedCount": 900,
+        "duration": 10762,
+        "throughput": 83.62757851700427,
+        "errors": [
+          "Erreur de traitement de lot",
+          "Erreur de traitement de lot"
+        ],
+        "success": false,
+        "averageTimePerTask": 11.957777777777778
+      }
+    ],
+    "resilenceTests": [
+      {
+        "test": "Interruption courte",
+        "duration": 2504,
+        "interruptionDuration": 1000,
+        "recovery": false,
+        "dataLoss": true,
+        "recoveryTime": 501,
+        "success": false
+      },
+      {
+        "test": "Interruption moyenne",
+        "duration": 6504,
+        "interruptionDuration": 5000,
+        "recovery": false,
+        "dataLoss": true,
+        "recoveryTime": 501,
+        "success": false
+      },
+      {
+        "test": "Interruption longue",
+        "duration": 11503,
+        "interruptionDuration": 10000,
+        "recovery": false,
+        "dataLoss": true,
+        "recoveryTime": 501,
+        "success": false
+      },
+      {
+        "test": "Redémarrage simulé",
+        "duration": 16504,
+        "interruptionDuration": 15000,
+        "recovery": false,
+        "dataLoss": true,
+        "recoveryTime": 502,
+        "success": false
+      }
+    ],
+    "performanceMetrics": [],
+    "recommendations": []
+  },
+  "analysis": {
+    "networkPerformance": {
+      "score": 100,
+      "averageResponseTime": 191.75,
+      "successRate": 100
+    },
+    "volumeCapacity": {
+      "score": 100,
+      "maxThroughput": 91.79364787956673,
+      "averageThroughput": 81.41181153232394,
+      "successRate": 75
+    },
+    "resilienceLevel": {
+      "score": 0,
+      "recoveryRate": 0,
+      "averageRecoveryTime": 0,
+      "dataLossIncidents": 4
+    }
+  },
+  "recommendations": [
+    {
+      "category": "Résilience",
+      "priority": "high",
+      "description": "Implémenter un système de sauvegarde automatique et de récupération"
+    },
+    {
+      "category": "Intégrité",
+      "priority": "critical",
+      "description": "Renforcer les mécanismes de protection contre la perte de données"
+    }
+  ]
+}

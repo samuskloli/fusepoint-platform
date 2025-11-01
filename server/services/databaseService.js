@@ -125,6 +125,15 @@ class DatabaseService {
         }
       }
 
+      // S'assurer que la table tasks contient les colonnes étendues
+      try {
+        await this.ensureTasksExtendedSchema(conn);
+      } catch (e) {
+        if (!String(e.message).includes("doesn't exist")) {
+          console.warn('⚠️ Erreur mise à niveau schema tasks:', e.message);
+        }
+      }
+
       // === LinkPoint: créer les tables si absentes ===
       await this.ensureLinkPointsSchema(conn);
 
@@ -319,6 +328,58 @@ class DatabaseService {
           console.warn('⚠️ Erreur ALTER files:', error.message);
         }
       }
+    }
+  }
+
+  /**
+   * Mise à niveau de la table tasks pour ajouter des colonnes étendues si absentes
+   * - Ajoute la colonne category (VARCHAR(100) NULL) si inexistante
+   */
+  async ensureTasksExtendedSchema(conn) {
+    try {
+      const columns = await conn.query('SHOW COLUMNS FROM tasks');
+      const colNames = columns.map(c => c.Field);
+      const has = (name) => colNames.includes(name);
+
+      // Ajouter la colonne priority si absente
+      if (!has('priority')) {
+        try {
+          // Utiliser VARCHAR pour une compatibilité maximale, avec une valeur par défaut
+          await conn.query("ALTER TABLE tasks ADD COLUMN priority VARCHAR(20) DEFAULT 'medium'");
+          console.log('🛠️ Colonne tasks.priority ajoutée (VARCHAR(20) DEFAULT \'medium\')');
+          // Normaliser les lignes existantes à la valeur par défaut
+          await conn.query("UPDATE tasks SET priority = 'medium' WHERE priority IS NULL");
+        } catch (err) {
+          console.warn('⚠️ Échec ajout tasks.priority:', err.message);
+        }
+      }
+
+      // Ajouter la colonne category si absente
+      if (!has('category')) {
+        await conn.query("ALTER TABLE tasks ADD COLUMN category VARCHAR(100) NULL AFTER due_date");
+        console.log('🛠️ Colonne tasks.category ajoutée');
+      }
+
+      // Ajouter les colonnes de progression si absentes
+      if (!has('estimated_hours')) {
+        try {
+          await conn.query("ALTER TABLE tasks ADD COLUMN estimated_hours DECIMAL(7,2) NULL AFTER due_date");
+          console.log('🛠️ Colonne tasks.estimated_hours ajoutée (DECIMAL(7,2))');
+        } catch (err) {
+          console.warn('⚠️ Échec ajout tasks.estimated_hours:', err.message);
+        }
+      }
+      if (!has('actual_hours')) {
+        try {
+          await conn.query("ALTER TABLE tasks ADD COLUMN actual_hours DECIMAL(7,2) DEFAULT 0 AFTER estimated_hours");
+          console.log('🛠️ Colonne tasks.actual_hours ajoutée (DECIMAL(7,2) DEFAULT 0)');
+        } catch (err) {
+          console.warn('⚠️ Échec ajout tasks.actual_hours:', err.message);
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ ensureTasksExtendedSchema a rencontré une erreur:', e.message);
+      throw e;
     }
   }
 

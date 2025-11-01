@@ -5,6 +5,13 @@ export default {
   titlePlaceholder: "Enter task title",
   description: "Description",
   descriptionPlaceholder: "Describe the task",
+  validation: {
+    titleRequired: "Title is required",
+    invalidDateRange: "Due date must be after the start date"
+  },
+  created: "Task created successfully",
+  updated: "Task updated successfully",
+  saveError: "Error saving task",
   status: {
     pending: "Pending",
     inProgress: "In progress",
@@ -33,7 +40,7 @@ export default {
     deployment: "Deployment",
     maintenance: "Maintenance"
   },
-  estimatedHours: "Estimated hours",
+  estimatedHours: "Estimated time",
   estimatedHoursPlaceholder: "e.g. 2.5",
   progress: "Progress",
   tags: "Tags",

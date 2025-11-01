@@ -309,7 +309,7 @@ class ValidationService {
       return { isValid: false, errors };
     }
 
-    const { name, description, category, estimated_duration, estimated_budget, tags } = templateData;
+    const { name, description, category, estimated_duration, estimated_budget } = templateData;
 
     // Validation du nom (requis)
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -344,10 +344,7 @@ class ValidationService {
       }
     }
 
-    // Validation des tags (optionnel, mais doit être un tableau si fourni)
-    if (tags !== undefined && tags !== null && !Array.isArray(tags)) {
-      errors.push('Les tags doivent être un tableau');
-    }
+
 
     return {
       isValid: errors.length === 0,

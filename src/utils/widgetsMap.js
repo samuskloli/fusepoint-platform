@@ -41,6 +41,7 @@ export const COMPONENT_BY_TYPE = {
 // Map: widget type -> i18n title key
 export const NAME_KEY_BY_TYPE = {
   task_list: 'widgets.taskList.title',
+  tasks: 'widgets.taskList.title',
   stats: 'widgets.stats.title',
   files: 'widgets.files.title',
   team: 'widgets.team.title',
@@ -59,6 +60,7 @@ export const NAME_KEY_BY_TYPE = {
 // Map: widget type -> icon class
 export const ICON_BY_TYPE = {
   task_list: 'fas fa-tasks',
+  tasks: 'fas fa-tasks',
   stats: 'fas fa-chart-bar',
   files: 'fas fa-folder',
   team: 'fas fa-users',

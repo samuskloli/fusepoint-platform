@@ -3,11 +3,17 @@
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">{{ t('widgets.tasks.addTask') }}</h3>
-        <button @click="$emit('close')" class="modal-close">
+        <button @click="$emit('close')" class="modal-close" aria-label="{{ t('common.close') }}">
           <i class="fas fa-times"></i>
         </button>
       </div>
-      
+
+      <!-- Message d'erreur serveur -->
+      <div v-if="serverError" class="server-error" role="alert">
+        <i class="fas fa-exclamation-triangle mr-2"></i>
+        {{ serverError }}
+      </div>
+
       <form @submit.prevent="handleSubmit" class="modal-body">
         <!-- Titre -->
         <div class="form-group">
@@ -19,6 +25,7 @@
             :placeholder="t('widgets.tasks.titlePlaceholder')"
             required
             maxlength="255"
+            autofocus
           >
           <div v-if="errors.title" class="form-error">{{ errors.title }}</div>
         </div>
@@ -85,47 +92,30 @@
               :placeholder="t('widgets.tasks.hoursPlaceholder')"
             >
           </div>
-        </div>
-        
-        <!-- Tags -->
-        <div class="form-group">
-          <label class="form-label">{{ t('widgets.tasks.tags') }}</label>
-          <div class="tags-input">
-            <div class="selected-tags">
-              <span 
-                v-for="(tag, index) in form.tags" 
-                :key="index" 
-                class="tag-item"
-              >
-                {{ tag }}
-                <button 
-                  type="button" 
-                  @click="removeTag(index)"
-                  class="tag-remove"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </span>
-            </div>
+          
+          <div class="form-group">
+            <label class="form-label">{{ t('widgets.tasks.actualHours') }}</label>
             <input
-              v-model="newTag"
-              type="text"
-              class="tag-input"
-              :placeholder="t('widgets.tasks.addTag')"
-              @keydown.enter.prevent="addTag"
-              @keydown.comma.prevent="addTag"
+              v-model.number="form.actualHours"
+              type="number"
+              class="form-input"
+              min="0"
+              max="999"
+              step="0.5"
+              :placeholder="t('widgets.tasks.hoursPlaceholder')"
             >
           </div>
-          <div class="form-help">{{ t('widgets.tasks.tagsHelp') }}</div>
         </div>
+        
+
         
         <!-- Actions -->
         <div class="modal-actions">
           <button type="button" @click="$emit('close')" class="btn-secondary">
             {{ t('common.cancel') }}
           </button>
-          <button type="submit" class="btn-primary" :disabled="!isFormValid || loading">
-            <i v-if="loading" class="fas fa-spinner fa-spin mr-2"></i>
+          <button type="submit" class="btn-primary" :disabled="!isFormValid || loading" :aria-busy="loading ? 'true' : 'false'">
+            <i v-if="loading" class="fas fa-spinner fa-spin mr-2" aria-hidden="true"></i>
             {{ t('widgets.tasks.createTask') }}
           </button>
         </div>
@@ -149,7 +139,12 @@ interface Emits {
   save: [taskData: CreateTaskData]
 }
 
+interface Props {
+  serverError?: string
+}
+
 const emit = defineEmits<Emits>()
+const props = defineProps<Props>()
 const { t } = useTranslation()
 
 // États du formulaire
@@ -159,11 +154,10 @@ const form = ref<CreateTaskData>({
   priority: 'medium' as TaskPriority,
   assignedTo: '',
   dueDate: '',
-  tags: [],
-  estimatedHours: undefined
+  estimatedHours: undefined,
+  actualHours: undefined
 })
 
-const newTag = ref('')
 const loading = ref(false)
 const errors = ref<Record<string, string>>({})
 const teamMembers = ref<TeamMember[]>([])
@@ -178,22 +172,6 @@ const isFormValid = computed(() => {
   return form.value.title.trim().length > 0 && 
          form.value.title.trim().length <= 255
 })
-
-// Gestion des tags
-const addTag = () => {
-  const tag = newTag.value.trim()
-  if (tag && !form.value.tags?.includes(tag)) {
-    if (!form.value.tags) form.value.tags = []
-    form.value.tags.push(tag)
-    newTag.value = ''
-  }
-}
-
-const removeTag = (index: number) => {
-  if (form.value.tags) {
-    form.value.tags.splice(index, 1)
-  }
-}
 
 // Validation des champs
 const validateForm = () => {
@@ -222,8 +200,8 @@ const handleSubmit = async () => {
       priority: form.value.priority,
       assignedTo: form.value.assignedTo || undefined,
       dueDate: form.value.dueDate || undefined,
-      tags: form.value.tags?.filter(tag => tag.trim()) || undefined,
-      estimatedHours: form.value.estimatedHours || undefined
+      estimatedHours: form.value.estimatedHours || undefined,
+      actualHours: form.value.actualHours || undefined
     }
     
     emit('save', taskData)
@@ -259,11 +237,11 @@ onMounted(() => {
 }
 
 .modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden;
+  @apply bg-white shadow-xl w-full max-h-[100vh] overflow-hidden rounded-none sm:max-w-2xl sm:rounded-lg sm:max-h-[90vh];
 }
 
 .modal-header {
-  @apply flex items-center justify-between p-6 border-b border-gray-200;
+  @apply flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 sticky top-0 bg-white z-10;
 }
 
 .modal-title {
@@ -275,7 +253,7 @@ onMounted(() => {
 }
 
 .modal-body {
-  @apply p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-4;
+  @apply p-4 sm:p-6 overflow-y-auto max-h-[calc(100vh-160px)] sm:max-h-[calc(90vh-140px)] space-y-4;
 }
 
 .form-group {
@@ -308,28 +286,10 @@ onMounted(() => {
   @apply text-sm text-gray-500;
 }
 
-.tags-input {
-  @apply border border-gray-300 rounded-md p-2 min-h-[42px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent;
-}
 
-.selected-tags {
-  @apply flex flex-wrap gap-1 mb-2;
-}
-
-.tag-item {
-  @apply inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full;
-}
-
-.tag-remove {
-  @apply text-blue-600 hover:text-blue-800 p-0.5 rounded-full hover:bg-blue-200 transition-colors;
-}
-
-.tag-input {
-  @apply border-0 outline-0 flex-1 min-w-[120px] p-0;
-}
 
 .modal-actions {
-  @apply flex justify-end gap-3 pt-4 border-t border-gray-200;
+  @apply flex justify-end gap-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-white p-4 sm:p-6;
 }
 
 .btn-secondary {
@@ -338,5 +298,9 @@ onMounted(() => {
 
 .btn-primary {
   @apply px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center;
+}
+
+.server-error {
+  @apply mx-4 sm:mx-6 mt-2 mb-0 p-3 bg-red-50 text-red-700 rounded-md border border-red-200 flex items-center;
 }
 </style>

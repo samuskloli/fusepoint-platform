@@ -185,19 +185,7 @@
             </div>
           </div>
 
-          <!-- Tags -->
-          <div class="md:col-span-2">
-            <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
-              Tags (séparés par des virgules)
-            </label>
-            <input
-              id="tags"
-              v-model="form.tags"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="frontend, urgent, design"
-            >
-          </div>
+
 
           <!-- Dépendances -->
           <div class="md:col-span-2">
@@ -409,7 +397,6 @@ export default {
       due_date: '',
       estimated_hours: null,
       progress: 0,
-      tags: '',
       dependencies: '',
       acceptance_criteria: '',
       notes: '',
@@ -426,9 +413,7 @@ export default {
       if (newTask) {
         Object.keys(form).forEach(key => {
           if (newTask[key] !== undefined) {
-            if (key === 'tags' && Array.isArray(newTask[key])) {
-              form[key] = newTask[key].join(', ')
-            } else if (key === 'dependencies' && Array.isArray(newTask[key])) {
+            if (key === 'dependencies' && Array.isArray(newTask[key])) {
               form[key] = newTask[key].join(', ')
             } else if (key === 'assignee_id' && newTask.assignee) {
               form[key] = newTask.assignee.id
@@ -470,7 +455,6 @@ export default {
         const taskData = {
           ...form,
           project_id: props.projectId,
-          tags: form.tags ? form.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : [],
           dependencies: form.dependencies ? form.dependencies.split(',').map(dep => parseInt(dep.trim())).filter(dep => !isNaN(dep)) : [],
           estimated_hours: form.estimated_hours || 0,
           assignee_id: form.assignee_id || null

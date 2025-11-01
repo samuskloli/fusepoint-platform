@@ -1,6 +1,7 @@
 // Types pour le widget des tâches
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed'
+// Étend les statuts pour inclure 'cancelled' afin d'aligner avec l'API/BDD
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high'
 
 export interface Task {
@@ -15,7 +16,6 @@ export interface Task {
   createdAt: string
   updatedAt: string
   projectId: string
-  tags?: string[]
   estimatedHours?: number
   actualHours?: number
   dependencies?: string[]
@@ -44,7 +44,6 @@ export interface TaskFilter {
   status?: TaskStatus | 'all'
   priority?: TaskPriority | 'all'
   assignedTo?: string | 'all'
-  tags?: string[]
   search?: string
 }
 
@@ -62,7 +61,6 @@ export interface TasksWidgetConfig {
   showAssignee: boolean
   showDueDate: boolean
   showPriority: boolean
-  showTags: boolean
   defaultView: 'list' | 'kanban' | 'calendar'
   itemsPerPage: number
   autoRefresh: boolean
@@ -75,8 +73,8 @@ export interface CreateTaskData {
   priority: TaskPriority
   assignedTo?: string
   dueDate?: string
-  tags?: string[]
   estimatedHours?: number
+  actualHours?: number
 }
 
 export interface UpdateTaskData {
@@ -86,7 +84,6 @@ export interface UpdateTaskData {
   priority?: TaskPriority
   assignedTo?: string
   dueDate?: string
-  tags?: string[]
   estimatedHours?: number
   actualHours?: number
 }

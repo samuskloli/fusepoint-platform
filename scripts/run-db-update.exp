@@ -1,0 +1,47 @@
+#!/usr/bin/expect -f
+
+# Relance déploiement + mise à jour DB sur serveur distant (non interactif, mot de passe géré)
+# Étapes:
+#  1) Mise à jour du code (git fetch/reset origin/main)
+#  2) Vérifier la config MariaDB distante (server/.env.mariadb) sans afficher le mot de passe
+#  3) Exécuter la migration: server/migrations/migrate_company_billing_and_user_profile.js
+#  4) Redémarrer PM2 (API/Frontend) avec fallback
+#  5) Health checks API (/api/health) et SPA (/app/login)
+
+set timeout 300
+
+# Crédentials et cibles — adapter si nécessaire
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+set domain "https://fusepoint.ch"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts "[1/5] Mise à jour du code (git fetch/reset origin/main) et préparation PM2…"
+do_ssh $remote $pass "cd '$docroot' && git fetch --all && git reset --hard origin/main && npm i pm2 --no-audit --no-fund --no-progress --no-save || true"
+
+puts "[2/5] Vérification de la configuration MariaDB distante (.env.mariadb) — host/user/database"
+do_ssh $remote $pass "cd '$docroot/server' && echo '=== MariaDB (.env.mariadb) ===' && grep -E '^(MARIADB_HOST|MARIADB_USER|MARIADB_DATABASE)=' .env.mariadb || echo '[!] .env.mariadb introuvable'"
+
+puts "[3/5] Exécution de la migration: migrate_company_billing_and_user_profile.js"
+do_ssh $remote $pass "cd '$docroot' && node './server/migrations/migrate_company_billing_and_user_profile.js'"
+
+puts "[4/5] Redémarrage des processus PM2 (API/Frontend) et fallback Node si nécessaire…"
+do_ssh $remote $pass "cd '$docroot' && npx pm2 restart fusepoint-api || npx pm2 start '$docroot/ecosystem.prod.config.js' --only fusepoint-api --update-env; npx pm2 restart fusepoint-frontend || true; sleep 3; npx pm2 ls || true"
+# Fallback: relancer Node directement si PM2 indisponible
+do_ssh $remote $pass "pkill -f 'node.*server/server.js' || true; sleep 2; nohup node '$docroot/server/server.js' > '$docroot/api.log' 2>&1 & disown; tail -n 60 '$docroot/api.log' || true"
+
+puts "[5/5] Health checks côté serveur"
+do_ssh $remote $pass "echo -n 'API /health: '; curl -s -o /dev/null -w '%{http_code}' $domain/api/health"
+do_ssh $remote $pass "echo -n '\nSPA /app/login: '; curl -s -o /dev/null -w '%{http_code}' $domain/app/login"
+
+puts "✓ Relance déploiement + mise à jour DB terminée. Vérifiez l'application sur $domain/app/"

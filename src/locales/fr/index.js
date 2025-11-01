@@ -35,6 +35,7 @@ import priorities from './priorities.js'
 import files from './files.js'
 import servicesManagement from './servicesManagement.js'
 import tasks from './tasks.js'
+import monitoring from './monitoring.js'
 
 export default {
   common,
@@ -73,5 +74,6 @@ export default {
   priorities,
   files,
   servicesManagement,
-  tasks
+  tasks,
+  monitoring
 };

@@ -149,44 +149,7 @@
             </div>
           </div>
 
-          <!-- Tags -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('tasks.tags') }}
-            </label>
-            <div class="flex flex-wrap gap-2 mb-2">
-              <span 
-                v-for="tag in taskForm.tags"
-                :key="tag"
-                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-              >
-                {{ tag }}
-                <button 
-                  type="button"
-                  @click="removeTag(tag)"
-                  class="ml-1 text-blue-600 hover:text-blue-800"
-                >
-                  <i class="fas fa-times text-xs"></i>
-                </button>
-              </span>
-            </div>
-            <div class="flex">
-              <input
-                v-model="newTag"
-                @keyup.enter="addTag"
-                type="text"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                :placeholder="t('tasks.enterTag')"
-              >
-              <button
-                type="button"
-                @click="addTag"
-                class="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700"
-              >
-                <i class="fas fa-plus"></i>
-              </button>
-            </div>
-          </div>
+
 
           <!-- Dépendances -->
           <div class="mb-4">
@@ -365,7 +328,6 @@ export default {
     const { success, error: showError } = useNotifications()
     
     const loading = ref(false)
-    const newTag = ref('')
     const selectedDependency = ref('')
     const teamMembers = ref([])
     const availableTasks = ref([])
@@ -389,7 +351,6 @@ export default {
       due_date: '',
       estimated_hours: '',
       budget: '',
-      tags: [],
       dependencies: [],
       attachments: [],
       is_milestone: false,
@@ -430,19 +391,7 @@ export default {
       }
     }
     
-    const addTag = () => {
-      if (newTag.value.trim() && !taskForm.value.tags.includes(newTag.value.trim())) {
-        taskForm.value.tags.push(newTag.value.trim())
-        newTag.value = ''
-      }
-    }
-    
-    const removeTag = (tag) => {
-      const index = taskForm.value.tags.indexOf(tag)
-      if (index > -1) {
-        taskForm.value.tags.splice(index, 1)
-      }
-    }
+
     
     const addDependency = () => {
       if (selectedDependency.value && !taskForm.value.dependencies.includes(selectedDependency.value)) {
@@ -510,7 +459,6 @@ export default {
     return {
       t,
       loading,
-      newTag,
       selectedDependency,
       teamMembers,
       availableTasks,
@@ -519,8 +467,6 @@ export default {
       isFormValid,
       closeModal,
       assignTask,
-      addTag,
-      removeTag,
       addDependency,
       removeDependency,
       getDependencyTitle,

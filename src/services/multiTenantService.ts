@@ -45,6 +45,9 @@ export interface TaskItem {
   priority: 'low' | 'medium' | 'high' | 'urgent';
   assigned_to?: number;
   due_date?: string;
+  // Champs de progression (heures)
+  estimated_hours?: number;
+  actual_hours?: number;
   completed_at?: string;
   created_at: string;
   updated_at: string;
@@ -327,6 +330,7 @@ export class MultiTenantApiService {
       const errorData = await parseErrorJson(response);
       const status = response.status;
       const serverMsg = (errorData && (errorData.error || errorData.message)) || '';
+      const detailsMsg = (errorData && (errorData.details)) || '';
       const authIssue = status === 401 || status === 403;
       const isTokenIssue = serverMsg.toLowerCase().includes('expir') ||
         serverMsg.toLowerCase().includes('invalide') ||
@@ -342,11 +346,11 @@ export class MultiTenantApiService {
             throw new Error(retryMsg);
           }
         } catch (refreshErr) {
-          const msg = serverMsg || 'Authentification requise';
+          const msg = [serverMsg || 'Authentification requise', detailsMsg].filter(Boolean).join(' — ');
           throw new Error(msg);
         }
       } else {
-        const msg = serverMsg || `Erreur HTTP ${status}`;
+        const msg = [serverMsg || `Erreur HTTP ${status}`, detailsMsg].filter(Boolean).join(' — ');
         throw new Error(msg);
       }
     }
@@ -499,6 +503,9 @@ export class MultiTenantApiService {
       priority?: string;
       assigned_to?: number;
       due_date?: string;
+      // facultatif à la création
+      estimated_hours?: number;
+      actual_hours?: number;
     }
   ): Promise<ApiResponse<{ task: TaskItem }>> {
     const url = this.buildUrl(clientId, projectId, '/tasks');

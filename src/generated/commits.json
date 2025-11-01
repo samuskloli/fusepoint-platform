@@ -1,5 +1,10 @@
 [
   {
+    "hash": "29d89239b4cf2dc987072cca0386e803aedce001",
+    "date": "2025-11-01 21:03:56 +0100",
+    "subject": "feat(settings): mise à jour de la page Paramètres et navigation\\nfix(router): corrige le routing /app/settings\\nchore(deploy): aligne l’index SPA sur dist/app et déploie .htaccess remote/SPA sans toucher aux paramètres serveur\\nfeat(db): ajoute migration billing (companies) et profil (users)\\nchore: met à jour schema.sql et src/generated/commits.json\\nrefactor: retire l’ancien UserSettings.vue obsolète\\nNote: scripts avec secrets non commités (update-env-and-deploy.exp, run-db-update.exp)"
+  },
+  {
     "hash": "ff545710ec7114d2ca9633452ea171de55b3ab1e",
     "date": "2025-11-01 19:30:25 +0100",
     "subject": "CSP: precompile i18n, remove pdfjs-dist, escape email placeholders"
@@ -53,10 +58,5 @@
     "hash": "084eac4b9183af0e5974ce03be6ccdacccfb83de",
     "date": "2025-10-31 21:54:29 +0100",
     "subject": "docs(changelog): ajouter entrée détaillée pour le déploiement du 2025-10-31 (fix routing SPA, correctifs MIME des assets, scripts de déploiement)"
-  },
-  {
-    "hash": "17e6a8e2999e334c7073ae92319e628389767ae8",
-    "date": "2025-10-31 21:51:57 +0100",
-    "subject": "fix(frontend-assets): servir /app/assets depuis dist/assets avec fallback vers app/ pour éviter les 404 JSON et erreurs MIME; mise à jour script de déploiement pour copier les assets vers dist/ et app/"
   }
 ]

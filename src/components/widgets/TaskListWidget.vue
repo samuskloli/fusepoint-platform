@@ -278,32 +278,108 @@ const formatDate = (dateString: string) => {
 }
 
 // Mapping entre API multi-tenant et widget
-const mapApiTaskToWidgetTask = (apiTask: any) => ({
-  id: apiTask.id,
-  title: apiTask.title,
-  description: apiTask.description,
-  status: apiTask.status === 'done' ? 'completed' : 'pending',
-  priority: apiTask.priority,
-  due_date: apiTask.due_date,
-  assignee: undefined // assigned_to (id) non résolu en objet
-})
+const mapApiTaskToWidgetTask = (apiTask: any) => {
+  // Normaliser le statut API vers les statuts UI
+  let uiStatus = 'pending'
+  const s = String(apiTask.status || '').toLowerCase()
+  if (s === 'done' || s === 'completed') {
+    uiStatus = 'completed'
+  } else if (s === 'cancelled' || s === 'canceled' || s === 'rejected') {
+    // Le backend peut renvoyer 'rejected' comme équivalent de 'cancelled'
+    uiStatus = 'cancelled'
+  } else if (s === 'in_progress' || s === 'progress') {
+    uiStatus = 'in_progress'
+  } else if (s === 'pending_validation' || s === 'in_review' || s === 'review') {
+    // Pas d'état dédié côté UI, on le considère comme en attente
+    uiStatus = 'pending'
+  } else {
+    // inclut 'todo', 'pending', et valeurs inconnues -> défaut en attente
+    uiStatus = 'pending'
+  }
 
-const mapWidgetUpdatesToApi = (data: any) => ({
-  title: data.title,
-  description: data.description,
-  priority: data.priority,
-  due_date: data.due_date,
-  status: data.status === 'completed' ? 'done' : 'in_progress',
-  assigned_to: data.assignee?.id
-})
+  return {
+    id: apiTask.id,
+    title: apiTask.title,
+    description: apiTask.description,
+    status: uiStatus,
+    priority: apiTask.priority,
+    due_date: apiTask.due_date,
+    category: apiTask.category,
+    assignee: undefined // assigned_to (id) non résolu en objet
+  }
+}
 
-const mapWidgetCreateToApi = (data: any) => ({
-  title: data.title,
-  description: data.description,
-  priority: data.priority,
-  due_date: data.due_date,
-  assigned_to: data.assignee?.id
-})
+const formatDueDateForApi = (dateString: string | null | undefined) => {
+  if (!dateString) return null
+  // On ne veut que la date (YYYY-MM-DD). Si l'entrée est datetime-local, on la ramène au format date.
+  // Supporte "YYYY-MM-DD" et "YYYY-MM-DDTHH:mm".
+  const match = String(dateString).match(/^\d{4}-\d{2}-\d{2}/)
+  if (match) return match[0]
+  const d = new Date(dateString)
+  if (isNaN(d.getTime())) return null
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+const mapWidgetUpdatesToApi = (data: any) => {
+  // Mapper les statuts UI vers l'API multi-tenant
+  let apiStatus: string | undefined
+  switch (data.status) {
+    case 'completed':
+      apiStatus = 'done'
+      break
+    case 'cancelled':
+      apiStatus = 'cancelled'
+      break
+    case 'in_progress':
+      apiStatus = 'in_progress'
+      break
+    case 'pending':
+    default:
+      apiStatus = 'todo'
+      break
+  }
+
+  return {
+    title: data.title,
+    description: data.description,
+    priority: data.priority,
+    due_date: formatDueDateForApi(data.due_date),
+    status: apiStatus,
+    category: data.category,
+    // Préférence pour assignee.id si fourni, sinon utiliser assigned_to direct du formulaire
+    assigned_to: (data.assignee?.id ?? data.assigned_to) || undefined
+  }
+}
+
+const mapWidgetCreateToApi = (data: any) => {
+  let apiStatus: string | undefined
+  switch (data.status) {
+    case 'completed':
+      apiStatus = 'done'
+      break
+    case 'cancelled':
+      apiStatus = 'cancelled'
+      break
+    case 'in_progress':
+      apiStatus = 'in_progress'
+      break
+    case 'pending':
+    default:
+      apiStatus = 'todo'
+      break
+  }
+
+  return {
+    title: data.title,
+    description: data.description,
+    priority: data.priority,
+    due_date: formatDueDateForApi(data.due_date),
+    status: apiStatus,
+    category: data.category,
+    assigned_to: (data.assignee?.id ?? data.assigned_to) || undefined
+  }
+}
 
 // Résoudre et initialiser le contexte à partir du projectId si nécessaire
 const resolveContextFromProject = async () => {
@@ -363,7 +439,10 @@ const toggleTaskStatus = async (task: any) => {
   const newStatus = task.status === 'completed' ? 'pending' : 'completed'
   
   try {
-    await apiUpdateTask(Number(task.id), { status: newStatus === 'completed' ? 'done' : 'in_progress' })
+    // Envoyer un statut cohérent avec l'UI:
+    // - completed -> done
+    // - pending -> todo (et non in_progress)
+    await apiUpdateTask(Number(task.id), { status: newStatus === 'completed' ? 'done' : 'todo' })
     task.status = newStatus
     success(t('widgets.taskList.taskUpdated'))
   } catch (err) {

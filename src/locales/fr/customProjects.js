@@ -36,4 +36,13 @@ export default {
   success: {
     created: 'Projet créé avec succès à partir du modèle'
   }
+  ,
+  // Libellés de priorité utilisés par certains widgets (ex: TaskListWidget)
+  priorities: {
+    low: 'Faible',
+    medium: 'Moyenne',
+    high: 'Élevée',
+    urgent: 'Urgente',
+    normal: 'Normale'
+  }
 }

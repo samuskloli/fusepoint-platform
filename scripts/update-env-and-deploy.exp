@@ -1,0 +1,72 @@
+#!/usr/bin/expect -f
+
+# Met à jour la config DB distante (.env.mariadb) avec les identifiants fournis,
+# déploie les assets frontend (après build local), met à jour le code, exécute
+# la migration MariaDB et redémarre PM2. Gère l'auth SSH par mot de passe.
+
+set timeout 300
+
+# Crédentials et cibles — adapter si nécessaire
+set user "ZDaULDMYSEC_sam"
+set host "57-104359.ssh.hosting-ik.com"
+set pass "35G0ke7I@Fz%~T"
+set remote "$user@$host"
+set docroot "/srv/customer/sites/fusepoint.ch"
+set domain "https://fusepoint.ch"
+
+# Identifiants DB prod fournis
+set db_host "tt3ae.myd.infomaniak.com"
+set db_user "tt3ae_sam"
+set db_pass "JbW4D~7.@91.aGs"
+set db_name "tt3ae_fusepoint"
+set db_port "3306"
+
+proc do_ssh {remote pass cmd} {
+  spawn ssh -o StrictHostKeyChecking=accept-new $remote "$cmd"
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+proc do_scp {src remote_path pass} {
+  if {[file isdirectory $src]} {
+    spawn scp -r -q $src $remote_path
+  } else {
+    spawn scp -q $src $remote_path
+  }
+  expect {
+    -re ".*password:" { send "$pass\r" }
+  }
+  expect eof
+}
+
+puts {Etape 1/7 — Mise à jour du code (git fetch/reset origin/main) et préparation PM2…}
+do_ssh $remote $pass "cd '$docroot' && git fetch --all && git reset --hard origin/main && npm i pm2 --no-audit --no-fund --no-progress --no-save || true"
+
+puts {Etape 2/7 — Mise à jour de server/.env.mariadb (mode littéral, secrets protégés)}
+set env_update "cd '$docroot/server' && mkdir -p . && cat > ./.env.mariadb <<'EOF'\nMARIADB_HOST=$db_host\nMARIADB_USER=$db_user\nMARIADB_PASSWORD=$db_pass\nMARIADB_DATABASE=$db_name\nMARIADB_PORT=$db_port\nEOF"
+do_ssh $remote $pass $env_update
+
+puts {Etape 3/7 — Vérification basique de .env.mariadb (sans mot de passe)}
+do_ssh $remote $pass "cd '$docroot/server' && echo '=== .env.mariadb ===' && grep -E '^(MARIADB_HOST|MARIADB_USER|MARIADB_DATABASE|MARIADB_PORT)=' .env.mariadb"
+
+puts {Etape 4/7 — Déploiement des assets frontend (dist) vers le serveur}
+do_ssh $remote $pass "mkdir -p '$docroot/dist' '$docroot/dist/app' '$docroot/app' '$docroot/app/assets'"
+do_scp "./dist/index.html" "$remote:$docroot/index.html" $pass
+do_scp "./dist/app/index.html" "$remote:$docroot/app/index.html" $pass
+do_scp "./dist/assets" "$remote:$docroot/dist/" $pass
+do_scp "./dist/assets" "$remote:$docroot/app/" $pass
+
+puts {Etape 5/7 — Exécution de la migration DB: migrate_company_billing_and_user_profile.js}
+do_ssh $remote $pass "cd '$docroot' && node './server/migrations/migrate_company_billing_and_user_profile.js'"
+
+puts {Etape 6/7 — Redémarrage PM2 (API/Frontend) et fallback Node si nécessaire…}
+do_ssh $remote $pass "cd '$docroot' && npx pm2 restart fusepoint-api || npx pm2 start '$docroot/ecosystem.prod.config.js' --only fusepoint-api --update-env; npx pm2 restart fusepoint-frontend || true; sleep 3; npx pm2 ls || true"
+do_ssh $remote $pass "pkill -f 'node.*server/server.js' || true; sleep 2; nohup node '$docroot/server/server.js' > '$docroot/api.log' 2>&1 & disown; tail -n 60 '$docroot/api.log' || true"
+
+puts {Etape 7/7 — Health checks côté serveur}
+do_ssh $remote $pass "echo -n 'API /health: '; curl -s -o /dev/null -w '%{http_code}' $domain/api/health"
+do_ssh $remote $pass "echo -n '\nSPA /app/login: '; curl -s -o /dev/null -w '%{http_code}' $domain/app/login"
+
+puts {✓ Mise à jour paramètres (frontend) + DB terminée. Vérifiez https://fusepoint.ch/app/}

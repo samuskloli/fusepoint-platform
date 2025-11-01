@@ -59,16 +59,7 @@
             </div>
           </div>
           
-          <!-- Tags -->
-          <div v-if="task.tags && task.tags.length > 0" class="task-tags">
-            <span 
-              v-for="tag in task.tags" 
-              :key="tag" 
-              class="task-tag"
-            >
-              {{ tag }}
-            </span>
-          </div>
+
         </div>
       </div>
       
@@ -92,16 +83,7 @@
       </div>
     </div>
     
-    <!-- Barre de progression (si applicable) -->
-    <div v-if="task.status === 'in_progress' && progressPercentage > 0" class="task-progress">
-      <div class="progress-bar">
-        <div 
-          class="progress-fill" 
-          :style="{ width: `${progressPercentage}%` }"
-        ></div>
-      </div>
-      <span class="progress-text">{{ progressPercentage }}%</span>
-    </div>
+
     
     <!-- Modal d'édition -->
     <EditTaskModal
@@ -123,11 +105,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, nextTick, shallowRef } from 'vue'
 import { useTranslation } from '@/composables/useTranslation'
 import EditTaskModal from './EditTaskModal.vue'
 import ConfirmDeleteModal from '@/components/common/ConfirmDeleteModal.vue'
 import type { Task, UpdateTaskData } from '../types'
+import { 
+  validateTaskProgress, 
+  calculateProgressPercentage, 
+  hasValidProgressData,
+  ProgressLogger 
+} from '@/utils/progressValidation'
+import { useProgressMonitoring } from '@/utils/progressMonitoring'
+import { useProgressBackup } from '@/utils/progressBackup'
 
 interface Props {
   task: Task
@@ -143,28 +133,215 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 const { t } = useTranslation()
 
-// États locaux
+// Instance du logger pour le débogage
+const progressLogger = ProgressLogger.getInstance()
+
+// Services de monitoring et sauvegarde
+const { measurePerformance, recordMetric } = useProgressMonitoring()
+const { autoSave, recoverTask } = useProgressBackup()
+
+// États locaux avec optimisation
 const showEditModal = ref(false)
 const showDeleteModal = ref(false)
 
-// Classes CSS calculées
+// Cache pour les calculs coûteux
+const progressCache = shallowRef<{
+  taskId: string
+  estimatedHours: number | undefined
+  actualHours: number | undefined
+  percentage: number
+  timestamp: number
+}>()
+
+// Fonction de debounce pour limiter les recalculs
+const debounce = <T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): ((...args: Parameters<T>) => void) => {
+  let timeout: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
+}
+
+// Classes CSS calculées avec mémorisation
 const taskClasses = computed(() => ({
   'task-completed': props.task.status === 'completed',
   'task-overdue': isOverdue.value,
   'task-high-priority': props.task.priority === 'high'
 }))
 
-// Vérification si la tâche est en retard
+// Vérification si la tâche est en retard (mémorisée)
 const isOverdue = computed(() => {
   if (!props.task.dueDate) return false
   return new Date(props.task.dueDate) < new Date() && props.task.status !== 'completed'
 })
 
-// Calcul du pourcentage de progression
+// Calcul du pourcentage de progression avec cache et optimisation
 const progressPercentage = computed(() => {
-  if (!props.task.estimatedHours || !props.task.actualHours) return 0
-  return Math.min(100, Math.round((props.task.actualHours / props.task.estimatedHours) * 100))
+  const currentTask = props.task
+  const now = performance.now()
+  
+  // Vérifier le cache (valide pendant 100ms)
+  if (
+    progressCache.value &&
+    progressCache.value.taskId === currentTask.id &&
+    progressCache.value.estimatedHours === currentTask.estimatedHours &&
+    progressCache.value.actualHours === currentTask.actualHours &&
+    (now - progressCache.value.timestamp) < 100
+  ) {
+    progressLogger.log(`Using cached progress for task ${currentTask.id}`, {
+      percentage: progressCache.value.percentage,
+      cacheAge: `${(now - progressCache.value.timestamp).toFixed(2)}ms`
+    })
+    return progressCache.value.percentage
+  }
+  
+  const startTime = performance.now()
+  
+  // Validation complète de la tâche (uniquement si pas en cache)
+  const validation = validateTaskProgress({
+    id: currentTask.id,
+    estimatedHours: currentTask.estimatedHours,
+    actualHours: currentTask.actualHours,
+    status: currentTask.status
+  })
+  
+  // Log des erreurs et warnings (avec throttling)
+  if (validation.errors.length > 0) {
+    debouncedErrorLog(currentTask.id, validation.errors)
+  }
+  
+  if (validation.warnings.length > 0) {
+    debouncedWarningLog(currentTask.id, validation.warnings)
+  }
+  
+  // Calcul sécurisé du pourcentage
+  const percentage = calculateProgressPercentage(
+    currentTask.estimatedHours, 
+    currentTask.actualHours
+  )
+  
+  const calculationTime = performance.now() - startTime
+  
+  // Mettre à jour le cache
+  progressCache.value = {
+    taskId: currentTask.id,
+    estimatedHours: currentTask.estimatedHours,
+    actualHours: currentTask.actualHours,
+    percentage,
+    timestamp: now
+  }
+  
+  progressLogger.log(`Progress calculated for task ${currentTask.id}`, {
+    estimated: currentTask.estimatedHours,
+    actual: currentTask.actualHours,
+    percentage,
+    calculationTime: `${calculationTime.toFixed(2)}ms`,
+    isValid: validation.isValid,
+    cached: false
+  })
+  
+  return percentage
 })
+
+// Variable pour tracker la dernière valeur de hasProgressData
+let lastProgressDataValue: boolean | undefined = undefined
+
+// Afficher la progression si les heures sont connues (optimisée)
+const hasProgressData = computed(() => {
+  const hasData = hasValidProgressData(
+    props.task.estimatedHours, 
+    props.task.actualHours
+  )
+  
+  // Log uniquement si la valeur change
+  if (lastProgressDataValue !== hasData) {
+    progressLogger.log(`Progress data check for task ${props.task.id}`, {
+      estimated: props.task.estimatedHours,
+      actual: props.task.actualHours,
+      hasData
+    })
+    lastProgressDataValue = hasData
+  }
+  
+  return hasData
+})
+
+// Fonctions de logging avec debounce pour éviter le spam
+const debouncedErrorLog = debounce((taskId: string, errors: string[]) => {
+  progressLogger.log(`Validation errors for task ${taskId}`, errors)
+}, 500)
+
+const debouncedWarningLog = debounce((taskId: string, warnings: string[]) => {
+  progressLogger.log(`Validation warnings for task ${taskId}`, warnings)
+}, 500)
+
+const debouncedProgressUpdate = debounce((taskId: string) => {
+  progressLogger.log(`Progress update completed for task ${taskId}`)
+}, 100)
+
+// Watchers optimisés pour détecter les changements de progression
+watch(
+  () => props.task.estimatedHours,
+  (newEstimated, oldEstimated) => {
+    if (newEstimated !== oldEstimated) {
+      // Invalider le cache
+      if (progressCache.value?.taskId === props.task.id) {
+        progressCache.value = undefined
+      }
+      
+      progressLogger.log(`Estimated hours changed for task ${props.task.id}`, {
+        from: oldEstimated,
+        to: newEstimated
+      })
+    }
+  }
+)
+
+watch(
+  () => props.task.actualHours,
+  (newActual, oldActual) => {
+    if (newActual !== oldActual) {
+      // Invalider le cache
+      if (progressCache.value?.taskId === props.task.id) {
+        progressCache.value = undefined
+      }
+      
+      progressLogger.log(`Actual hours changed for task ${props.task.id}`, {
+        from: oldActual,
+        to: newActual
+      })
+      
+      // Force la mise à jour du DOM au prochain tick (avec debounce)
+      nextTick(() => {
+        debouncedProgressUpdate(props.task.id)
+      })
+    }
+  }
+)
+
+// Watcher pour détecter les changements de tâche complète (optimisé)
+watch(
+  () => props.task,
+  (newTask, oldTask) => {
+    if (oldTask && newTask.id === oldTask.id) {
+      const hasProgressChanges = 
+        newTask.estimatedHours !== oldTask.estimatedHours ||
+        newTask.actualHours !== oldTask.actualHours
+      
+      if (hasProgressChanges) {
+        progressLogger.log(`Task updated: ${newTask.id}`, {
+          estimatedHours: newTask.estimatedHours,
+          actualHours: newTask.actualHours,
+          updatedAt: newTask.updatedAt
+        })
+      }
+    }
+  },
+  { deep: false } // Optimisation: pas de deep watch
+)
 
 // Formatage de la date
 const formatDate = (dateString: string) => {
@@ -177,9 +354,42 @@ const formatDate = (dateString: string) => {
 }
 
 // Gestion des événements
-const handleUpdate = (updates: UpdateTaskData) => {
-  emit('update', props.task.id, updates)
-  showEditModal.value = false
+const handleUpdate = async (updates: UpdateTaskData) => {
+  try {
+    // Mesurer la performance de la mise à jour
+    await measurePerformance('ui_update', async () => {
+      // Sauvegarde automatique avant la mise à jour
+      autoSave(props.task.id, { ...props.task, ...updates }, 'high')
+      
+      // Émettre l'événement de mise à jour
+      emit('update', props.task.id, updates)
+      
+      // Enregistrer la métrique de succès
+      recordMetric('ui_update', 0, true, undefined, {
+        taskId: props.task.id,
+        updatedFields: Object.keys(updates)
+      })
+    }, {
+      taskId: props.task.id,
+      updateType: 'task_edit'
+    })
+    
+    showEditModal.value = false
+  } catch (error) {
+    // Enregistrer l'erreur
+    recordMetric('ui_update', 0, false, error instanceof Error ? error.message : 'Unknown error', {
+      taskId: props.task.id,
+      updateType: 'task_edit'
+    })
+    
+    // Récupérer les données de sauvegarde en cas d'erreur
+    const backupData = recoverTask(props.task.id)
+    if (backupData) {
+      progressLogger.log(`Données récupérées depuis la sauvegarde pour la tâche ${props.task.id}`)
+    }
+    
+    throw error
+  }
 }
 
 const confirmDelete = () => {
@@ -273,6 +483,11 @@ const handleDelete = () => {
   @apply bg-green-100 text-green-800;
 }
 
+/* Statut annulé */
+.status-cancelled {
+  @apply bg-gray-200 text-gray-700;
+}
+
 .task-description {
   @apply text-gray-600 text-sm mb-3 line-clamp-2;
 }
@@ -295,13 +510,7 @@ const handleDelete = () => {
   @apply text-red-600;
 }
 
-.task-tags {
-  @apply flex flex-wrap gap-1;
-}
 
-.task-tag {
-  @apply px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full;
-}
 
 .task-actions {
   @apply flex gap-1 flex-shrink-0;
@@ -315,19 +524,5 @@ const handleDelete = () => {
   @apply hover:text-red-600 hover:bg-red-50;
 }
 
-.task-progress {
-  @apply mt-3 flex items-center gap-2;
-}
 
-.progress-bar {
-  @apply flex-1 h-2 bg-gray-200 rounded-full overflow-hidden;
-}
-
-.progress-fill {
-  @apply h-full bg-blue-500 transition-all duration-300;
-}
-
-.progress-text {
-  @apply text-xs text-gray-500 font-medium;
-}
 </style>

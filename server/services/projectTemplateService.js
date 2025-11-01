@@ -41,22 +41,7 @@ class ProjectTemplateService {
         }
         
         template.widgets = await this.getTemplateWidgets(template.id);
-        try {
-          if (!template.tags) {
-            template.tags = [];
-          } else if (typeof template.tags === 'string') {
-            const t = template.tags.trim();
-            if (t.startsWith('[') || t.startsWith('{')) {
-              template.tags = JSON.parse(t);
-            } else {
-              template.tags = t.split(',').map(s => s.trim()).filter(Boolean);
-            }
-          } else if (Array.isArray(template.tags)) {
-            // keep as-is
-          } else {
-            template.tags = [];
-          }
-        } catch (e) { template.tags = []; };
+
       }
       
       return { success: true, data: templates };
@@ -81,22 +66,6 @@ class ProjectTemplateService {
       }
       
       template.widgets = await this.getTemplateWidgets(templateId);
-      try {
-        if (!template.tags) {
-          template.tags = [];
-        } else if (typeof template.tags === 'string') {
-          const t = template.tags.trim();
-          if (t.startsWith('[') || t.startsWith('{')) {
-            template.tags = JSON.parse(t);
-          } else {
-            template.tags = t.split(',').map(s => s.trim()).filter(Boolean);
-          }
-        } else if (Array.isArray(template.tags)) {
-          // keep as-is
-        } else {
-          template.tags = [];
-        }
-      } catch (e) { template.tags = []; };
       
       return { success: true, data: template };
     } catch (error) {
@@ -117,15 +86,14 @@ class ProjectTemplateService {
 
       const result = await databaseService.run(`
         INSERT INTO project_templates (
-          name, description, category, tags, 
+          name, description, category, 
           estimated_duration, estimated_budget, 
           created_by, is_active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, 1)
       `, [
         templateData.name,
         templateData.description,
         templateData.category,
-        JSON.stringify(templateData.tags || []),
         templateData.estimated_duration,
         templateData.estimated_budget,
         agentId
@@ -159,7 +127,7 @@ class ProjectTemplateService {
 
       await databaseService.run(`
         UPDATE project_templates SET 
-          name = ?, description = ?, category = ?, tags = ?,
+          name = ?, description = ?, category = ?,
           estimated_duration = ?, estimated_budget = ?,
           updated_at = NOW()
         WHERE id = ?
@@ -167,7 +135,6 @@ class ProjectTemplateService {
         templateData.name,
         templateData.description,
         templateData.category,
-        JSON.stringify(templateData.tags || []),
         templateData.estimated_duration,
         templateData.estimated_budget,
         templateId
@@ -227,15 +194,14 @@ class ProjectTemplateService {
       
       const result = await databaseService.run(`
         INSERT INTO project_templates (
-          name, description, category, tags, 
+          name, description, category, 
           estimated_duration, estimated_budget, 
           created_by, is_active
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        ) VALUES (?, ?, ?, ?, ?, ?, 1)
       `, [
         duplicatedName,
         originalTemplate.description,
         originalTemplate.category,
-        JSON.stringify(originalTemplate.tags || []),
         originalTemplate.estimated_duration,
         originalTemplate.estimated_budget,
         agentId

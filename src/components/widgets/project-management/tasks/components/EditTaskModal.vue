@@ -43,6 +43,7 @@
               <option value="pending">{{ t('widgets.tasks.status.pending') }}</option>
               <option value="in_progress">{{ t('widgets.tasks.status.in_progress') }}</option>
               <option value="completed">{{ t('widgets.tasks.status.completed') }}</option>
+              <option value="cancelled">{{ t('widgets.tasks.status.cancelled') }}</option>
             </select>
           </div>
           
@@ -110,36 +111,7 @@
           </div>
         </div>
         
-        <!-- Tags -->
-        <div class="form-group">
-          <label class="form-label">{{ t('widgets.tasks.tags') }}</label>
-          <div class="tags-input">
-            <div class="selected-tags">
-              <span 
-                v-for="(tag, index) in form.tags" 
-                :key="index" 
-                class="tag-item"
-              >
-                {{ tag }}
-                <button 
-                  type="button" 
-                  @click="removeTag(index)"
-                  class="tag-remove"
-                >
-                  <i class="fas fa-times"></i>
-                </button>
-              </span>
-            </div>
-            <input
-              v-model="newTag"
-              type="text"
-              class="tag-input"
-              :placeholder="t('widgets.tasks.addTag')"
-              @keydown.enter.prevent="addTag"
-              @keydown.comma.prevent="addTag"
-            >
-          </div>
-        </div>
+
         
         <!-- Actions -->
         <div class="modal-actions">
@@ -187,12 +159,10 @@ const form = ref<UpdateTaskData>({
   priority: props.task.priority,
   assignedTo: props.task.assignedTo || '',
   dueDate: props.task.dueDate || '',
-  tags: [...(props.task.tags || [])],
   estimatedHours: props.task.estimatedHours,
   actualHours: props.task.actualHours
 })
 
-const newTag = ref('')
 const loading = ref(false)
 const errors = ref<Record<string, string>>({})
 const teamMembers = ref<TeamMember[]>([])
@@ -203,22 +173,6 @@ const isFormValid = computed(() => {
          form.value.title.trim().length > 0 && 
          form.value.title.trim().length <= 255
 })
-
-// Gestion des tags
-const addTag = () => {
-  const tag = newTag.value.trim()
-  if (tag && !form.value.tags?.includes(tag)) {
-    if (!form.value.tags) form.value.tags = []
-    form.value.tags.push(tag)
-    newTag.value = ''
-  }
-}
-
-const removeTag = (index: number) => {
-  if (form.value.tags) {
-    form.value.tags.splice(index, 1)
-  }
-}
 
 // Validation des champs
 const validateForm = () => {
@@ -267,9 +221,7 @@ const handleSubmit = async () => {
       updates.dueDate = form.value.dueDate || undefined
     }
     
-    if (JSON.stringify(form.value.tags) !== JSON.stringify(props.task.tags)) {
-      updates.tags = form.value.tags?.filter(tag => tag.trim()) || undefined
-    }
+
     
     if (form.value.estimatedHours !== props.task.estimatedHours) {
       updates.estimatedHours = form.value.estimatedHours || undefined
@@ -358,25 +310,7 @@ onMounted(() => {
   @apply text-sm text-red-600;
 }
 
-.tags-input {
-  @apply border border-gray-300 rounded-md p-2 min-h-[42px] focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent;
-}
 
-.selected-tags {
-  @apply flex flex-wrap gap-1 mb-2;
-}
-
-.tag-item {
-  @apply inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-sm rounded-full;
-}
-
-.tag-remove {
-  @apply text-blue-600 hover:text-blue-800 p-0.5 rounded-full hover:bg-blue-200 transition-colors;
-}
-
-.tag-input {
-  @apply border-0 outline-0 flex-1 min-w-[120px] p-0;
-}
 
 .modal-actions {
   @apply flex justify-end gap-3 pt-4 border-t border-gray-200;

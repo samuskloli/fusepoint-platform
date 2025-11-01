@@ -1,0 +1,4922 @@
+{
+  "timestamp": "2025-11-01T22:14:05.826Z",
+  "summary": {
+    "totalComponents": 48,
+    "totalWatchers": 20,
+    "totalComputed": 206,
+    "totalEvents": 421,
+    "performanceIssues": 2,
+    "recommendations": 2
+  },
+  "components": [
+    {
+      "file": "components/Admin/WidgetManagement/CategoryStats.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n  const stats = {}\n\n  props.widgets.forEach(widget => {\n    const category = widget.category || 'other'\n    \n    if (!stats[category]",
+          "line": 185,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  return [...categoryStats.value].sort((a, b",
+          "line": 241,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  return categoryStats.value.filter(cat => cat.fullyDeveloped > 0",
+          "line": 246,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (categoryStats.value.length === 0",
+          "line": 251,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  return categoryStats.value.reduce((total, category",
+          "line": 258,
+          "isProgressRelated": false
+        },
+        {
+          "name": "categoryStats",
+          "line": 185,
+          "isProgressRelated": false
+        },
+        {
+          "name": "sortedCategoryStats",
+          "line": 241,
+          "isProgressRelated": false
+        },
+        {
+          "name": "activeCategoriesCount",
+          "line": 246,
+          "isProgressRelated": false
+        },
+        {
+          "name": "averageCoverage",
+          "line": 251,
+          "isProgressRelated": false
+        },
+        {
+          "name": "totalStats",
+          "line": 258,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "getProgressColor",
+          "line": 311,
+          "isAsync": false
+        }
+      ],
+      "events": [],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/Admin/WidgetManagement/WidgetOverview.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n  if (!props.analysis || props.analysis.stats.total === 0",
+          "line": 208,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!props.analysis",
+          "line": 213,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!props.analysis",
+          "line": 218,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!props.analysis",
+          "line": 223,
+          "isProgressRelated": false
+        },
+        {
+          "name": "developmentProgress",
+          "line": 208,
+          "isProgressRelated": true
+        },
+        {
+          "name": "developedNotInDb",
+          "line": 213,
+          "isProgressRelated": false
+        },
+        {
+          "name": "developedWithoutManifest",
+          "line": 218,
+          "isProgressRelated": false
+        },
+        {
+          "name": "inDevelopment",
+          "line": 223,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: developmentProgress",
+          "line": 208
+        }
+      ]
+    },
+    {
+      "file": "components/FusepointWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "dismiss",
+          "line": 19
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "executeAction(action)",
+          "line": 44
+        },
+        {
+          "type": "emit",
+          "name": "widget-dismissed",
+          "handler": "unknown",
+          "line": 147
+        },
+        {
+          "type": "emit",
+          "name": "action-executed",
+          "handler": "unknown",
+          "line": 164
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/CreateProjectModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAdvanced = !showAdvanced",
+          "line": 230
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 302
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 356
+        },
+        {
+          "type": "emit",
+          "name": "create",
+          "handler": "unknown",
+          "line": 397
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/CreateTaskModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.task",
+          "callback": "(newTask",
+          "line": 425
+        }
+      ],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 9
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAdvanced = !showAdvanced",
+          "line": 252
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 354
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 444
+        },
+        {
+          "type": "emit",
+          "name": "save",
+          "handler": "unknown",
+          "line": 479
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => props.task",
+          "line": 425
+        }
+      ]
+    },
+    {
+      "file": "components/ProjectManagement/EditEventModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "updateEvent",
+          "line": 313,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeParticipant(index)",
+          "line": 125
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addParticipant",
+          "line": 135
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "form.color = color.value",
+          "line": 187
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 219
+        },
+        {
+          "type": "emit",
+          "name": "updated",
+          "handler": "unknown",
+          "line": 323
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 337
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/EditProjectModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.project",
+          "callback": "async (newVal, oldVal",
+          "line": 362
+        }
+      ],
+      "computed": [],
+      "methods": [
+        {
+          "name": "updateProject",
+          "line": 396,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(tag)",
+          "line": 142
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addTag",
+          "line": 159
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 171
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 171
+        },
+        {
+          "type": "emit",
+          "name": "update",
+          "handler": "unknown",
+          "line": 410
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 171
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/EventDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editEvent",
+          "line": 133
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteEvent",
+          "line": 139
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 146
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 286
+        },
+        {
+          "type": "emit",
+          "name": "delete",
+          "handler": "unknown",
+          "line": 291
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 296
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/ProgressEditor.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "getProgressClass",
+          "line": 82,
+          "isAsync": false
+        },
+        {
+          "name": "saveProgress",
+          "line": 90,
+          "isAsync": true
+        },
+        {
+          "name": "updateSlider",
+          "line": 78,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "emit",
+          "name": "updated",
+          "handler": "unknown",
+          "line": 103
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "dom-update",
+          "description": "Gestion explicite des mises à jour DOM",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "file": "components/ProjectManagement/ProjectsTab.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return props.projects.filter(p => p.status === 'completed'",
+          "line": 314,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return props.projects.filter(p => p.status === 'in_progress'",
+          "line": 318,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return props.projects.filter(p => {\n        if (!p.end_date",
+          "line": 322,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      let filtered = props.projects\n\n      if (statusFilter.value",
+          "line": 329,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completedProjects",
+          "line": 314,
+          "isProgressRelated": false
+        },
+        {
+          "name": "activeProjects",
+          "line": 318,
+          "isProgressRelated": false
+        },
+        {
+          "name": "overdueProjects",
+          "line": 322,
+          "isProgressRelated": false
+        },
+        {
+          "name": "filteredProjects",
+          "line": 329,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "getProgressClass",
+          "line": 397,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "toggleView",
+          "line": 109
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('view-project', project)",
+          "line": 130
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('view-project', project)",
+          "line": 217
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('view-project', project)",
+          "line": 248
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('edit-project', project)",
+          "line": 254
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('duplicate-project', project)",
+          "line": 260
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('delete-project', project)",
+          "line": 266
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 130
+        },
+        {
+          "type": "emit",
+          "name": "edit-project",
+          "handler": "unknown",
+          "line": 137
+        },
+        {
+          "type": "emit",
+          "name": "duplicate-project",
+          "handler": "unknown",
+          "line": 145
+        },
+        {
+          "type": "emit",
+          "name": "delete-project",
+          "handler": "unknown",
+          "line": 153
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 217
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 248
+        },
+        {
+          "type": "emit",
+          "name": "edit-project",
+          "handler": "unknown",
+          "line": 254
+        },
+        {
+          "type": "emit",
+          "name": "duplicate-project",
+          "handler": "unknown",
+          "line": 260
+        },
+        {
+          "type": "emit",
+          "name": "delete-project",
+          "handler": "unknown",
+          "line": 266
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 130
+        },
+        {
+          "type": "emit",
+          "name": "edit-project",
+          "handler": "unknown",
+          "line": 137
+        },
+        {
+          "type": "emit",
+          "name": "duplicate-project",
+          "handler": "unknown",
+          "line": 145
+        },
+        {
+          "type": "emit",
+          "name": "delete-project",
+          "handler": "unknown",
+          "line": 153
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 217
+        },
+        {
+          "type": "emit",
+          "name": "view-project",
+          "handler": "unknown",
+          "line": 248
+        },
+        {
+          "type": "emit",
+          "name": "edit-project",
+          "handler": "unknown",
+          "line": 254
+        },
+        {
+          "type": "emit",
+          "name": "duplicate-project",
+          "handler": "unknown",
+          "line": 260
+        },
+        {
+          "type": "emit",
+          "name": "delete-project",
+          "handler": "unknown",
+          "line": 266
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return props.projects.filter(p => p.status === 'in_progress'",
+          "line": 318
+        }
+      ]
+    },
+    {
+      "file": "components/ProjectManagement/ReportsTab.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "getProgressChangeClass",
+          "line": 586,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "generateReport",
+          "line": 13
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "exportData",
+          "line": 23
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "loadStatistics",
+          "line": 41
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "loadStatistics",
+          "line": 56
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "loadStatistics",
+          "line": 65
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "loadStatistics",
+          "line": 73
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showGenerateReportModal = false",
+          "line": 323
+        },
+        {
+          "type": "listener",
+          "name": "generated",
+          "handler": "onReportGenerated",
+          "line": 324
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/ProjectManagement/TasksTab.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      if (!Array.isArray(props.tasks",
+          "line": 363,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filteredTasks",
+          "line": 363,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateTask = true",
+          "line": 11
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'kanban'",
+          "line": 111
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'list'",
+          "line": 122
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editTask(task)",
+          "line": 157
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editTask(task)",
+          "line": 282
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteTask(task.id)",
+          "line": 290
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeTaskModal",
+          "line": 311
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "saveTask",
+          "line": 312
+        },
+        {
+          "type": "emit",
+          "name": "delete-task",
+          "handler": "unknown",
+          "line": 436
+        },
+        {
+          "type": "emit",
+          "name": "edit-task",
+          "handler": "unknown",
+          "line": 447
+        },
+        {
+          "type": "emit",
+          "name": "create-task",
+          "handler": "unknown",
+          "line": 449
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      if (!Array.isArray(props.tasks",
+          "line": 363
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: filteredTasks",
+          "line": 363
+        }
+      ]
+    },
+    {
+      "file": "components/SuperAdmin/DashboardOverview.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('refresh')",
+          "line": 55
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "createBackup",
+          "line": 204
+        },
+        {
+          "type": "emit",
+          "name": "refresh",
+          "handler": "unknown",
+          "line": 55
+        },
+        {
+          "type": "emit",
+          "name": "refresh",
+          "handler": "unknown",
+          "line": 302
+        },
+        {
+          "type": "emit",
+          "name": "refresh",
+          "handler": "unknown",
+          "line": 55
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/SuperAdmin/SystemHealth.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshHealth",
+          "line": 15
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "createBackup",
+          "line": 19
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshHealth",
+          "line": 37
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "downloadBackup(backup)",
+          "line": 337
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "createBackup",
+          "line": 350
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/accompagnement/AccompagnementDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "updateRequestStatus",
+          "line": 375,
+          "isAsync": true
+        },
+        {
+          "name": "updateRecommendationStatus",
+          "line": 384,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewRequestDetails(request)",
+          "line": 113
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "applyRecommendation(recommendation)",
+          "line": 151
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "openChat",
+          "line": 169
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "scheduleAppointment",
+          "line": 198
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showChat = false",
+          "line": 222
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showScheduleModal = false",
+          "line": 228
+        },
+        {
+          "type": "listener",
+          "name": "scheduled",
+          "handler": "handleAppointmentScheduled",
+          "line": 229
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/client/ProjectDashboardWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      if (showAllWidgets.value",
+          "line": 176,
+          "isProgressRelated": false
+        },
+        {
+          "name": "displayedWidgets",
+          "line": 176,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "calculateProgress",
+          "line": 246,
+          "isAsync": false
+        },
+        {
+          "name": "onWidgetUpdated",
+          "line": 273,
+          "isAsync": false
+        },
+        {
+          "name": "calculateProgress",
+          "line": 246,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshProject",
+          "line": 29
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "toggleWidgetsView",
+          "line": 33
+        },
+        {
+          "type": "emit",
+          "name": "project-updated",
+          "handler": "unknown",
+          "line": 264
+        },
+        {
+          "type": "emit",
+          "name": "project-updated",
+          "handler": "unknown",
+          "line": 278
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/debug/ProgressTestPanel.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => testTask.value",
+          "callback": "updateTestTask, { deep: true }",
+          "line": 261
+        }
+      ],
+      "computed": [
+        {
+          "name": "{\n  return calculateProgressPercentage(testTask.value.estimatedHours, testTask.value.actualHours",
+          "line": 144,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n  return hasValidProgressData(testTask.value.estimatedHours, testTask.value.actualHours",
+          "line": 148,
+          "isProgressRelated": true
+        },
+        {
+          "name": "({\n  'progress-low': progressPercentage.value < 50,\n  'progress-medium': progressPercentage.value >= 50 && progressPercentage.value < 80,\n  'progress-high': progressPercentage.value >= 80 && progressPercentage.value < 100,\n  'progress-complete': progressPercentage.value >= 100\n}",
+          "line": 152,
+          "isProgressRelated": true
+        },
+        {
+          "name": "progressPercentage",
+          "line": 144,
+          "isProgressRelated": true
+        },
+        {
+          "name": "hasValidData",
+          "line": 148,
+          "isProgressRelated": false
+        },
+        {
+          "name": "progressClasses",
+          "line": 152,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [
+        {
+          "name": "updateTestTask",
+          "line": 164,
+          "isAsync": false
+        },
+        {
+          "name": "updateRecentLogs",
+          "line": 256,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "togglePanel",
+          "line": 5
+        },
+        {
+          "type": "listener",
+          "name": "input",
+          "handler": "updateTestTask",
+          "line": 20
+        },
+        {
+          "type": "listener",
+          "name": "input",
+          "handler": "updateTestTask",
+          "line": 31
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "updateTestTask",
+          "line": 37
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "runReactivityTest",
+          "line": 70
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "clearLogs",
+          "line": 89
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "exportLogs",
+          "line": 90
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => testTask.value",
+          "line": 261
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  return calculateProgressPercentage(testTask.value.estimatedHours, testTask.value.actualHours",
+          "line": 144
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  return hasValidProgressData(testTask.value.estimatedHours, testTask.value.actualHours",
+          "line": 148
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: ({\n  'progress-low': progressPercentage.value < 50,\n  'progress-medium': progressPercentage.value >= 50 && progressPercentage.value < 80,\n  'progress-high': progressPercentage.value >= 80 && progressPercentage.value < 100,\n  'progress-complete': progressPercentage.value >= 100\n}",
+          "line": 152
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: progressPercentage",
+          "line": 144
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: progressClasses",
+          "line": 152
+        }
+      ]
+    },
+    {
+      "file": "components/modals/AIChatModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "newMessage",
+          "callback": "adjustTextareaHeight",
+          "line": 262
+        }
+      ],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal=relative top-10 mx-auto p-0 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2/3 h-5 6 shadow-lg rounded-lg bg-white(flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg='flex items-center space-x-3>\n          <div class=",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeFile(file)'\n                    class(text-gray-500 hover:text-red-500\n                  >\n                    <i  class=",
+          "line": 46
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 120
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/modals/AssignTaskModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return taskForm.value.title.trim(",
+          "line": 401,
+          "isProgressRelated": true
+        },
+        {
+          "name": "isFormValid",
+          "line": 401,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 14
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(tag)",
+          "line": 166
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addTag",
+          "line": 183
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "addDependency",
+          "line": 198
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeDependency(depId)",
+          "line": 216
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "handleFileUpload",
+          "line": 236
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "$refs.fileInput.click()",
+          "line": 241
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeAttachment(index)",
+          "line": 262
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 320
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 408
+        },
+        {
+          "type": "emit",
+          "name": "assigned",
+          "handler": "unknown",
+          "line": 423
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return taskForm.value.title.trim(",
+          "line": 401
+        }
+      ]
+    },
+    {
+      "file": "components/modals/EventDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return user.value && (\n        user.value.role === 'admin' ||\n        user.value.role === 'super_admin' ||\n        props.event.created_by?.id === user.value.id",
+          "line": 217,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return user.value && (\n        user.value.role === 'admin' ||\n        user.value.role === 'super_admin' ||\n        props.event.created_by?.id === user.value.id",
+          "line": 225,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canEdit",
+          "line": 217,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canDelete",
+          "line": 225,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editEvent",
+          "line": 34
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "confirmDelete",
+          "line": 42
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "downloadAttachment(attachment)",
+          "line": 152
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 187
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 234
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 238
+        },
+        {
+          "type": "emit",
+          "name": "delete",
+          "handler": "unknown",
+          "line": 243
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/modals/FileUploadModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return t('files.acceptedTypesText'",
+          "line": 247,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return t('files.maxSizeText'",
+          "line": 251,
+          "isProgressRelated": false
+        },
+        {
+          "name": "acceptedTypesText",
+          "line": 247,
+          "isProgressRelated": false
+        },
+        {
+          "name": "maxSizeText",
+          "line": 251,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "drop",
+          "handler": "handleDrop",
+          "line": 13
+        },
+        {
+          "type": "listener",
+          "name": "dragenter",
+          "handler": "handleDragEnter",
+          "line": 15
+        },
+        {
+          "type": "listener",
+          "name": "dragleave",
+          "handler": "handleDragLeave",
+          "line": 16
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "triggerFileInput",
+          "line": 25
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "handleFileSelect",
+          "line": 31
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeFile(index)",
+          "line": 85
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(tag)",
+          "line": 127
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addTag",
+          "line": 144
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 182
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "uploadFiles",
+          "line": 189
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 256
+        },
+        {
+          "type": "emit",
+          "name": "upload",
+          "handler": "unknown",
+          "line": 386
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/modals/GoalDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return user.value && (user.value.role === 'admin' || props.goal.assigned_to === user.value.id",
+          "line": 212,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return user.value && user.value.role === 'admin'\n    }",
+          "line": 216,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const configs = {\n        'active': { color: 'bg-blue-500', textColor: 'text-blue-700' },\n        'completed': { color: 'bg-green-500', textColor: 'text-green-700' },\n        'on_hold': { color: 'bg-yellow-500', textColor: 'text-yellow-700' },\n        'cancelled': { color: 'bg-red-500', textColor: 'text-red-700' }\n      }\n      return configs[props.goal.status] || configs['active']\n    }",
+          "line": 220,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const configs = {\n        'low': { icon: 'fas fa-arrow-down', bgColor: 'bg-gray-100', textColor: 'text-gray-600' },\n        'medium': { icon: 'fas fa-minus', bgColor: 'bg-yellow-100', textColor: 'text-yellow-600' },\n        'high': { icon: 'fas fa-arrow-up', bgColor: 'bg-orange-100', textColor: 'text-orange-600' },\n        'critical': { icon: 'fas fa-exclamation', bgColor: 'bg-red-100', textColor: 'text-red-600' }\n      }\n      return configs[props.goal.priority] || configs['medium']\n    }",
+          "line": 230,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      if (!props.goal.due_date",
+          "line": 240,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canEdit",
+          "line": 212,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canDelete",
+          "line": 216,
+          "isProgressRelated": false
+        },
+        {
+          "name": "statusConfig",
+          "line": 220,
+          "isProgressRelated": false
+        },
+        {
+          "name": "priorityConfig",
+          "line": 230,
+          "isProgressRelated": false
+        },
+        {
+          "name": "dueDateClass",
+          "line": 240,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "updateStatus",
+          "line": 259,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editGoal",
+          "line": 27
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 34
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "updateStatus('active')",
+          "line": 149
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "updateStatus('completed')",
+          "line": 158
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "updateStatus('on_hold')",
+          "line": 167
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteGoal",
+          "line": 180
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 248
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 252
+        },
+        {
+          "type": "emit",
+          "name": "delete",
+          "handler": "unknown",
+          "line": 256
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 261
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/modals/MemberDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      if (taskFilter.value === 'all'",
+          "line": 410,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return user.value?.role === 'admin' || user.value?.permissions?.includes('manage_team'",
+          "line": 426,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return user.value?.id !== props.member.id\n    }",
+          "line": 430,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return user.value?.permissions?.includes('manage_tasks'",
+          "line": 434,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return user.value?.role === 'admin' || user.value?.permissions?.includes('manage_team'",
+          "line": 438,
+          "isProgressRelated": false
+        },
+        {
+          "name": "filteredTasks",
+          "line": 410,
+          "isProgressRelated": true
+        },
+        {
+          "name": "canEditPermissions",
+          "line": 426,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canSendMessage",
+          "line": 430,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canAssignTask",
+          "line": 434,
+          "isProgressRelated": true
+        },
+        {
+          "name": "canEditMember",
+          "line": 438,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 25
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = 'overview'",
+          "line": 35
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = 'tasks'",
+          "line": 43
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = 'activity'",
+          "line": 51
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = 'permissions'",
+          "line": 59
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewTask(task)",
+          "line": 216
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editPermissions",
+          "line": 263
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "sendMessage",
+          "line": 308
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "assignTask",
+          "line": 316
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editMember",
+          "line": 326
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 332
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 444
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 448
+        },
+        {
+          "type": "emit",
+          "name": "assign-task",
+          "handler": "unknown",
+          "line": 452
+        },
+        {
+          "type": "emit",
+          "name": "send-message",
+          "handler": "unknown",
+          "line": 456
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      if (taskFilter.value === 'all'",
+          "line": 410
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return user.value?.permissions?.includes('manage_tasks'",
+          "line": 434
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: filteredTasks",
+          "line": 410
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: canAssignTask",
+          "line": 434
+        }
+      ]
+    },
+    {
+      "file": "components/modals/TaskDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      const configs = {\n        todo: {\n          label: 'tasks.status.todo',\n          color: 'bg-gray-400',\n          textColor: 'text-gray-700'\n        },\n        in_progress: {\n          label: 'tasks.status.inProgress',\n          color: 'bg-blue-400',\n          textColor: 'text-blue-700'\n        },\n        review: {\n          label: 'tasks.status.review',\n          color: 'bg-yellow-400',\n          textColor: 'text-yellow-700'\n        },\n        completed: {\n          label: 'tasks.status.completed',\n          color: 'bg-green-400',\n          textColor: 'text-green-700'\n        },\n        on_hold: {\n          label: 'tasks.status.onHold',\n          color: 'bg-orange-400',\n          textColor: 'text-orange-700'\n        },\n        cancelled: {\n          label: 'tasks.status.cancelled',\n          color: 'bg-red-400',\n          textColor: 'text-red-700'\n        }\n      }\n      return configs[props.task.status] || configs.todo\n    }",
+          "line": 250,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      const configs = {\n        low: {\n          label: 'tasks.priority.low',\n          icon: 'fas fa-arrow-down',\n          bgColor: 'bg-green-100',\n          textColor: 'text-green-600'\n        },\n        medium: {\n          label: 'tasks.priority.medium',\n          icon: 'fas fa-minus',\n          bgColor: 'bg-yellow-100',\n          textColor: 'text-yellow-600'\n        },\n        high: {\n          label: 'tasks.priority.high',\n          icon: 'fas fa-arrow-up',\n          bgColor: 'bg-orange-100',\n          textColor: 'text-orange-600'\n        },\n        urgent: {\n          label: 'tasks.priority.urgent',\n          icon: 'fas fa-exclamation',\n          bgColor: 'bg-red-100',\n          textColor: 'text-red-600'\n        }\n      }\n      return configs[props.task.priority] || configs.medium\n    }",
+          "line": 286,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      if (!props.task.dueDate",
+          "line": 316,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      const remaining = (props.task.estimatedHours || 0",
+          "line": 328,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      const progress = ((props.task.timeSpent || 0",
+          "line": 335,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      const remaining = (props.task.budget || 0",
+          "line": 342,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return hasPermission('tasks.edit'",
+          "line": 349,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return hasPermission('tasks.comment'",
+          "line": 353,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      return hasPermission('tasks.upload'",
+          "line": 357,
+          "isProgressRelated": true
+        },
+        {
+          "name": "statusConfig",
+          "line": 250,
+          "isProgressRelated": false
+        },
+        {
+          "name": "priorityConfig",
+          "line": 286,
+          "isProgressRelated": false
+        },
+        {
+          "name": "dueDateClass",
+          "line": 316,
+          "isProgressRelated": false
+        },
+        {
+          "name": "remainingTimeClass",
+          "line": 328,
+          "isProgressRelated": false
+        },
+        {
+          "name": "timeProgressClass",
+          "line": 335,
+          "isProgressRelated": true
+        },
+        {
+          "name": "remainingBudgetClass",
+          "line": 342,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canEdit",
+          "line": 349,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canComment",
+          "line": 353,
+          "isProgressRelated": false
+        },
+        {
+          "name": "canUploadFiles",
+          "line": 357,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "progress",
+          "line": 336,
+          "isAsync": false
+        },
+        {
+          "name": "updateStatus",
+          "line": 369,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal=relative top-20 mx-auto p-5 border w-11/12 md:w-4/5 lg:w-3/4 xl:w-2 3 shadow-lg rounded-lg bg-white(flex items-center justify-between pb-4 border-b border-gray-200'>\n        <div class=",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editTask",
+          "line": 16
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 23
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 362
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 366
+        },
+        {
+          "type": "emit",
+          "name": "update",
+          "handler": "unknown",
+          "line": 372
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const configs = {\n        todo: {\n          label: 'tasks.status.todo',\n          color: 'bg-gray-400',\n          textColor: 'text-gray-700'\n        },\n        in_progress: {\n          label: 'tasks.status.inProgress',\n          color: 'bg-blue-400',\n          textColor: 'text-blue-700'\n        },\n        review: {\n          label: 'tasks.status.review',\n          color: 'bg-yellow-400',\n          textColor: 'text-yellow-700'\n        },\n        completed: {\n          label: 'tasks.status.completed',\n          color: 'bg-green-400',\n          textColor: 'text-green-700'\n        },\n        on_hold: {\n          label: 'tasks.status.onHold',\n          color: 'bg-orange-400',\n          textColor: 'text-orange-700'\n        },\n        cancelled: {\n          label: 'tasks.status.cancelled',\n          color: 'bg-red-400',\n          textColor: 'text-red-700'\n        }\n      }\n      return configs[props.task.status] || configs.todo\n    }",
+          "line": 250
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const configs = {\n        low: {\n          label: 'tasks.priority.low',\n          icon: 'fas fa-arrow-down',\n          bgColor: 'bg-green-100',\n          textColor: 'text-green-600'\n        },\n        medium: {\n          label: 'tasks.priority.medium',\n          icon: 'fas fa-minus',\n          bgColor: 'bg-yellow-100',\n          textColor: 'text-yellow-600'\n        },\n        high: {\n          label: 'tasks.priority.high',\n          icon: 'fas fa-arrow-up',\n          bgColor: 'bg-orange-100',\n          textColor: 'text-orange-600'\n        },\n        urgent: {\n          label: 'tasks.priority.urgent',\n          icon: 'fas fa-exclamation',\n          bgColor: 'bg-red-100',\n          textColor: 'text-red-600'\n        }\n      }\n      return configs[props.task.priority] || configs.medium\n    }",
+          "line": 286
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      if (!props.task.dueDate",
+          "line": 316
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const remaining = (props.task.estimatedHours || 0",
+          "line": 328
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const progress = ((props.task.timeSpent || 0",
+          "line": 335
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const remaining = (props.task.budget || 0",
+          "line": 342
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return hasPermission('tasks.edit'",
+          "line": 349
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return hasPermission('tasks.comment'",
+          "line": 353
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      return hasPermission('tasks.upload'",
+          "line": 357
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: timeProgressClass",
+          "line": 335
+        }
+      ]
+    },
+    {
+      "file": "components/modals/TaskModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.task",
+          "callback": "initializeForm, { immediate: true }",
+          "line": 386
+        }
+      ],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 9
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(tag)",
+          "line": 198
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addTag",
+          "line": 215
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 228
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 321
+        },
+        {
+          "type": "emit",
+          "name": "save",
+          "handler": "unknown",
+          "line": 374
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => props.task",
+          "line": 386
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/BudgetWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      if (budget.value.allocated === 0",
+          "line": 57,
+          "isProgressRelated": false
+        },
+        {
+          "name": "progressPercentage",
+          "line": 57,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [],
+      "events": [],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: progressPercentage",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/ChecklistWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "checklists.value.filter(checklist => checklist.progress === 100",
+          "line": 435,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      if (checklists.value.length === 0",
+          "line": 439,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      let filtered = [...checklists.value]\n      \n      // Filtrer par recherche\n      if (searchQuery.value",
+          "line": 445,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completedChecklists",
+          "line": 435,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completionPercentage",
+          "line": 439,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filteredChecklists",
+          "line": 445,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "recomputeChecklistProgress",
+          "line": 680,
+          "isAsync": false
+        },
+        {
+          "name": "updateConfig",
+          "line": 668,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "configure",
+          "handler": "showConfigModal = true",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "retry",
+          "handler": "loadChecklists",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'list'",
+          "line": 35
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'categories'",
+          "line": 42
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddChecklistModal = true",
+          "line": 51
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'",
+          "line": 111
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "toggleChecklistExpansion(checklist.id)",
+          "line": 169
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editChecklist(checklist)",
+          "line": 178
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "duplicateChecklist(checklist)",
+          "line": 186
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteChecklist(checklist)",
+          "line": 194
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addChecklistItem(checklist)",
+          "line": 221
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "onItemToggle(checklist, item)",
+          "line": 240
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editChecklistItem(checklist, item)",
+          "line": 270
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteChecklistItem(checklist, item)",
+          "line": 278
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddChecklistModal = true",
+          "line": 302
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeChecklistModal",
+          "line": 315
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "saveChecklist",
+          "line": 316
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeItemModal",
+          "line": 323
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "saveChecklistItem",
+          "line": 324
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showConfigModal = false",
+          "line": 331
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "updateConfig",
+          "line": 332
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 512
+        },
+        {
+          "type": "emit",
+          "name": "update-widget",
+          "handler": "unknown",
+          "line": 670
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: checklists.value.filter(checklist => checklist.progress === 100",
+          "line": 435
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: completionPercentage",
+          "line": 439
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/FeatureTrackingWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.projectId",
+          "callback": "(",
+          "line": 427
+        },
+        {
+          "type": "watch",
+          "target": "[filterStatus",
+          "callback": "filterPriority], (",
+          "line": 431
+        }
+      ],
+      "computed": [
+        {
+          "name": "features.value.length",
+          "line": 270,
+          "isProgressRelated": false
+        },
+        {
+          "name": "features.value.filter(f => f.status === 'completed'",
+          "line": 271,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      let filtered = features.value\n      \n      if (filterStatus.value !== 'all'",
+          "line": 275,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return Math.ceil(filteredFeatures.value.length / itemsPerPage.value",
+          "line": 296,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const start = (currentPage.value - 1",
+          "line": 300,
+          "isProgressRelated": false
+        },
+        {
+          "name": "[\n      {\n        key: 'showProgress',\n        label: t('widgets.features.config.showProgress'",
+          "line": 307,
+          "isProgressRelated": true
+        },
+        {
+          "name": "totalFeatures",
+          "line": 270,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completedFeatures",
+          "line": 271,
+          "isProgressRelated": false
+        },
+        {
+          "name": "filteredFeatures",
+          "line": 275,
+          "isProgressRelated": false
+        },
+        {
+          "name": "totalPages",
+          "line": 296,
+          "isProgressRelated": false
+        },
+        {
+          "name": "paginatedFeatures",
+          "line": 300,
+          "isProgressRelated": false
+        },
+        {
+          "name": "configOptions",
+          "line": 307,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "updateConfig",
+          "line": 406,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "configure",
+          "handler": "showConfigModal = true",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "retry",
+          "handler": "loadFeatures",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddModal = true",
+          "line": 28
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "selectFeature(feature)",
+          "line": 71
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "currentPage--",
+          "line": 112
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "currentPage++",
+          "line": 124
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddModal = false",
+          "line": 134
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddModal = false",
+          "line": 138
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddModal = false",
+          "line": 182
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showConfigModal = false",
+          "line": 199
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "updateConfig",
+          "line": 200
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 403
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: [\n      {\n        key: 'showProgress',\n        label: t('widgets.features.config.showProgress'",
+          "line": 307
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/GoalsWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.projectId",
+          "callback": "loadGoals",
+          "line": 1063
+        },
+        {
+          "type": "watch",
+          "target": "() => widgetConfig.value.autoRefresh",
+          "callback": "(newValue",
+          "line": 1065
+        },
+        {
+          "type": "watch",
+          "target": "() => widgetConfig.value.refreshInterval",
+          "callback": "(",
+          "line": 1073
+        }
+      ],
+      "computed": [
+        {
+          "name": "goals.value.length",
+          "line": 665,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return goals.value.filter(goal => goal.status === 'completed'",
+          "line": 667,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return goals.value.filter(goal => goal.status === 'active'",
+          "line": 671,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return goals.value.filter(goal => isOverdue(goal",
+          "line": 675,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      if (totalGoals.value === 0",
+          "line": 679,
+          "isProgressRelated": false
+        },
+        {
+          "name": "2 * Math.PI * 50",
+          "line": 684,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const progress = completionRate.value\n      return circumference.value - (progress / 100",
+          "line": 686,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      let filtered = [...goals.value]\n      \n      // Filtrer par statut\n      switch (filterStatus.value",
+          "line": 691,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const totalFiltered = goals.value.filter(goal => {\n        // Appliquer les mêmes filtres que filteredGoals mais sans pagination\n        let include = true\n        \n        switch (filterStatus.value",
+          "line": 750,
+          "isProgressRelated": false
+        },
+        {
+          "name": "widgetConfig",
+          "line": 583,
+          "isProgressRelated": false
+        },
+        {
+          "name": "totalGoals",
+          "line": 665,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completedGoals",
+          "line": 667,
+          "isProgressRelated": false
+        },
+        {
+          "name": "activeGoals",
+          "line": 671,
+          "isProgressRelated": false
+        },
+        {
+          "name": "overdueGoals",
+          "line": 675,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completionRate",
+          "line": 679,
+          "isProgressRelated": true
+        },
+        {
+          "name": "circumference",
+          "line": 684,
+          "isProgressRelated": false
+        },
+        {
+          "name": "progressOffset",
+          "line": 686,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filteredGoals",
+          "line": 691,
+          "isProgressRelated": false
+        },
+        {
+          "name": "totalPages",
+          "line": 750,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "getProgressClass",
+          "line": 856,
+          "isAsync": false
+        },
+        {
+          "name": "updateConfig",
+          "line": 1035,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "configure",
+          "handler": "showConfigModal = true",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "retry",
+          "handler": "loadGoals",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'list'",
+          "line": 34
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewMode = 'cards'",
+          "line": 43
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateModal = true",
+          "line": 69
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "searchQuery = ''",
+          "line": 88
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "selectGoal(goal)",
+          "line": 189
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "duplicateGoal(goal)",
+          "line": 220
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "archiveGoal(goal)",
+          "line": 225
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteGoal(goal)",
+          "line": 230
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "selectGoal(goal)",
+          "line": 318
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "duplicateGoal(goal)",
+          "line": 406
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "archiveGoal(goal)",
+          "line": 411
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteGoal(goal)",
+          "line": 416
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateModal = true",
+          "line": 432
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "currentPage--",
+          "line": 442
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "currentPage++",
+          "line": 454
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeModals",
+          "line": 468
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "handleGoalSave",
+          "line": 469
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showDetailsModal = false",
+          "line": 476
+        },
+        {
+          "type": "listener",
+          "name": "edit",
+          "handler": "editGoal",
+          "line": 477
+        },
+        {
+          "type": "listener",
+          "name": "delete",
+          "handler": "deleteGoal",
+          "line": 478
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showConfigModal = false",
+          "line": 486
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "updateConfig",
+          "line": 487
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 808
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 1036
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const progress = completionRate.value\n      return circumference.value - (progress / 100",
+          "line": 686
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: completionRate",
+          "line": 679
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: progressOffset",
+          "line": 686
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/StatsWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.projectId",
+          "callback": "(",
+          "line": 432
+        },
+        {
+          "type": "watch",
+          "target": "showChart",
+          "callback": "(newValue",
+          "line": 438
+        }
+      ],
+      "computed": [
+        {
+          "name": "widgetConfig.value.showProgress",
+          "line": 200,
+          "isProgressRelated": true
+        },
+        {
+          "name": "widgetConfig.value.showChart",
+          "line": 201,
+          "isProgressRelated": false
+        },
+        {
+          "name": "widgetConfig.value.showTimeStats",
+          "line": 202,
+          "isProgressRelated": false
+        },
+        {
+          "name": "widgetConfig.value.showActions",
+          "line": 203,
+          "isProgressRelated": false
+        },
+        {
+          "name": "tasks.value.filter(task => task.status === 'completed'",
+          "line": 205,
+          "isProgressRelated": true
+        },
+        {
+          "name": "tasks.value.filter(task => task.status === 'pending'",
+          "line": 209,
+          "isProgressRelated": true
+        },
+        {
+          "name": "tasks.value.filter(task => {\n        if (!task.due_date || task.status === 'completed'",
+          "line": 213,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n      if (tasks.value.length === 0",
+          "line": 220,
+          "isProgressRelated": true
+        },
+        {
+          "name": "[\n      {\n        key: 'total-tasks',\n        value: tasks.value.length,\n        labelKey: 'widgets.stats.tasks',\n        icon: 'fas fa-tasks',\n        iconClass: 'stat-icon-blue'\n      },\n      {\n        key: 'completed',\n        value: completedTasks.value,\n        labelKey: 'widgets.stats.completed',\n        icon: 'fas fa-check-circle',\n        iconClass: 'stat-icon-green',\n        change: `+${Math.round((completedTasks.value / tasks.value.length",
+          "line": 225,
+          "isProgressRelated": true
+        },
+        {
+          "name": "[\n      {\n        label: t('widgets.stats.completed'",
+          "line": 262,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      if (!projectData.value.end_date",
+          "line": 280,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const completedTasksWithTime = tasks.value.filter(task => \n        task.status === 'completed' && task.completed_at && task.created_at",
+          "line": 289,
+          "isProgressRelated": true
+        },
+        {
+          "name": "showProgress",
+          "line": 200,
+          "isProgressRelated": true
+        },
+        {
+          "name": "showChart",
+          "line": 201,
+          "isProgressRelated": false
+        },
+        {
+          "name": "showTimeStats",
+          "line": 202,
+          "isProgressRelated": false
+        },
+        {
+          "name": "showActions",
+          "line": 203,
+          "isProgressRelated": false
+        },
+        {
+          "name": "completedTasks",
+          "line": 205,
+          "isProgressRelated": true
+        },
+        {
+          "name": "pendingTasks",
+          "line": 209,
+          "isProgressRelated": true
+        },
+        {
+          "name": "overdueTasks",
+          "line": 213,
+          "isProgressRelated": true
+        },
+        {
+          "name": "projectProgress",
+          "line": 220,
+          "isProgressRelated": true
+        },
+        {
+          "name": "mainStats",
+          "line": 225,
+          "isProgressRelated": false
+        },
+        {
+          "name": "chartData",
+          "line": 262,
+          "isProgressRelated": false
+        },
+        {
+          "name": "daysRemaining",
+          "line": 280,
+          "isProgressRelated": false
+        },
+        {
+          "name": "averageTaskTime",
+          "line": 289,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [
+        {
+          "name": "updateConfig",
+          "line": 420,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "refresh",
+          "handler": "loadStats",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "exportStats",
+          "line": 100
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshStats",
+          "line": 104
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showConfigModal = false",
+          "line": 116
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "updateConfig",
+          "line": 117
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 417
+        },
+        {
+          "type": "emit",
+          "name": "update-widget",
+          "handler": "unknown",
+          "line": 422
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: widgetConfig.value.showProgress",
+          "line": 200
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => task.status === 'completed'",
+          "line": 205
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => task.status === 'pending'",
+          "line": 209
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => {\n        if (!task.due_date || task.status === 'completed'",
+          "line": 213
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      if (tasks.value.length === 0",
+          "line": 220
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: [\n      {\n        key: 'total-tasks',\n        value: tasks.value.length,\n        labelKey: 'widgets.stats.tasks',\n        icon: 'fas fa-tasks',\n        iconClass: 'stat-icon-blue'\n      },\n      {\n        key: 'completed',\n        value: completedTasks.value,\n        labelKey: 'widgets.stats.completed',\n        icon: 'fas fa-check-circle',\n        iconClass: 'stat-icon-green',\n        change: `+${Math.round((completedTasks.value / tasks.value.length",
+          "line": 225
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n      const completedTasksWithTime = tasks.value.filter(task => \n        task.status === 'completed' && task.completed_at && task.created_at",
+          "line": 289
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: showProgress",
+          "line": 200
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: completedTasks",
+          "line": 205
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: pendingTasks",
+          "line": 209
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: overdueTasks",
+          "line": 213
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: projectProgress",
+          "line": 220
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: averageTaskTime",
+          "line": 289
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/TaskListWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.projectId",
+          "callback": "async (",
+          "line": 535
+        }
+      ],
+      "computed": [
+        {
+          "name": "{\n  if (statusFilter.value === 'all'",
+          "line": 210,
+          "isProgressRelated": false
+        },
+        {
+          "name": "tasks.value.filter(task => task.status === 'completed'",
+          "line": 228,
+          "isProgressRelated": true
+        },
+        {
+          "name": "tasks.value.filter(task => task.status !== 'completed'",
+          "line": 232,
+          "isProgressRelated": true
+        },
+        {
+          "name": "tasks.value.filter(task => isOverdue(task",
+          "line": 236,
+          "isProgressRelated": true
+        },
+        {
+          "name": "[\n  {\n    value: 'all',\n    label: 'widgets.taskList.filters.all',\n    count: tasks.value.length\n  },\n  {\n    value: 'pending',\n    label: 'widgets.taskList.filters.pending',\n    count: pendingTasks.value.length\n  },\n  {\n    value: 'completed',\n    label: 'widgets.taskList.filters.completed',\n    count: completedTasks.value.length\n  },\n  {\n    value: 'overdue',\n    label: 'widgets.taskList.filters.overdue',\n    count: overdueTasks.value.length\n  }\n]",
+          "line": 241,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filteredTasks",
+          "line": 210,
+          "isProgressRelated": true
+        },
+        {
+          "name": "completedTasks",
+          "line": 228,
+          "isProgressRelated": true
+        },
+        {
+          "name": "pendingTasks",
+          "line": 232,
+          "isProgressRelated": true
+        },
+        {
+          "name": "overdueTasks",
+          "line": 236,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filterOptions",
+          "line": 241,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "mapWidgetUpdatesToApi",
+          "line": 324,
+          "isAsync": false
+        },
+        {
+          "name": "updateConfig",
+          "line": 528,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "refresh",
+          "handler": "loadTasks",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "statusFilter = filter.value",
+          "line": 18
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddTaskModal = true",
+          "line": 30
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddTaskModal = true",
+          "line": 43
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "toggleTaskStatus(task)",
+          "line": 61
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "selectTask(task)",
+          "line": 66
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editTask(task)",
+          "line": 94
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteTask(task)",
+          "line": 101
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeTaskModal",
+          "line": 134
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "saveTask",
+          "line": 135
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showConfigModal = false",
+          "line": 141
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "updateConfig",
+          "line": 142
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 525
+        },
+        {
+          "type": "emit",
+          "name": "widget-updated",
+          "handler": "unknown",
+          "line": 530
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => task.status === 'completed'",
+          "line": 228
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => task.status !== 'completed'",
+          "line": 232
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: tasks.value.filter(task => isOverdue(task",
+          "line": 236
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: [\n  {\n    value: 'all',\n    label: 'widgets.taskList.filters.all',\n    count: tasks.value.length\n  },\n  {\n    value: 'pending',\n    label: 'widgets.taskList.filters.pending',\n    count: pendingTasks.value.length\n  },\n  {\n    value: 'completed',\n    label: 'widgets.taskList.filters.completed',\n    count: completedTasks.value.length\n  },\n  {\n    value: 'overdue',\n    label: 'widgets.taskList.filters.overdue',\n    count: overdueTasks.value.length\n  }\n]",
+          "line": 241
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: filteredTasks",
+          "line": 210
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: completedTasks",
+          "line": 228
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: pendingTasks",
+          "line": 232
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: overdueTasks",
+          "line": 236
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/components/FeatureCreateModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.isOpen",
+          "callback": "(isOpen",
+          "line": 191
+        }
+      ],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 9
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 128
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 211
+        },
+        {
+          "type": "emit",
+          "name": "submit",
+          "handler": "unknown",
+          "line": 219
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/widgets/components/GoalDetailsModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "getProgressClass",
+          "line": 225,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editGoal",
+          "line": 23
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 26
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editGoal",
+          "line": 112
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "duplicateGoal",
+          "line": 117
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "toggleStatus",
+          "line": 122
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteGoal",
+          "line": 127
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 262
+        },
+        {
+          "type": "emit",
+          "name": "edit",
+          "handler": "unknown",
+          "line": 267
+        },
+        {
+          "type": "emit",
+          "name": "delete",
+          "handler": "unknown",
+          "line": 273
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/widgets/components/GoalFormModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "!!props.goal",
+          "line": 200,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  return formData.value.title.trim(",
+          "line": 202,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isEditing",
+          "line": 200,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isFormValid",
+          "line": 202,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 2
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(index)",
+          "line": 111
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeModal",
+          "line": 119
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 208
+        },
+        {
+          "type": "emit",
+          "name": "save",
+          "handler": "unknown",
+          "line": 244
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/widgets/project-management/tasks/TasksWidget.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n  return import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG_PANEL !== 'false'\n}",
+          "line": 152,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  const total = tasks.value.length\n  const completed = tasks.value.filter(t => t.status === 'completed'",
+          "line": 223,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n  let filtered = tasks.value\n  if (selectedStatus.value !== 'all'",
+          "line": 231,
+          "isProgressRelated": true
+        },
+        {
+          "name": "isDevelopment",
+          "line": 152,
+          "isProgressRelated": false
+        },
+        {
+          "name": "stats",
+          "line": 223,
+          "isProgressRelated": false
+        },
+        {
+          "name": "filteredTasks",
+          "line": 231,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [
+        {
+          "name": "mapWidgetUpdatesToApi",
+          "line": 204,
+          "isAsync": false
+        },
+        {
+          "name": "updateTask",
+          "line": 328,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "configure",
+          "handler": "showConfiguration",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "toggle",
+          "handler": "toggleWidget",
+          "line": 7
+        },
+        {
+          "type": "listener",
+          "name": "retry",
+          "handler": "refreshWidget",
+          "line": 8
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showAddTaskModal = true",
+          "line": 41
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "filterTasks",
+          "line": 50
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "filterTasks",
+          "line": 58
+        },
+        {
+          "type": "listener",
+          "name": "update",
+          "handler": "updateTask",
+          "line": 77
+        },
+        {
+          "type": "listener",
+          "name": "delete",
+          "handler": "deleteTask",
+          "line": 78
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showAddTaskModal = false",
+          "line": 87
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "addTask",
+          "line": 88
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "hideConfiguration",
+          "line": 96
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "saveConfiguration",
+          "line": 97
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeFilter = filter.value",
+          "line": 483
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateModal = true",
+          "line": 491
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  const total = tasks.value.length\n  const completed = tasks.value.filter(t => t.status === 'completed'",
+          "line": 223
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  let filtered = tasks.value\n  if (selectedStatus.value !== 'all'",
+          "line": 231
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: filteredTasks",
+          "line": 231
+        }
+      ]
+    },
+    {
+      "file": "components/widgets/project-management/tasks/components/AddTaskModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n  return new Date(",
+          "line": 198,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  return form.value.title.trim(",
+          "line": 203,
+          "isProgressRelated": false
+        },
+        {
+          "name": "today",
+          "line": 198,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isFormValid",
+          "line": 203,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(index)",
+          "line": 123
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 144
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 2
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 144
+        },
+        {
+          "type": "emit",
+          "name": "save",
+          "handler": "unknown",
+          "line": 256
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 2
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 144
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/widgets/project-management/tasks/components/EditTaskModal.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n  return form.value.title && \n         form.value.title.trim(",
+          "line": 202,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isFormValid",
+          "line": 202,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "removeTag(index)",
+          "line": 127
+        },
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('close')",
+          "line": 147
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 2
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 147
+        },
+        {
+          "type": "emit",
+          "name": "save",
+          "handler": "unknown",
+          "line": 283
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 2
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "close",
+          "handler": "unknown",
+          "line": 147
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "components/widgets/project-management/tasks/components/TaskItem.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => props.task.estimatedHours",
+          "callback": "(newEstimated, oldEstimated",
+          "line": 298
+        },
+        {
+          "type": "watch",
+          "target": "() => props.task.actualHours",
+          "callback": "(newActual, oldActual",
+          "line": 315
+        },
+        {
+          "type": "watch",
+          "target": "() => props.task",
+          "callback": "(newTask, oldTask",
+          "line": 338
+        }
+      ],
+      "computed": [
+        {
+          "name": "({\n  'task-completed': props.task.status === 'completed',\n  'task-overdue': isOverdue.value,\n  'task-high-priority': props.task.priority === 'high'\n}",
+          "line": 181,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n  if (!props.task.dueDate",
+          "line": 188,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n  const currentTask = props.task\n  const now = performance.now(",
+          "line": 194,
+          "isProgressRelated": true
+        },
+        {
+          "name": "{\n  const hasData = hasValidProgressData(\n    props.task.estimatedHours, \n    props.task.actualHours",
+          "line": 265,
+          "isProgressRelated": true
+        },
+        {
+          "name": "taskClasses",
+          "line": 181,
+          "isProgressRelated": true
+        },
+        {
+          "name": "isOverdue",
+          "line": 188,
+          "isProgressRelated": false
+        },
+        {
+          "name": "progressPercentage",
+          "line": 194,
+          "isProgressRelated": true
+        },
+        {
+          "name": "hasProgressData",
+          "line": 265,
+          "isProgressRelated": true
+        }
+      ],
+      "methods": [
+        {
+          "name": "handleUpdate",
+          "line": 369,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "emit",
+          "name": "click",
+          "handler": "$emit('toggle-status', task.id)",
+          "line": 6
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showEditModal = true",
+          "line": 78
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "confirmDelete",
+          "line": 86
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showEditModal = false",
+          "line": 110
+        },
+        {
+          "type": "listener",
+          "name": "save",
+          "handler": "handleUpdate",
+          "line": 111
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showDeleteModal = false",
+          "line": 119
+        },
+        {
+          "type": "listener",
+          "name": "confirm",
+          "handler": "handleDelete",
+          "line": 120
+        },
+        {
+          "type": "emit",
+          "name": "toggle-status",
+          "handler": "unknown",
+          "line": 6
+        },
+        {
+          "type": "emit",
+          "name": "update",
+          "handler": "unknown",
+          "line": 370
+        },
+        {
+          "type": "emit",
+          "name": "delete",
+          "handler": "unknown",
+          "line": 379
+        },
+        {
+          "type": "emit",
+          "name": "toggle-status",
+          "handler": "unknown",
+          "line": 6
+        }
+      ],
+      "performanceIssues": [
+        {
+          "type": "missing-debounce",
+          "description": "Watcher sur () => props.task.estimatedHours sans debounce",
+          "line": 298,
+          "severity": "medium"
+        },
+        {
+          "type": "missing-debounce",
+          "description": "Watcher sur () => props.task.actualHours sans debounce",
+          "line": 315,
+          "severity": "medium"
+        }
+      ],
+      "reactivityPatterns": [
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => props.task.estimatedHours",
+          "line": 298
+        },
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => props.task.actualHours",
+          "line": 315
+        },
+        {
+          "type": "progress-watcher",
+          "description": "Watcher pour la progression: () => props.task",
+          "line": 338
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: ({\n  'task-completed': props.task.status === 'completed',\n  'task-overdue': isOverdue.value,\n  'task-high-priority': props.task.priority === 'high'\n}",
+          "line": 181
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  if (!props.task.dueDate",
+          "line": 188
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  const currentTask = props.task\n  const now = performance.now(",
+          "line": 194
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: {\n  const hasData = hasValidProgressData(\n    props.task.estimatedHours, \n    props.task.actualHours",
+          "line": 265
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: taskClasses",
+          "line": 181
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: progressPercentage",
+          "line": 194
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: hasProgressData",
+          "line": 265
+        },
+        {
+          "type": "caching",
+          "description": "Système de cache détecté",
+          "line": 193
+        },
+        {
+          "type": "performance-optimization",
+          "description": "Optimisation de performance (debounce/throttle) détectée",
+          "line": 168
+        },
+        {
+          "type": "dom-update",
+          "description": "Gestion explicite des mises à jour DOM",
+          "line": 126
+        }
+      ]
+    },
+    {
+      "file": "views/AccompagnementDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      return notifications.value.filter(n => !n.is_read",
+          "line": 513,
+          "isProgressRelated": false
+        },
+        {
+          "name": "unreadNotifications",
+          "line": 513,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showNotifications = !showNotifications",
+          "line": 24
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showNotifications = false",
+          "line": 64
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "markNotificationAsRead(notification.id)",
+          "line": 90
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "markAllAsRead",
+          "line": 147
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "contactSupport(request.id)",
+          "line": 296
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewRequestDetails(request)",
+          "line": 303
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "respondToRecommendation(recommendation.id, 'accept')",
+          "line": 373
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "scheduleRecommendation(recommendation)",
+          "line": 379
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "respondToRecommendation(recommendation.id, 'decline')",
+          "line": 385
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "contactGeneralSupport",
+          "line": 406
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showScheduleModal = false",
+          "line": 468
+        },
+        {
+          "type": "listener",
+          "name": "schedule",
+          "handler": "handleScheduleRecommendation",
+          "line": 469
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ActionDetails.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/Admin/WidgetManagement.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "[searchQuery",
+          "callback": "statusFilter, categoryFilter, databaseFilter], (",
+          "line": 604
+        }
+      ],
+      "computed": [
+        {
+          "name": "loading.value",
+          "line": 361,
+          "isProgressRelated": false
+        },
+        {
+          "name": "[\n  {\n    id: 'overview',\n    label: 'Vue d\\'ensemble',\n    icon: 'fas fa-chart-pie',\n    count: undefined\n  },\n  {\n    id: 'widgets',\n    label: 'Widgets',\n    icon: 'fas fa-puzzle-piece',\n    count: analysis.value?.stats.total\n  },\n  {\n    id: 'categories',\n    label: 'Catégories',\n    icon: 'fas fa-tags',\n    count: Object.keys(analysis.value?.stats.byCategory || {}",
+          "line": 371,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!analysis.value",
+          "line": 399,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!analysis.value || analysis.value.stats.total === 0",
+          "line": 405,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!analysis.value || analysis.value.stats.total === 0",
+          "line": 411,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!analysis.value",
+          "line": 417,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n  if (!analysis.value",
+          "line": 483,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isLoading",
+          "line": 361,
+          "isProgressRelated": false
+        },
+        {
+          "name": "tabs",
+          "line": 371,
+          "isProgressRelated": false
+        },
+        {
+          "name": "categories",
+          "line": 399,
+          "isProgressRelated": false
+        },
+        {
+          "name": "developmentProgress",
+          "line": 405,
+          "isProgressRelated": true
+        },
+        {
+          "name": "synchronizationProgress",
+          "line": 411,
+          "isProgressRelated": true
+        },
+        {
+          "name": "filteredWidgets",
+          "line": 417,
+          "isProgressRelated": false
+        },
+        {
+          "name": "missingWidgets",
+          "line": 483,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "updateWidget",
+          "line": 514,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshAnalysis",
+          "line": 21
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showBulkActions = !showBulkActions",
+          "line": 34
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addMissingWidgetsBulk",
+          "line": 47
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "generateMissingManifests",
+          "line": 56
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = tab.id",
+          "line": 197
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "addMissingWidgetsBulk",
+          "line": 281
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "generateMissingManifests",
+          "line": 289
+        },
+        {
+          "type": "listener",
+          "name": "refresh",
+          "handler": "refreshAnalysis",
+          "line": 312
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": [
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: developmentProgress",
+          "line": 405
+        },
+        {
+          "type": "progress-computed",
+          "description": "Propriété calculée pour la progression: synchronizationProgress",
+          "line": 411
+        }
+      ]
+    },
+    {
+      "file": "views/AgentServiceRequests.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "filteredRequests() {\n      let filtered = this.requests;\n      \n      if (this.searchQuery) {\n        const query = this.searchQuery.toLowerCase();\n        filtered = filtered.filter(request => \n          request.title.toLowerCase().includes(query) ||\n          request.description.toLowerCase().includes(query)\n        );",
+          "line": 351,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshRequests",
+          "line": 17
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "clearFilters",
+          "line": 144
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "updateRequestStatus(request.id, $event.target.value)",
+          "line": 216
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewRequestDetails(request)",
+          "line": 226
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editRequest(request)",
+          "line": 237
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "closeDetailsModal",
+          "line": 260
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ClientDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "clientFirstName() {\n      // Utiliser le store Pinia en priorité\n      const storeUser = this.authStore?.user;\n      if (storeUser && storeUser.firstName) {\n        return storeUser.firstName;",
+          "line": 406,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "contactAgent",
+          "line": 41
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "contactSupport",
+          "line": 113
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "sendEmail",
+          "line": 122
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewActionDetails(action.id)",
+          "line": 177
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "validateTask(task.id)",
+          "line": 226
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewTask(task.id)",
+          "line": 232
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showContactModal = false",
+          "line": 338
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "contactSupport",
+          "line": 347
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "sendEmail",
+          "line": 357
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ClientProjectDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "{\n      // Vérifier que projects.value est un tableau\n      const projectsArray = Array.isArray(projects.value",
+          "line": 436,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      const projectsArray = Array.isArray(projects.value",
+          "line": 451,
+          "isProgressRelated": false
+        },
+        {
+          "name": "{\n      return filteredProjects.value.length > 0 && \n             filteredProjects.value.every(project => selectedProjects.value.includes(project.id",
+          "line": 459,
+          "isProgressRelated": false
+        },
+        {
+          "name": "stats",
+          "line": 436,
+          "isProgressRelated": false
+        },
+        {
+          "name": "filteredProjects",
+          "line": 451,
+          "isProgressRelated": false
+        },
+        {
+          "name": "isAllSelected",
+          "line": 459,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [
+        {
+          "name": "getProgressClass",
+          "line": 555,
+          "isAsync": false
+        },
+        {
+          "name": "progress",
+          "line": 674,
+          "isAsync": false
+        },
+        {
+          "name": "updateViewport",
+          "line": 423,
+          "isAsync": false
+        },
+        {
+          "name": "onProjectUpdated",
+          "line": 666,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "goBack",
+          "line": 11
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshData",
+          "line": 30
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateProjectModal = true",
+          "line": 176
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewProject(project)",
+          "line": 213
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editProject(project)",
+          "line": 214
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteProject(project)",
+          "line": 215
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "toggleSelectAll",
+          "line": 233
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "toggleProjectSelection(project.id)",
+          "line": 252
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewProject(project)",
+          "line": 288
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "editProject(project)",
+          "line": 294
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "deleteProject(project)",
+          "line": 300
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateProjectModal = true",
+          "line": 319
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showCreateProjectModal = false",
+          "line": 335
+        },
+        {
+          "type": "listener",
+          "name": "projectCreated",
+          "handler": "onProjectCreated",
+          "line": 336
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showEditProjectModal = false",
+          "line": 343
+        },
+        {
+          "type": "listener",
+          "name": "update",
+          "handler": "onProjectUpdated",
+          "line": 344
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showDeleteModal = false",
+          "line": 352
+        },
+        {
+          "type": "listener",
+          "name": "confirm",
+          "handler": "confirmDeleteProject",
+          "line": 353
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showBulkDeleteModal = false",
+          "line": 361
+        },
+        {
+          "type": "listener",
+          "name": "confirm",
+          "handler": "confirmBulkDeleteProjects",
+          "line": 362
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeEmailModal",
+          "line": 370
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "closeNotificationModal",
+          "line": 377
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ClientProjectTracking.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [
+        {
+          "name": "userId() {\n      const storeUser = this.authStore?.user\n      if (storeUser && storeUser.id) {\n        return storeUser.id",
+          "line": 350,
+          "isProgressRelated": false
+        }
+      ],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "filterProjects",
+          "line": 43
+        },
+        {
+          "type": "listener",
+          "name": "change",
+          "handler": "filterProjects",
+          "line": 56
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "viewProjectDetails(project.id)",
+          "line": 226
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/PrestataireDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "logout",
+          "line": 21
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshData",
+          "line": 242
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ProjectDetailDashboard.vue",
+      "hasProgressLogic": true,
+      "watchers": [
+        {
+          "type": "watch",
+          "target": "() => route.params.tab",
+          "callback": "(newTab",
+          "line": 296
+        },
+        {
+          "type": "watch",
+          "target": "() => [route.params.projectId",
+          "callback": "route.params.id], (",
+          "line": 297
+        }
+      ],
+      "computed": [],
+      "methods": [
+        {
+          "name": "updateTaskStatus",
+          "line": 265,
+          "isAsync": false
+        },
+        {
+          "name": "updateProject",
+          "line": 271,
+          "isAsync": false
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "$router.go(-1)",
+          "line": 9
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showProjectSettings = true",
+          "line": 20
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showProjectSettings = true",
+          "line": 29
+        },
+        {
+          "type": "listener",
+          "name": "update",
+          "handler": "updateProject",
+          "line": 125
+        },
+        {
+          "type": "listener",
+          "name": "delete",
+          "handler": "deleteProject",
+          "line": 126
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showProjectSettings = false",
+          "line": 127
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    },
+    {
+      "file": "views/ProjectManagement.vue",
+      "hasProgressLogic": true,
+      "watchers": [],
+      "computed": [],
+      "methods": [
+        {
+          "name": "updateProject",
+          "line": 317,
+          "isAsync": true
+        },
+        {
+          "name": "updateRole",
+          "line": 439,
+          "isAsync": true
+        }
+      ],
+      "events": [
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "goBack",
+          "line": 12
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "showCreateProjectModal = true",
+          "line": 30
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "refreshData",
+          "line": 39
+        },
+        {
+          "type": "listener",
+          "name": "click",
+          "handler": "activeTab = tab.id",
+          "line": 59
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showCreateProjectModal = false",
+          "line": 150
+        },
+        {
+          "type": "listener",
+          "name": "create",
+          "handler": "createProject",
+          "line": 151
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showEditProjectModal = false",
+          "line": 158
+        },
+        {
+          "type": "listener",
+          "name": "update",
+          "handler": "updateProject",
+          "line": 159
+        },
+        {
+          "type": "listener",
+          "name": "close",
+          "handler": "showDeleteModal = false",
+          "line": 166
+        },
+        {
+          "type": "listener",
+          "name": "confirm",
+          "handler": "confirmDelete",
+          "line": 167
+        }
+      ],
+      "performanceIssues": [],
+      "reactivityPatterns": []
+    }
+  ],
+  "performanceIssues": [
+    {
+      "type": "missing-debounce",
+      "description": "Watcher sur () => props.task.estimatedHours sans debounce",
+      "line": 298,
+      "severity": "medium",
+      "file": "components/widgets/project-management/tasks/components/TaskItem.vue"
+    },
+    {
+      "type": "missing-debounce",
+      "description": "Watcher sur () => props.task.actualHours sans debounce",
+      "line": 315,
+      "severity": "medium",
+      "file": "components/widgets/project-management/tasks/components/TaskItem.vue"
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "performance",
+      "priority": "low",
+      "description": "Nombre élevé de propriétés calculées (206). Vérifiez les dépendances."
+    },
+    {
+      "type": "optimization",
+      "priority": "medium",
+      "description": "12 composant(s) sans optimisation de performance détectée.",
+      "components": [
+        "components/ProjectManagement/CreateTaskModal.vue",
+        "components/ProjectManagement/EditProjectModal.vue",
+        "components/debug/ProgressTestPanel.vue",
+        "components/modals/AIChatModal.vue",
+        "components/modals/TaskModal.vue",
+        "components/widgets/FeatureTrackingWidget.vue",
+        "components/widgets/GoalsWidget.vue",
+        "components/widgets/StatsWidget.vue",
+        "components/widgets/TaskListWidget.vue",
+        "components/widgets/components/FeatureCreateModal.vue",
+        "views/Admin/WidgetManagement.vue",
+        "views/ProjectDetailDashboard.vue"
+      ]
+    }
+  ],
+  "analysis": {
+    "reactivityHealth": 98,
+    "performanceScore": 90,
+    "optimizationLevel": 2
+  }
+}

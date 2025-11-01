@@ -122,7 +122,6 @@ export default {
     "titlePlaceholder": "Entrez le titre de l'objectif",
     "descriptionPlaceholder": "Décrivez l'objectif en détail",
     "assigneePlaceholder": "Nom de la personne assignée",
-    "tagsPlaceholder": "Ajoutez des tags (Entrée pour valider)",
     "priorityLow": "Faible",
     "priorityMedium": "Moyenne",
     "priorityHigh": "Élevée",
@@ -234,6 +233,7 @@ export default {
     "deleteTask": "Supprimer la tâche",
     "total": "Total",
     "pending": "En attente",
+    "completed": "Terminées",
     "filters": {
       "all": "Toutes",
       "pending": "En attente",
@@ -658,7 +658,6 @@ export default {
       "showAssignee": "Afficher l'assigné",
       "showDueDate": "Afficher la date d'échéance",
       "showPriority": "Afficher la priorité",
-      "showTags": "Afficher les tags",
       "defaultView": "Vue par défaut",
       "viewType": "Type de vue",
       "listView": "Vue liste",
@@ -675,6 +674,52 @@ export default {
       "minute": "minute",
       "minutes": "minutes",
       "resetDefaults": "Réinitialiser les paramètres par défaut"
+    },
+    "addTask": "Ajouter une tâche",
+    "createTask": "Créer la tâche",
+    "title": "Titre",
+    "titlePlaceholder": "Entrez le titre de la tâche",
+    "description": "Description",
+    "descriptionPlaceholder": "Décrivez la tâche (optionnel)",
+    "priority": "Priorité",
+    "priorityLabels": {
+      "low": "Faible",
+      "medium": "Moyenne",
+      "high": "Élevée"
+    },
+    "priority": {
+      "low": "Faible",
+      "medium": "Moyenne",
+      "high": "Élevée"
+    },
+    "assignTo": "Assigné à",
+    "unassigned": "Non assigné",
+    "dueDate": "Date d'échéance",
+    "estimatedHours": "Temps estimé",
+    "hoursPlaceholder": "ex. 2, 3.5",
+    "status": {
+      "pending": "En attente",
+      "in_progress": "En cours",
+      "completed": "Terminée",
+      "cancelled": "Annulée"
+    },
+    "updateTask": "Mettre à jour la tâche",
+    "total": "Total",
+    "completed": "Terminées",
+    "inProgress": "En cours",
+    "pending": "En attente",
+    "allTasks": "Toutes les tâches",
+    "allPriorities": "Toutes les priorités",
+    "highPriority": "Priorité élevée",
+    "mediumPriority": "Priorité moyenne",
+    "lowPriority": "Priorité faible",
+    "noTasks": "Aucune tâche",
+    "taskCreated": "Tâche créée",
+    "errors": {
+      "titleRequired": "Le titre est requis",
+      "titleTooLong": "Le titre est trop long",
+      "saveFailed": "Échec de la création de la tâche",
+      "contextRequired": "Contexte client/projet requis"
     }
   },
 
@@ -767,8 +812,6 @@ export default {
     "titlePlaceholder": "Titre de la note (optionnel)",
     "content": "Contenu",
     "contentPlaceholder": "Écrivez votre note...",
-    "tags": "Tags",
-    "tagsPlaceholder": "Tags (séparés par des virgules)",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer cette note ?",
     "preview": "Aperçu",
     "markdownHint": "Astuce: Markdown et checklists sont supportés. Utilisez - [ ] et - [x].",

@@ -27,6 +27,7 @@ import admin from './admin.js';
 import agentAssignment from './agentAssignment.js';
 import dashboard from './dashboard.js';
 import customizableProjects from './customizableProjects.js';
+import customProjects from './customProjects.js';
 import multiTenant from './multiTenant.js';
 import roles from './roles.js';
 import categories from './categories.js'
@@ -62,6 +63,7 @@ export default {
   time,
   brand,
   customizableProjects,
+  customProjects,
   admin,
   agentAssignment,
   dashboard,

@@ -8,9 +8,15 @@
     @retry="refreshWidget"
     class="tasks-widget"
   >
+
+    
     <div class="tasks-content">
       <!-- En-tête avec statistiques -->
       <div class="tasks-header">
+        <div v-if="creationFeedback" class="feedback-banner">
+          <i class="fas fa-check-circle mr-2"></i>
+          {{ creationFeedback }}
+        </div>
         <div class="tasks-stats">
           <div class="stat-card">
             <div class="stat-number">{{ stats.total }}</div>
@@ -45,6 +51,7 @@
           <option value="pending">{{ t('widgets.tasks.pending') }}</option>
           <option value="in_progress">{{ t('widgets.tasks.inProgress') }}</option>
           <option value="completed">{{ t('widgets.tasks.completed') }}</option>
+          <option value="cancelled">{{ t('widgets.tasks.status.cancelled') }}</option>
         </select>
         
         <select v-model="selectedPriority" @change="filterTasks" class="filter-select">
@@ -78,6 +85,7 @@
       v-if="showAddTaskModal"
       @close="showAddTaskModal = false"
       @save="addTask"
+      :server-error="createError"
     />
     
     <!-- Modal de configuration -->
@@ -102,6 +110,7 @@ import { useTranslation } from '@/composables/useTranslation'
 import type { Task, TaskStatus, TaskPriority } from './types'
 import { useMultiTenantApi, useMultiTenant } from '@/services/multiTenantService'
 import projectManagementService from '@/services/projectManagementService'
+
 
 interface Props {
   widget: any
@@ -135,14 +144,28 @@ const tasks = ref<Task[]>([])
 const selectedStatus = ref<string>('all')
 const selectedPriority = ref<string>('all')
 const showAddTaskModal = ref(false)
+const createError = ref<string>('')
+const creationFeedback = ref<string>('')
+
+
 
 // Mapper une tâche API vers le format du widget
 const mapApiTaskToWidgetTask = (apiTask: any): Task => {
-  const statusMap: Record<string, TaskStatus> = {
-    todo: 'pending',
-    in_progress: 'in_progress',
-    done: 'completed',
-    cancelled: 'pending'
+  // Normaliser le statut de l'API vers les statuts UI supportés
+  const rawStatus = String(apiTask.status || '').toLowerCase()
+  let uiStatus: TaskStatus = 'pending'
+  if (rawStatus === 'done' || rawStatus === 'completed') {
+    uiStatus = 'completed'
+  } else if (rawStatus === 'cancelled' || rawStatus === 'canceled' || rawStatus === 'rejected') {
+    uiStatus = 'cancelled'
+  } else if (rawStatus === 'in_progress' || rawStatus === 'progress') {
+    uiStatus = 'in_progress'
+  } else if (rawStatus === 'pending_validation' || rawStatus === 'in_review' || rawStatus === 'review') {
+    // Pas d'état UI dédié, on le considère comme en attente
+    uiStatus = 'pending'
+  } else {
+    // inclut 'todo', 'pending', et valeurs inconnues -> défaut en attente
+    uiStatus = 'pending'
   }
   const priorityMap: Record<string, TaskPriority> = {
     low: 'low',
@@ -154,7 +177,7 @@ const mapApiTaskToWidgetTask = (apiTask: any): Task => {
     id: String(apiTask.id),
     title: apiTask.title,
     description: apiTask.description || '',
-    status: statusMap[apiTask.status] || 'pending',
+    status: uiStatus,
     priority: priorityMap[apiTask.priority] || 'medium',
     assignedTo: apiTask.assigned_to ? String(apiTask.assigned_to) : undefined,
     dueDate: apiTask.due_date || undefined,
@@ -162,8 +185,12 @@ const mapApiTaskToWidgetTask = (apiTask: any): Task => {
     updatedAt: apiTask.updated_at || apiTask.created_at,
     projectId: props.projectId,
     tags: [],
-    estimatedHours: undefined,
-    actualHours: undefined,
+    estimatedHours: typeof apiTask.estimated_hours !== 'undefined' && apiTask.estimated_hours !== null
+      ? Number(apiTask.estimated_hours)
+      : undefined,
+    actualHours: typeof apiTask.actual_hours !== 'undefined' && apiTask.actual_hours !== null
+      ? Number(apiTask.actual_hours)
+      : undefined,
     dependencies: [],
     attachments: []
   }
@@ -174,7 +201,8 @@ const mapWidgetUpdatesToApi = (updates: Partial<Task>) => {
   const statusReverseMap: Record<TaskStatus, string> = {
     pending: 'todo',
     in_progress: 'in_progress',
-    completed: 'done'
+    completed: 'done',
+    cancelled: 'cancelled'
   }
   const payload: any = {}
   if (updates.title !== undefined) payload.title = updates.title
@@ -183,6 +211,8 @@ const mapWidgetUpdatesToApi = (updates: Partial<Task>) => {
   if (updates.priority !== undefined) payload.priority = updates.priority
   if (updates.assignedTo !== undefined) payload.assigned_to = updates.assignedTo ? Number(updates.assignedTo) : null
   if (updates.dueDate !== undefined) payload.due_date = updates.dueDate
+  if (updates.estimatedHours !== undefined) payload.estimated_hours = updates.estimatedHours
+  if (updates.actualHours !== undefined) payload.actual_hours = updates.actualHours
   return payload
 }
 
@@ -258,6 +288,8 @@ const loadData = async () => {
 const addTask = async (taskData: Partial<Task>) => {
   try {
     setLoading(true)
+    createError.value = ''
+    await resolveContextFromProject()
     const payload: any = {
       title: taskData.title!,
       description: taskData.description,
@@ -265,13 +297,24 @@ const addTask = async (taskData: Partial<Task>) => {
       assigned_to: taskData.assignedTo ? Number(taskData.assignedTo) : undefined,
       due_date: taskData.dueDate
     }
+    // Inclure les heures estimées si fournies (pour activer l'affichage de la progression)
+    if (typeof taskData.estimatedHours !== 'undefined') {
+      payload.estimated_hours = taskData.estimatedHours
+    }
+    // Inclure les heures réelles si fournies
+    if (typeof taskData.actualHours !== 'undefined') {
+      payload.actual_hours = taskData.actualHours
+    }
     const resp = await apiCreateTask(payload)
     const created = resp?.data?.task
     if (created) {
       tasks.value.unshift(mapApiTaskToWidgetTask(created))
+      showAddTaskModal.value = false
+      creationFeedback.value = t('widgets.tasks.taskCreated')
+      setTimeout(() => { creationFeedback.value = '' }, 2500)
     }
-    showAddTaskModal.value = false
-  } catch (err) {
+  } catch (err: any) {
+    createError.value = err?.message || t('widgets.tasks.errors.saveFailed')
     handleError(err)
   } finally {
     setLoading(false)
@@ -280,15 +323,43 @@ const addTask = async (taskData: Partial<Task>) => {
 
 const updateTask = async (taskId: string, updates: Partial<Task>) => {
   try {
+    console.log('🔄 Updating task:', taskId, 'with updates:', updates)
+    
+    // Mise à jour optimiste pour une réactivité immédiate
+    const taskIndex = tasks.value.findIndex(t => t.id === taskId)
+    if (taskIndex !== -1) {
+      const currentTask = tasks.value[taskIndex]
+      
+      // Créer une nouvelle instance de tâche avec les mises à jour
+      const optimisticTask = {
+        ...currentTask,
+        ...updates,
+        updatedAt: new Date().toISOString()
+      }
+      
+      // Mise à jour immédiate pour la réactivité
+      tasks.value[taskIndex] = optimisticTask
+      console.log('✅ Optimistic update applied:', optimisticTask)
+    }
+    
+    // Appel API pour persister les changements
     const resp = await apiUpdateTask(Number(taskId), mapWidgetUpdatesToApi(updates))
     const updated = resp?.data?.task
+    
     if (updated) {
       const index = tasks.value.findIndex(t => t.id === taskId)
       if (index !== -1) {
-        tasks.value[index] = mapApiTaskToWidgetTask(updated)
+        // Remplacer par les données confirmées du serveur
+        const serverTask = mapApiTaskToWidgetTask(updated)
+        tasks.value[index] = serverTask
+        console.log('🔄 Server update confirmed:', serverTask)
       }
     }
   } catch (err) {
+    console.error('❌ Task update failed:', err)
+    
+    // En cas d'erreur, recharger les données pour restaurer l'état correct
+    await loadData()
     handleError(err)
   }
 }
@@ -382,4 +453,44 @@ onMounted(async () => {
 .empty-state {
   @apply text-center py-8;
 }
+
+.feedback-banner {
+  @apply mb-2 p-3 bg-green-50 text-green-700 rounded-md border border-green-200 flex items-center;
+}
 </style>
+
+<template>
+  <div class="tasks-widget">
+    <!-- Panneau de test de progression (temporaire) -->
+    <ProgressTestPanel v-if="isDevelopment" />
+    
+    <!-- En-tête du widget -->
+    <div class="widget-header">
+      <div class="header-left">
+        <h3 class="widget-title">{{ t('tasks.title') }}</h3>
+        <span class="task-count">{{ filteredTasks.length }} {{ t('tasks.count') }}</span>
+      </div>
+      
+      <div class="header-actions">
+        <div class="filter-tabs">
+          <button 
+            v-for="filter in filters" 
+            :key="filter.value"
+            @click="activeFilter = filter.value"
+            :class="['filter-tab', { active: activeFilter === filter.value }]"
+          >
+            {{ filter.label }}
+            <span class="count">{{ getFilterCount(filter.value) }}</span>
+          </button>
+        </div>
+        
+        <button @click="showCreateModal = true" class="add-task-btn">
+          <PlusIcon class="icon" />
+          {{ t('tasks.add') }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ... rest of existing template ... -->
+  </div>
+</template>

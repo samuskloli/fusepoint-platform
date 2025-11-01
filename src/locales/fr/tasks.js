@@ -5,6 +5,13 @@ export default {
   titlePlaceholder: "Entrez le titre de la tâche",
   description: "Description",
   descriptionPlaceholder: "Décrivez la tâche",
+  validation: {
+    titleRequired: "Le titre est obligatoire",
+    invalidDateRange: "La date d'échéance doit être postérieure à la date de début"
+  },
+  created: "Tâche créée avec succès",
+  updated: "Tâche mise à jour avec succès",
+  saveError: "Erreur lors de l'enregistrement de la tâche",
   status: {
     pending: "En attente",
     inProgress: "En cours",
@@ -33,7 +40,7 @@ export default {
     deployment: "Déploiement",
     maintenance: "Maintenance"
   },
-  estimatedHours: "Heures estimées",
+  estimatedHours: "Temps estimé",
   estimatedHoursPlaceholder: "Ex: 2.5",
   progress: "Progression",
   tags: "Tags",

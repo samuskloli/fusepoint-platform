@@ -87,7 +87,7 @@
             <input
               id="start_date"
               v-model="formData.start_date"
-              type="datetime-local"
+              type="date"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -100,7 +100,7 @@
             <input
               id="due_date"
               v-model="formData.due_date"
-              type="datetime-local"
+              type="date"
               class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
@@ -160,65 +160,9 @@
             />
           </div>
 
-          <!-- Progression -->
-          <div>
-            <label for="progress" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('tasks.progress') }} ({{ formData.progress }}%)
-            </label>
-            <input
-              id="progress"
-              v-model.number="formData.progress"
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              class="w-full"
-            />
-            <div class="flex justify-between text-xs text-gray-500 mt-1">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
-          </div>
 
-          <!-- Tags -->
-          <div class="md:col-span-2">
-            <label for="tags" class="block text-sm font-medium text-gray-700 mb-2">
-              {{ t('tasks.tags') }}
-            </label>
-            <div class="flex flex-wrap gap-2 mb-2">
-              <span
-                v-for="tag in formData.tags"
-                :key="tag"
-                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-              >
-                {{ tag }}
-                <button
-                  type="button"
-                  @click="removeTag(tag)"
-                  class="ml-1 text-blue-600 hover:text-blue-800"
-                >
-                  <i class="fas fa-times text-xs"></i>
-                </button>
-              </span>
-            </div>
-            <div class="flex">
-              <input
-                v-model="newTag"
-                type="text"
-                @keyup.enter="addTag"
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-l-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                :placeholder="t('tasks.addTag')"
-              />
-              <button
-                type="button"
-                @click="addTag"
-                class="px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <i class="fas fa-plus"></i>
-              </button>
-            </div>
-          </div>
+
+
         </div>
 
         <!-- Actions -->
@@ -271,7 +215,6 @@ export default {
     const { success, error: showError } = useNotifications()
 
     const loading = ref(false)
-    const newTag = ref('')
 
     const formData = reactive({
       title: '',
@@ -283,8 +226,6 @@ export default {
       assigned_to: '',
       category: '',
       estimated_hours: null,
-      progress: 0,
-      tags: [],
       project_id: props.projectId
     })
 
@@ -301,8 +242,6 @@ export default {
           assigned_to: props.task.assigned_to || '',
           category: props.task.category || '',
           estimated_hours: props.task.estimated_hours || null,
-          progress: props.task.progress || 0,
-          tags: props.task.tags ? [...props.task.tags] : [],
           project_id: props.task.project_id || props.projectId
         })
       }
@@ -310,28 +249,18 @@ export default {
 
     const formatDateForInput = (dateString) => {
       if (!dateString) return ''
-      const date = new Date(dateString)
-      return date.toISOString().slice(0, 16)
+      const d = new Date(dateString)
+      if (isNaN(d.getTime())) return ''
+      const pad = (n) => String(n).padStart(2, '0')
+      // Retourne uniquement la date au format YYYY-MM-DD
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
     }
 
     const closeModal = () => {
       emit('close')
     }
 
-    const addTag = () => {
-      const tag = newTag.value.trim()
-      if (tag && !formData.tags.includes(tag)) {
-        formData.tags.push(tag)
-        newTag.value = ''
-      }
-    }
 
-    const removeTag = (tagToRemove) => {
-      const index = formData.tags.indexOf(tagToRemove)
-      if (index > -1) {
-        formData.tags.splice(index, 1)
-      }
-    }
 
     const validateForm = () => {
       if (!formData.title.trim()) {
@@ -390,10 +319,7 @@ export default {
     return {
       loading,
       formData,
-      newTag,
       closeModal,
-      addTag,
-      removeTag,
       submitForm,
       t
     }
