@@ -105,7 +105,22 @@ const validateScope = async (req, res, next) => {
       const userCompanyId = req.user.client_id ?? req.user.company_id ?? null;
       const isOwnerById = userCompanyId && String(userCompanyId) === String(projectClientId);
       const isOwnerByCompany = ownerCompanyId && userCompanyId && String(userCompanyId) === String(ownerCompanyId);
+      
+      // Logs de débogage temporaires
+      console.log('🔍 DEBUG validateScope - User access check:', {
+        userId: req.user.id,
+        userRole,
+        userCompanyId,
+        projectClientId,
+        ownerCompanyId,
+        isOwnerById,
+        isOwnerByCompany,
+        clientIdFromUrl: clientId,
+        projectIdFromUrl: projectId
+      });
+      
       if (!isOwnerById && !isOwnerByCompany) {
+        console.log('❌ DEBUG validateScope - Access denied for user:', req.user.id);
         return res.status(403).json({ 
           success: false, 
           error: 'Accès refusé' 

@@ -60,9 +60,14 @@ class AuthService {
         throw new Error('Email ou mot de passe incorrect');
       }
 
-      // Récupérer la première entreprise de l'utilisateur pour le token
-      const userCompanies = await databaseService.getUserCompanies(user.id);
-      const primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
+      // Récupérer la company_id de l'utilisateur (soit depuis user.company_id, soit depuis user_companies)
+      let primaryCompanyId = user.company_id; // Utiliser d'abord la company_id directe
+      
+      if (!primaryCompanyId) {
+        // Fallback: chercher dans user_companies si pas de company_id directe
+        const userCompanies = await databaseService.getUserCompanies(user.id);
+        primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
+      }
 
       // Générer les tokens
       const accessToken = this.generateToken({
@@ -285,9 +290,14 @@ class AuthService {
         throw new Error('Utilisateur non trouvé');
       }
 
-      // Récupérer la première entreprise de l'utilisateur pour le token
-      const userCompanies = await databaseService.getUserCompanies(user.id);
-      const primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
+      // Récupérer la company_id de l'utilisateur (soit depuis user.company_id, soit depuis user_companies)
+      let primaryCompanyId = user.company_id; // Utiliser d'abord la company_id directe
+      
+      if (!primaryCompanyId) {
+        // Fallback: chercher dans user_companies si pas de company_id directe
+        const userCompanies = await databaseService.getUserCompanies(user.id);
+        primaryCompanyId = userCompanies.length > 0 ? userCompanies[0].id : null;
+      }
 
       // Générer un nouveau token d'accès
       const newAccessToken = this.generateToken({

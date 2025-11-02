@@ -1,5 +1,15 @@
 [
   {
+    "hash": "a386de0815a21568e33f6a85051572c5308c7867",
+    "date": "2025-11-02 01:01:21 +0100",
+    "subject": "snapshot: commit complet de l'ensemble du projet - état actuel"
+  },
+  {
+    "hash": "6fe249af4534e114d1e906211f2fd97e35621107",
+    "date": "2025-11-02 00:55:25 +0100",
+    "subject": "chore: mise à jour automatique du changelog (commits.json)"
+  },
+  {
     "hash": "96a7af3ecb8d7be7cfe580e00f3b5e706a449e53",
     "date": "2025-11-02 00:50:21 +0100",
     "subject": "fix: Correction des données statiques dans les services"
@@ -48,15 +58,5 @@
     "hash": "646df4a56f9d10b166be6b5adb499d45efc85f9d",
     "date": "2025-11-01 00:03:05 +0100",
     "subject": "chore(deploy): aligner CHANGELOG et métadonnées de déploiement"
-  },
-  {
-    "hash": "6d95299ff82361cae7fc68e728e4dda834621f0b",
-    "date": "2025-11-01 00:02:16 +0100",
-    "subject": "chore(deploy): pousser toutes les mises à jour locales (modale widgets, sélection multiple, DnD, corrections UI/serveur)"
-  },
-  {
-    "hash": "0415afd4842269edef47e219aeabe9949f61f81d",
-    "date": "2025-10-31 23:58:20 +0100",
-    "subject": "chore(deploy): envoyer toutes les mises à jour locales (frontend DnD, corrections widgets, scripts et backend)"
   }
 ]

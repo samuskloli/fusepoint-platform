@@ -90,3 +90,21 @@ Commits inclus:
 - 646df4a chore(deploy): aligner CHANGELOG et métadonnées de déploiement (Samuel Oliveira)
 - 6d95299 chore(deploy): pousser toutes les mises à jour locales (modale widgets, sélection multiple, DnD, corrections UI/serveur) (Samuel Oliveira)
 
+## Déploiement 2025-11-02T00:03:25Z
+Serveur: 57-104359.ssh.hosting-ik.com
+Branche: main
+Chemin distant: /srv/customer/sites/fusepoint.ch
+
+Commits inclus:
+- a386de0 snapshot: commit complet de l'ensemble du projet - état actuel (Samuel Oliveira)
+- 6fe249a chore: mise à jour automatique du changelog (commits.json) (Samuel Oliveira)
+- 96a7af3 fix: Correction des données statiques dans les services (Samuel Oliveira)
+- 0ae6c3e feat: Synchronisation complète - Améliorations système de tâches, monitoring et déploiement (Samuel Oliveira)
+- 29d8923 feat(settings): mise à jour de la page Paramètres et navigation\nfix(router): corrige le routing /app/settings\nchore(deploy): aligne l’index SPA sur dist/app et déploie .htaccess remote/SPA sans toucher aux paramètres serveur\nfeat(db): ajoute migration billing (companies) et profil (users)\nchore: met à jour schema.sql et src/generated/commits.json\nrefactor: retire l’ancien UserSettings.vue obsolète\nNote: scripts avec secrets non commités (update-env-and-deploy.exp, run-db-update.exp) (Samuel Oliveira)
+- ff54571 CSP: precompile i18n, remove pdfjs-dist, escape email placeholders (Samuel Oliveira)
+- 8926ac6 Deploy: production sync via SSH (CORS,CSP,security headers, deps upgrade) (Samuel Oliveira)
+- e2e745e chore(debug): log auth-skip context for /api/health (method, path, originalUrl) (Samuel Oliveira)
+- ca74fa8 fix(auth): ensure /api/health bypasses global /api auth by checking req.originalUrl as well (Samuel Oliveira)
+- 253cca6 chore(api): add public /api/health endpoint and auth exemption; log access for super-admin beta-email-template; minor health skip in rate limiter (Samuel Oliveira)
+- d18d0be feat(beta-email): migration douce du corps de l’email stocké + rechargement du modèle côté frontend à l’ouverture de la modale (Samuel Oliveira)
+
